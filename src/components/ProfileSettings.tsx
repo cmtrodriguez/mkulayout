@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { 
   User, Shield, Award, Settings, LogOut, Eye, EyeOff, Volume2, 
   Sparkles, CheckCircle, HelpCircle, Palette, Lock, Sun, Moon, 
   Type, FolderOpen, ExternalLink, RefreshCw, Key, Copy, Check, 
-  ShieldCheck, Mail, Phone, GraduationCap, Users 
+  ShieldCheck, Mail, Phone, GraduationCap, Users,
+  Gamepad2, Play, RotateCw, ArrowLeft, ArrowRight, ArrowDown, ChevronsDown, Trophy
 } from "lucide-react";
 import { TeamMember, UserRole, normalizeEmail } from "../types";
 import { OFFICIAL_ACCOUNTS } from "./LoginPage";
@@ -29,6 +30,222 @@ interface ProfileSettingsProps {
   dyslexicFont?: boolean;
   setDyslexicFont?: (v: boolean) => void;
   onLogout: () => void;
+}
+
+/* ------------------------------------------------------------------ */
+/* MKule Tetris Break — a 3-round mini-game rendered at the page foot  */
+/* ------------------------------------------------------------------ */
+
+type TetrisStatus = "idle" | "playing" | "roundComplete" | "won" | "over";
+
+interface TetrisPiece {
+  shapeIdx: number;
+  rot: number;
+  x: number;
+  y: number;
+}
+
+interface TetrisGameState {
+  status: TetrisStatus;
+  round: number;
+  linesInRound: number;
+  totalLines: number;
+  score: number;
+  board: string[][];
+  piece: TetrisPiece | null;
+  message: string;
+}
+
+const TETRIS_COLS = 10;
+const TETRIS_ROWS = 16;
+const TETRIS_TOTAL_ROUNDS = 3;
+const TETRIS_LINES_PER_ROUND = 3;
+const TETRIS_ROUND_SPEEDS = [820, 640, 480];
+
+const TETROMINOES: { color: string; cells: number[][][] }[] = [
+  { color: "bg-cyan-400", cells: [
+    [[0, 1], [1, 1], [2, 1], [3, 1]],
+    [[1, 0], [1, 1], [1, 2], [1, 3]],
+  ] },
+  { color: "bg-amber-400", cells: [
+    [[1, 0], [2, 0], [1, 1], [2, 1]],
+  ] },
+  { color: "bg-purple-500", cells: [
+    [[1, 0], [0, 1], [1, 1], [2, 1]],
+    [[1, 0], [1, 1], [2, 1], [1, 2]],
+    [[0, 1], [1, 1], [2, 1], [1, 2]],
+    [[1, 0], [0, 1], [1, 1], [1, 2]],
+  ] },
+  { color: "bg-emerald-500", cells: [
+    [[1, 0], [2, 0], [0, 1], [1, 1]],
+    [[1, 0], [1, 1], [2, 1], [2, 2]],
+  ] },
+  { color: "bg-rose-500", cells: [
+    [[0, 0], [1, 0], [1, 1], [2, 1]],
+    [[2, 0], [1, 1], [2, 1], [1, 2]],
+  ] },
+  { color: "bg-blue-500", cells: [
+    [[0, 0], [0, 1], [1, 1], [2, 1]],
+    [[1, 0], [2, 0], [1, 1], [1, 2]],
+    [[0, 1], [1, 1], [2, 1], [2, 2]],
+    [[1, 0], [1, 1], [0, 2], [1, 2]],
+  ] },
+  { color: "bg-orange-500", cells: [
+    [[2, 0], [0, 1], [1, 1], [2, 1]],
+    [[1, 0], [1, 1], [1, 2], [2, 2]],
+    [[0, 1], [1, 1], [2, 1], [0, 2]],
+    [[0, 0], [1, 0], [1, 1], [1, 2]],
+  ] },
+];
+
+function tetrisEmptyBoard(): string[][] {
+  return Array.from({ length: TETRIS_ROWS }, () => Array(TETRIS_COLS).fill(""));
+}
+
+function tetrisRandomPiece(): TetrisPiece {
+  return { shapeIdx: Math.floor(Math.random() * TETROMINOES.length), rot: 0, x: 3, y: 0 };
+}
+
+function tetrisCollides(board: string[][], piece: TetrisPiece): boolean {
+  return TETROMINOES[piece.shapeIdx].cells[piece.rot].some(([cx, cy]) => {
+    const bx = piece.x + cx;
+    const by = piece.y + cy;
+    if (bx < 0 || bx >= TETRIS_COLS || by >= TETRIS_ROWS) return true;
+    return by >= 0 && board[by][bx] !== "";
+  });
+}
+
+function tetrisIdleState(): TetrisGameState {
+  return {
+    status: "idle",
+    round: 1,
+    linesInRound: 0,
+    totalLines: 0,
+    score: 0,
+    board: tetrisEmptyBoard(),
+    piece: null,
+    message: `${TETRIS_TOTAL_ROUNDS} rounds — clear ${TETRIS_LINES_PER_ROUND} lines each round to win.`,
+  };
+}
+
+function tetrisNewGame(): TetrisGameState {
+  return {
+    status: "playing",
+    round: 1,
+    linesInRound: 0,
+    totalLines: 0,
+    score: 0,
+    board: tetrisEmptyBoard(),
+    piece: tetrisRandomPiece(),
+    message: `Round 1 of ${TETRIS_TOTAL_ROUNDS} — clear ${TETRIS_LINES_PER_ROUND} lines!`,
+  };
+}
+
+function tetrisNextRound(state: TetrisGameState): TetrisGameState {
+  if (state.status !== "roundComplete") return state;
+  return {
+    ...state,
+    status: "playing",
+    round: state.round + 1,
+    linesInRound: 0,
+    board: tetrisEmptyBoard(),
+    piece: tetrisRandomPiece(),
+    message: `Round ${state.round + 1} of ${TETRIS_TOTAL_ROUNDS} — clear ${TETRIS_LINES_PER_ROUND} lines!`,
+  };
+}
+
+function tetrisLockPiece(state: TetrisGameState): TetrisGameState {
+  const piece = state.piece;
+  if (!piece) return state;
+
+  const color = TETROMINOES[piece.shapeIdx].color;
+  const board = state.board.map(row => [...row]);
+  TETROMINOES[piece.shapeIdx].cells[piece.rot].forEach(([cx, cy]) => {
+    const bx = piece.x + cx;
+    const by = piece.y + cy;
+    if (by >= 0 && by < TETRIS_ROWS && bx >= 0 && bx < TETRIS_COLS) board[by][bx] = color;
+  });
+
+  const keptRows = board.filter(row => row.some(cell => cell === ""));
+  const cleared = TETRIS_ROWS - keptRows.length;
+  const nextBoard = [...Array.from({ length: cleared }, () => Array(TETRIS_COLS).fill("")), ...keptRows];
+
+  const totalLines = state.totalLines + cleared;
+  const linesInRound = state.linesInRound + cleared;
+  const score = state.score + cleared * 100 * state.round;
+
+  if (linesInRound >= TETRIS_LINES_PER_ROUND) {
+    const finished = state.round >= TETRIS_TOTAL_ROUNDS;
+    return {
+      ...state,
+      board: nextBoard,
+      piece: null,
+      totalLines,
+      linesInRound,
+      score,
+      status: finished ? "won" : "roundComplete",
+      message: finished
+        ? `All ${TETRIS_TOTAL_ROUNDS} rounds cleared — final score ${score}!`
+        : `Round ${state.round} of ${TETRIS_TOTAL_ROUNDS} complete! Ready for round ${state.round + 1}?`,
+    };
+  }
+
+  const nextPiece = tetrisRandomPiece();
+  if (tetrisCollides(nextBoard, nextPiece)) {
+    return {
+      ...state,
+      board: nextBoard,
+      piece: null,
+      totalLines,
+      linesInRound,
+      score,
+      status: "over",
+      message: `Game over — the stack topped out in round ${state.round}.`,
+    };
+  }
+
+  return {
+    ...state,
+    board: nextBoard,
+    piece: nextPiece,
+    totalLines,
+    linesInRound,
+    score,
+    message: cleared > 0
+      ? `Cleared ${cleared} line${cleared === 1 ? "" : "s"}! ${TETRIS_LINES_PER_ROUND - linesInRound} more to finish round ${state.round}.`
+      : state.message,
+  };
+}
+
+function tetrisStepDown(state: TetrisGameState): TetrisGameState {
+  if (state.status !== "playing" || !state.piece) return state;
+  const moved = { ...state.piece, y: state.piece.y + 1 };
+  if (!tetrisCollides(state.board, moved)) return { ...state, piece: moved };
+  return tetrisLockPiece(state);
+}
+
+function tetrisMoveHorizontal(state: TetrisGameState, dx: number): TetrisGameState {
+  if (state.status !== "playing" || !state.piece) return state;
+  const moved = { ...state.piece, x: state.piece.x + dx };
+  return tetrisCollides(state.board, moved) ? state : { ...state, piece: moved };
+}
+
+function tetrisRotate(state: TetrisGameState): TetrisGameState {
+  if (state.status !== "playing" || !state.piece) return state;
+  const rot = (state.piece.rot + 1) % TETROMINOES[state.piece.shapeIdx].cells.length;
+  for (const kick of [0, -1, 1, -2, 2]) {
+    const candidate = { ...state.piece, rot, x: state.piece.x + kick };
+    if (!tetrisCollides(state.board, candidate)) return { ...state, piece: candidate };
+  }
+  return state;
+}
+
+function tetrisHardDrop(state: TetrisGameState): TetrisGameState {
+  if (state.status !== "playing" || !state.piece) return state;
+  let y = state.piece.y;
+  while (!tetrisCollides(state.board, { ...state.piece, y: y + 1 })) y += 1;
+  const dropped = { ...state.piece, y };
+  return tetrisLockPiece({ ...state, piece: dropped, score: state.score + 2 * (y - state.piece.y) });
 }
 
 export default function ProfileSettings({
@@ -76,6 +293,85 @@ export default function ProfileSettings({
   const [showSectionRoster, setShowSectionRoster] = useState(false);
   const [statsMode, setStatsMode] = useState<"semester" | "month">("semester");
   const [selectedMonth, setSelectedMonth] = useState<string>("September");
+
+  // Tetris mini-game state
+  const [tetris, setTetris] = useState<TetrisGameState>(tetrisIdleState);
+  const tetrisRef = useRef(tetris);
+
+  useEffect(() => {
+    tetrisRef.current = tetris;
+  }, [tetris]);
+
+  // Gravity tick — the drop speed ramps up each round
+  useEffect(() => {
+    if (tetris.status !== "playing") return;
+    const speed = TETRIS_ROUND_SPEEDS[tetris.round - 1] || TETRIS_ROUND_SPEEDS[TETRIS_ROUND_SPEEDS.length - 1];
+    const id = window.setInterval(() => setTetris(prev => tetrisStepDown(prev)), speed);
+    return () => window.clearInterval(id);
+  }, [tetris.status, tetris.round]);
+
+  // Keyboard controls while the game is in focus on this page
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.tagName === "BUTTON" || target.isContentEditable)) return;
+      const status = tetrisRef.current.status;
+      if (status === "playing") {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          setTetris(prev => tetrisMoveHorizontal(prev, -1));
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          setTetris(prev => tetrisMoveHorizontal(prev, 1));
+        } else if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setTetris(prev => tetrisStepDown(prev));
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setTetris(prev => tetrisRotate(prev));
+        } else if (e.key === " ") {
+          e.preventDefault();
+          setTetris(prev => tetrisHardDrop(prev));
+        }
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setTetris(prev => (prev.status === "roundComplete" ? tetrisNextRound(prev) : tetrisNewGame()));
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // Voice feedback for round flow (follows the shared speech toggle)
+  useEffect(() => {
+    if (tetris.status === "roundComplete") {
+      speakText(`Round ${tetris.round} of ${TETRIS_TOTAL_ROUNDS} complete! Ready for the next round.`);
+    } else if (tetris.status === "won") {
+      speakText(`Congratulations! All ${TETRIS_TOTAL_ROUNDS} rounds cleared. Final score ${tetris.score}.`);
+    } else if (tetris.status === "over") {
+      speakText(`Game over in round ${tetris.round}. Press Enter to try again.`);
+    }
+  }, [tetris.status]);
+
+  useEffect(() => {
+    if (tetris.status === "playing" && tetris.totalLines > 0) speakText("Line cleared!");
+  }, [tetris.totalLines]);
+
+  const tetrisView = useMemo(() => {
+    const grid = tetris.board.map(row => [...row]);
+    if (tetris.status === "playing" && tetris.piece) {
+      const { shapeIdx, rot, x, y } = tetris.piece;
+      const color = TETROMINOES[shapeIdx].color;
+      TETROMINOES[shapeIdx].cells[rot].forEach(([cx, cy]) => {
+        const bx = x + cx;
+        const by = y + cy;
+        if (by >= 0 && by < TETRIS_ROWS && bx >= 0 && bx < TETRIS_COLS) grid[by][bx] = color;
+      });
+    }
+    return grid;
+  }, [tetris]);
 
   const monthOrder = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -144,6 +440,10 @@ export default function ProfileSettings({
     setSpeechEnabled(false);
     speakText("Workspace settings reset to defaults.");
   };
+
+  const tetrisControlClass = "flex items-center justify-center py-2 rounded-xl border border-gray-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed";
+  const tetrisPrimaryClass = "flex-1 py-2 bg-gradient-to-r from-brand-maroon to-brand-maroon-dark text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer hover:opacity-95";
+  const tetrisSecondaryClass = "px-3 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 border border-gray-200 dark:border-neutral-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer";
 
   return (
     <div className="space-y-6 text-left">
@@ -583,6 +883,124 @@ export default function ProfileSettings({
         </div>
         </div>
       </div>
+      </div>
+
+      {/* MKule Tetris Break — 3-round mini-game filling the blank space at the page foot */}
+      <div className="glass-card rounded-2xl p-4 sm:p-6 bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 shadow-sm space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3 border-gray-100 dark:border-neutral-800">
+          <div className="flex items-center gap-2">
+            <Gamepad2 className="w-5 h-5 text-brand-maroon dark:text-brand-maroon-light" />
+            <div>
+              <h3 className="font-display font-bold text-gray-950 dark:text-neutral-100 text-sm">MKule Tetris Break</h3>
+              <p className="text-[10px] text-gray-500 dark:text-neutral-400">A quick 3-round layout break — clear {TETRIS_LINES_PER_ROUND} lines per round.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] font-mono font-bold">
+            <span className="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">Round {tetris.round}/{TETRIS_TOTAL_ROUNDS}</span>
+            <span className="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">Lines {tetris.totalLines}</span>
+            <span className="px-2 py-0.5 rounded-full bg-brand-maroon/10 dark:bg-brand-maroon/20 text-brand-maroon dark:text-brand-maroon-light">Score {tetris.score}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-start">
+          {/* Playfield */}
+          <div className="grid grid-cols-10 gap-0.5 p-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 shrink-0">
+            {tetrisView.flatMap((row, y) =>
+              row.map((cell, x) => (
+                <div
+                  key={`${y}-${x}`}
+                  className={`w-4 h-4 sm:w-5 sm:h-5 rounded-[3px] ${cell ? `${cell} border border-black/10` : "bg-white dark:bg-neutral-900"}`}
+                />
+              ))
+            )}
+          </div>
+
+          {/* Round info, message and controls */}
+          <div className="flex-1 w-full space-y-3">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] font-semibold text-gray-500 dark:text-neutral-400">
+                <span>Round progress</span>
+                <span>{tetris.linesInRound}/{TETRIS_LINES_PER_ROUND} lines</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+                <div className="h-full bg-brand-maroon transition-all duration-300" style={{ width: `${Math.min(100, (tetris.linesInRound / TETRIS_LINES_PER_ROUND) * 100)}%` }} />
+              </div>
+              <div className="flex items-center gap-1.5 pt-1">
+                {Array.from({ length: TETRIS_TOTAL_ROUNDS }, (_, i) => i + 1).map(r => (
+                  <span
+                    key={r}
+                    className={`w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center border ${
+                      r < tetris.round || tetris.status === "won"
+                        ? "bg-emerald-500 border-emerald-500 text-white"
+                        : r === tetris.round && tetris.status !== "idle"
+                          ? "bg-brand-maroon border-brand-maroon text-white"
+                          : "bg-neutral-100 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 text-neutral-400"
+                    }`}
+                  >
+                    {r < tetris.round || tetris.status === "won" ? <Check className="w-3 h-3" /> : r}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="min-h-[36px] rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-gray-100 dark:border-neutral-700 px-3 py-2 text-[11px] font-semibold text-gray-700 dark:text-neutral-200 flex items-center gap-2">
+              {tetris.status === "won" && <Trophy className="w-4 h-4 text-amber-500 shrink-0" />}
+              <span className="truncate">{tetris.message}</span>
+            </div>
+
+            <div className="grid grid-cols-5 gap-1.5">
+              <button type="button" onMouseDown={(e) => e.preventDefault()} disabled={tetris.status !== "playing"} onClick={() => setTetris(prev => tetrisMoveHorizontal(prev, -1))} className={tetrisControlClass} title="Move left" aria-label="Move left">
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} disabled={tetris.status !== "playing"} onClick={() => setTetris(prev => tetrisRotate(prev))} className={tetrisControlClass} title="Rotate" aria-label="Rotate piece">
+                <RotateCw className="w-4 h-4" />
+              </button>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} disabled={tetris.status !== "playing"} onClick={() => setTetris(prev => tetrisMoveHorizontal(prev, 1))} className={tetrisControlClass} title="Move right" aria-label="Move right">
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} disabled={tetris.status !== "playing"} onClick={() => setTetris(prev => tetrisStepDown(prev))} className={tetrisControlClass} title="Soft drop" aria-label="Soft drop">
+                <ArrowDown className="w-4 h-4" />
+              </button>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} disabled={tetris.status !== "playing"} onClick={() => setTetris(prev => tetrisHardDrop(prev))} className={tetrisControlClass} title="Hard drop" aria-label="Hard drop">
+                <ChevronsDown className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-400 dark:text-neutral-500">Keyboard: ← → move • ↑ rotate • ↓ soft drop • Space hard drop • Enter to start</p>
+
+            <div className="flex gap-2">
+              {tetris.status === "idle" && (
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setTetris(tetrisNewGame())} className={tetrisPrimaryClass}>
+                  <Play className="w-3.5 h-3.5" /> Start Game
+                </button>
+              )}
+              {tetris.status === "playing" && (
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setTetris(tetrisNewGame())} className={tetrisSecondaryClass}>
+                  <RefreshCw className="w-3.5 h-3.5" /> Restart
+                </button>
+              )}
+              {tetris.status === "roundComplete" && (
+                <>
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setTetris(prev => tetrisNextRound(prev))} className={tetrisPrimaryClass}>
+                    <Play className="w-3.5 h-3.5" /> Start Round {tetris.round + 1}
+                  </button>
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setTetris(tetrisNewGame())} className={tetrisSecondaryClass}>
+                    <RefreshCw className="w-3.5 h-3.5" /> Restart
+                  </button>
+                </>
+              )}
+              {tetris.status === "over" && (
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setTetris(tetrisNewGame())} className={tetrisPrimaryClass}>
+                  <RefreshCw className="w-3.5 h-3.5" /> Try Again
+                </button>
+              )}
+              {tetris.status === "won" && (
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setTetris(tetrisNewGame())} className={tetrisPrimaryClass}>
+                  <RefreshCw className="w-3.5 h-3.5" /> Play Again
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
