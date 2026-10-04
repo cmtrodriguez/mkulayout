@@ -345,19 +345,6 @@ export function CanvaDirectory({ currentUserRole }: CanvaDirectoryProps = {}) {
                   key={t.id}
                   className="p-3 rounded-xl border border-neutral-150 bg-neutral-50/50 hover:bg-neutral-50 hover:border-neutral-200 transition-all flex flex-col justify-between space-y-2 group relative"
                 >
-                  {/* Item actions */}
-                  <div className="flex items-center justify-between">
-                    {!isLayoutStaff && (
-                      <button
-                        onClick={() => handleRemoveTemplate(t.id)}
-                        className="text-stone-400 hover:text-red-600 transition-all cursor-pointer"
-                        title="Remove template for everyone"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-
                   {/* Title and URL */}
                   <div>
                     <h4 className="font-sans font-black text-xs text-stone-900">{t.name}</h4>
@@ -417,6 +404,17 @@ export function CanvaDirectory({ currentUserRole }: CanvaDirectoryProps = {}) {
                           title="Edit Canva Link"
                         >
                           <Edit2 className="w-3 h-3" />
+                        </button>
+                      )}
+
+                      {/* Remove template (Only for Editors/Heads) */}
+                      {!isLayoutStaff && (
+                        <button
+                          onClick={() => handleRemoveTemplate(t.id)}
+                          className="p-1 border border-neutral-200 text-stone-500 hover:text-red-600 hover:border-red-300 rounded-lg bg-white cursor-pointer transition-all"
+                          title="Remove template for everyone"
+                        >
+                          <Trash2 className="w-3 h-3" />
                         </button>
                       )}
                     </div>
