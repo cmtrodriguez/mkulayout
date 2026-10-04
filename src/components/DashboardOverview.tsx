@@ -12,7 +12,6 @@ import { createPoll, updatePollOptionVotes, deletePoll, createAnnouncement, dele
 import CalendarView from "./CalendarView";
 import MeetingPolls from "./MeetingPolls";
 import AvailableTodayCard from "./AvailableTodayCard";
-import { buildReleaseTrackerCsv } from "../lib/releaseTrackerExport";
 
 interface DashboardOverviewProps {
   tasks: Task[];
@@ -229,12 +228,14 @@ export default function DashboardOverview({
 
   const maxBarValue = Math.max(...workloadData.map(d => Math.max(d.onlinePubs, d.issues)), 4);
 
-  const handleExportReleaseTracker = () => {
-    const file = new Blob([buildReleaseTrackerCsv(tasks)], { type: "text/csv;charset=utf-8" });
+  const handleExportReleaseTracker = async () => {
+    const { buildReleaseTrackerWorkbook } = await import("../lib/releaseTrackerExport");
+    const workbook = await buildReleaseTrackerWorkbook(tasks);
+    const file = new Blob([workbook], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const downloadUrl = URL.createObjectURL(file);
     const link = document.createElement("a");
     link.href = downloadUrl;
-    link.download = "releases-tracker-1st-semester.csv";
+    link.download = "releases-tracker-1st-semester.xlsx";
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -777,7 +778,7 @@ export default function DashboardOverview({
                       onClick={handleExportReleaseTracker}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-[10px] font-bold text-neutral-700 dark:text-neutral-200 hover:border-brand-maroon hover:text-brand-maroon dark:hover:text-brand-maroon-light cursor-pointer"
                       aria-label="Export releases tracker spreadsheet"
-                      title="Download a CSV that opens in Google Sheets"
+                      title="Download the formatted releases tracker workbook"
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5" />
                       <Download className="w-3 h-3" />

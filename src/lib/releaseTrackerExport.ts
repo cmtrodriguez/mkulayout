@@ -1,3 +1,4 @@
+import ExcelJS from "exceljs";
 import type { Task } from "../types";
 import { extractHyperlinkDetails } from "./canvaTemplates";
 
@@ -18,18 +19,12 @@ const isPrintIssue = (task: Task) => task.typeOfRelease === "Issue Article" || t
 const isOnlineRelease = (task: Task) => task.typeOfRelease.toLowerCase().includes("online") || /\(online pubmat\)$/i.test(task.title);
 const getBaseTitle = (title: string) => title.replace(/\s*\(online pubmat\)$/i, "").trim();
 
-function toCsvCell(value: unknown): string {
-  let text = value == null ? "" : String(value);
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-  return `"${text.replace(/"/g, '""')}"`;
-}
-
 function getLinkValue(link?: string): string {
   if (!link) return "";
   return extractHyperlinkDetails(link).url || link;
 }
 
-export function buildReleaseTrackerCsv(tasks: Task[]): string {
+export function buildReleaseTrackerRows(tasks: Task[]): string[][] {
   const printTasks = tasks.filter(isPrintIssue);
   const onlineTasks = tasks.filter(isOnlineRelease);
   const matchedOnlineIds = new Set<string>();
@@ -80,11 +75,79 @@ export function buildReleaseTrackerCsv(tasks: Task[]): string {
     ]);
   });
 
-  const sheetRows = [
-    ["RELEASES TRACKER (1st SEMESTER)"],
-    ["OTHER ONLINE RELEASES"],
-    RELEASE_TRACKER_COLUMNS,
-    ...releaseRows,
+  return releaseRows;
+}
+
+export async function buildReleaseTrackerWorkbook(tasks: Task[]): Promise<ArrayBuffer> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "MKuLayout";
+  workbook.subject = "First semester releases tracker";
+  workbook.title = "Releases Tracker (1st Semester)";
+
+  const sheet = workbook.addWorksheet("Releases Tracker", {
+    properties: { defaultRowHeight: 19 },
+    views: [{ state: "frozen", ySplit: 3 }],
+  });
+  sheet.columns = [
+    { width: 23 },
+    { width: 34 },
+    { width: 28 },
+    { width: 28 },
+    { width: 24 },
+    { width: 16 },
+    { width: 42 },
+    { width: 34 },
+    { width: 26 },
+    { width: 20 },
   ];
-  return `\uFEFF${sheetRows.map((row) => row.map(toCsvCell).join(",")).join("\r\n")}`;
+
+  const titleRow = sheet.addRow(["RELEASES TRACKER (1st SEMESTER)"]);
+  titleRow.height = 52;
+  for (let column = 1; column <= RELEASE_TRACKER_COLUMNS.length; column += 1) {
+    titleRow.getCell(column).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF920000" } };
+  }
+  titleRow.getCell(1).font = { name: "Arial", size: 19, bold: true, color: { argb: "FFFFFFFF" } };
+  titleRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
+  sheet.mergeCells(1, 1, 1, RELEASE_TRACKER_COLUMNS.length);
+
+  const subtitleRow = sheet.addRow(["OTHER ONLINE RELEASES"]);
+  subtitleRow.height = 34;
+  for (let column = 1; column <= RELEASE_TRACKER_COLUMNS.length; column += 1) {
+    subtitleRow.getCell(column).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF920000" } };
+  }
+  subtitleRow.getCell(1).font = { name: "Arial", size: 13, bold: true, color: { argb: "FFFFFFFF" } };
+  subtitleRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
+  sheet.mergeCells(2, 1, 2, RELEASE_TRACKER_COLUMNS.length);
+
+  const headerRow = sheet.addRow(RELEASE_TRACKER_COLUMNS);
+  headerRow.height = 34;
+  headerRow.eachCell((cell) => {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1CCCC" } };
+    cell.font = { name: "Arial", size: 10, bold: true, color: { argb: "FF111111" } };
+    cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    cell.border = {
+      top: { style: "thin", color: { argb: "FFD8B0B0" } },
+      bottom: { style: "thin", color: { argb: "FFD8B0B0" } },
+      left: { style: "thin", color: { argb: "FFD8B0B0" } },
+      right: { style: "thin", color: { argb: "FFD8B0B0" } },
+    };
+  });
+
+  buildReleaseTrackerRows(tasks).forEach((values) => {
+    const row = sheet.addRow(values);
+    row.height = 18;
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      cell.font = { name: "Arial", size: 10, color: { argb: "FF111111" } };
+      cell.alignment = { vertical: "middle", wrapText: false };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFD9D9D9" } },
+        bottom: { style: "thin", color: { argb: "FFD9D9D9" } },
+        left: { style: "thin", color: { argb: "FFD9D9D9" } },
+        right: { style: "thin", color: { argb: "FFD9D9D9" } },
+      };
+    });
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Uint8Array(buffer).buffer as ArrayBuffer;
 }
