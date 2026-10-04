@@ -4,7 +4,7 @@ import {
   Clock, Flame, Users, BookOpen, BellRing, CheckSquare, Sparkles,
   ArrowRight, Award, Trophy, GraduationCap, ChevronRight, FileText, Vote,
   Folder, ExternalLink, Trash2, X, BarChart3, Filter,
-  CheckCircle2, Tag
+  CheckCircle2, Tag, Download, FileSpreadsheet
 } from "lucide-react";
 import { Task, TeamMember, CalendarEvent, Poll } from "../types";
 import { getPreferredFirstName, isUserAssignedToTask } from "../lib/memberUtils";
@@ -12,6 +12,7 @@ import { createPoll, updatePollOptionVotes, deletePoll, createAnnouncement, dele
 import CalendarView from "./CalendarView";
 import MeetingPolls from "./MeetingPolls";
 import AvailableTodayCard from "./AvailableTodayCard";
+import { buildReleaseTrackerCsv } from "../lib/releaseTrackerExport";
 
 interface DashboardOverviewProps {
   tasks: Task[];
@@ -227,6 +228,18 @@ export default function DashboardOverview({
   });
 
   const maxBarValue = Math.max(...workloadData.map(d => Math.max(d.onlinePubs, d.issues)), 4);
+
+  const handleExportReleaseTracker = () => {
+    const file = new Blob([buildReleaseTrackerCsv(tasks)], { type: "text/csv;charset=utf-8" });
+    const downloadUrl = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = "releases-tracker-1st-semester.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+  };
 
   // Computed stats for current logged-in staffer / probi
   const myAssignedTasks = tasks.filter(t => isUserAssignedToTask(t, currentUserName, currentUserEmail));
@@ -734,28 +747,41 @@ export default function DashboardOverview({
                   </div>
 
                   {/* Toggle Period: Per Month vs Per Semester */}
-                  <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-lg gap-1 self-start sm:self-auto">
+                  <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                    <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-lg gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setWorkloadPeriod("semester")}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                          workloadPeriod === "semester"
+                            ? "bg-white dark:bg-neutral-700 text-brand-maroon dark:text-brand-maroon-light shadow-xs"
+                            : "text-neutral-600 dark:text-neutral-300 hover:text-neutral-900"
+                        }`}
+                      >
+                        Per Semester
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWorkloadPeriod("month")}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                          workloadPeriod === "month"
+                            ? "bg-white dark:bg-neutral-700 text-brand-maroon dark:text-brand-maroon-light shadow-xs"
+                            : "text-neutral-600 dark:text-neutral-300 hover:text-neutral-900"
+                        }`}
+                      >
+                        Per Month
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => setWorkloadPeriod("semester")}
-                      className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
-                        workloadPeriod === "semester"
-                          ? "bg-white dark:bg-neutral-700 text-brand-maroon dark:text-brand-maroon-light shadow-xs"
-                          : "text-neutral-600 dark:text-neutral-300 hover:text-neutral-900"
-                      }`}
+                      onClick={handleExportReleaseTracker}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-[10px] font-bold text-neutral-700 dark:text-neutral-200 hover:border-brand-maroon hover:text-brand-maroon dark:hover:text-brand-maroon-light cursor-pointer"
+                      aria-label="Export releases tracker spreadsheet"
+                      title="Download a CSV that opens in Google Sheets"
                     >
-                      Per Semester
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setWorkloadPeriod("month")}
-                      className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
-                        workloadPeriod === "month"
-                          ? "bg-white dark:bg-neutral-700 text-brand-maroon dark:text-brand-maroon-light shadow-xs"
-                          : "text-neutral-600 dark:text-neutral-300 hover:text-neutral-900"
-                      }`}
-                    >
-                      Per Month
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                      <Download className="w-3 h-3" />
+                      Export Sheet
                     </button>
                   </div>
                 </div>
