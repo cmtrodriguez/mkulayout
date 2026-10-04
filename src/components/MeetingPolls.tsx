@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { 
-  Vote, Plus, Users, Clock, EyeOff, ShieldCheck, 
+  Vote, Plus, Users, Clock, EyeOff,
   CheckCircle, MessageCircle, BarChart, Sparkles, HelpCircle, Trash2 
 } from "lucide-react";
 import { Poll, TeamMember } from "../types";
@@ -350,16 +350,6 @@ export default function MeetingPolls({
             </div>
           </div>
         )}
-
-        {/* Democratic voting rules */}
-        <div className="bg-brand-cream border border-brand-maroon/10 p-4 rounded-2xl text-xs space-y-1">
-          <h4 className="font-bold text-gray-900 flex items-center gap-1">
-            <ShieldCheck className="w-4 h-4 text-green-600" /> Layout Democratic Rules:
-          </h4>
-          <p className="text-gray-600 leading-normal">
-            Voting ensures full team consensus before locking layout formats in InDesign. Anonymous settings protect layout staff opinions.
-          </p>
-        </div>
 
       </div>
 
