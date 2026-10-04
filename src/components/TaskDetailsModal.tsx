@@ -283,10 +283,10 @@ export default function TaskDetailsModal({
                 onChange={(e) => handlePriorityChange(e.target.value as TaskPriority)}
                 className={`w-full px-2.5 py-1.5 sm:py-2 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg font-semibold text-gray-800 dark:text-neutral-200 outline-none focus:ring-2 focus:ring-brand-maroon ${canEditCoreFields ? "cursor-pointer" : "opacity-60 cursor-not-allowed"}`}
               >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Urgent">Urgent</option>
+                <option value="Low">Low (&gt;5 days)</option>
+                <option value="Medium">Medium (3-5 days)</option>
+                <option value="High">High (1-2 days)</option>
+                <option value="Urgent">Urgent (Same-day)</option>
               </select>
             </div>
 

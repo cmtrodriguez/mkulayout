@@ -712,10 +712,10 @@ export default function AssignmentsList({
                             onChange={(e) => handleFieldChange("priority", e.target.value)}
                             className="w-full px-3 py-2 border border-gray-250 dark:border-neutral-700 rounded-lg outline-none focus:ring-1 focus:ring-brand-maroon bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-100 cursor-pointer"
                           >
-                            <option value="Low">Low Priority</option>
-                            <option value="Medium">Medium Priority</option>
-                            <option value="High">High Priority</option>
-                            <option value="Urgent">Urgent Priority</option>
+                            <option value="Low">Low (&gt;5 days)</option>
+                            <option value="Medium">Medium (3-5 days)</option>
+                            <option value="High">High (1-2 days)</option>
+                            <option value="Urgent">Urgent (Same-day)</option>
                           </select>
                         </div>
 

@@ -2207,10 +2207,10 @@ export default function App() {
                   onChange={(e) => setFormPriority(e.target.value as any)}
                   className="w-full px-2.5 py-2 border border-neutral-200 rounded-xl bg-neutral-50 outline-none cursor-pointer"
                 >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                  <option value="Urgent">Urgent</option>
+                  <option value="Low">Low (&gt;5 days)</option>
+                  <option value="Medium">Medium (3-5 days)</option>
+                  <option value="High">High (1-2 days)</option>
+                  <option value="Urgent">Urgent (Same-day)</option>
                 </select>
               </div>
 
