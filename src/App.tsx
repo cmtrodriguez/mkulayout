@@ -1430,6 +1430,32 @@ export default function App() {
           {/* Right actions: Theme toggle, Accessibility controls & Alerts dropdown */}
           <div className="flex items-center gap-1.5 sm:gap-3 w-full sm:w-auto justify-end">
 
+            {/* Shared tracker sheets (Editor & Deputy only) */}
+            {(userRole === "Layout Editor" || userRole === "Layout Deputy") && (
+              <>
+                <a
+                  href="https://docs.google.com/spreadsheets/d/1JxkhO7sUrQxG6-1ISIXFSudRTDhRIEBcCZEJXPZQxEA/edit?usp=sharing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1.5 bg-neutral-50 hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 rounded-xl text-neutral-600 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-neutral-50 border border-neutral-200 dark:border-neutral-700 transition-all flex items-center gap-1.5 shadow-xs"
+                  title="Open the Releases tracker spreadsheet"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="hidden sm:inline font-mono text-[11px] font-semibold">Releases Tracker</span>
+                </a>
+                <a
+                  href="https://docs.google.com/spreadsheets/d/1k3utzr6pjtYUwaveVIVVOIbL85qI_7YamQ1V4E0tq9E/edit?usp=sharing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1.5 bg-neutral-50 hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 rounded-xl text-neutral-600 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-neutral-50 border border-neutral-200 dark:border-neutral-700 transition-all flex items-center gap-1.5 shadow-xs"
+                  title="Open the Master tracker spreadsheet"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="hidden sm:inline font-mono text-[11px] font-semibold">Master Tracker</span>
+                </a>
+              </>
+            )}
+
             {/* Live current date & time */}
             <div
               className="px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 text-right shadow-xs select-none"
