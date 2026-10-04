@@ -35,7 +35,6 @@ export default function MeetingPolls({
   const isLeader = currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy";
   const [showCreate, setShowCreate] = useState(false);
   const [newQuestion, setNewQuestion] = useState("");
-  const [newCategory, setNewCategory] = useState<Poll["category"]>("design");
   const [newAnonymous, setNewAnonymous] = useState(false);
   const [newOptions, setNewOptions] = useState<string[]>(["", ""]);
   const [newEndsAt, setNewEndsAt] = useState<string>(defaultPollDeadlineInput);
@@ -120,7 +119,7 @@ export default function MeetingPolls({
         text,
         votes: []
       })),
-      category: newCategory,
+      category: "design",
       anonymous: newAnonymous,
       active: true,
       endsAt: deadline.toISOString(),
@@ -144,7 +143,7 @@ export default function MeetingPolls({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-display font-bold text-gray-900 text-base">
-              Layout Decisions & Scheduling Polls
+              Layout Section Polls
             </h2>
             <p className="text-xs text-gray-500">
               Cast your vote on our current polls!
@@ -195,15 +194,9 @@ export default function MeetingPolls({
             return (
               <div key={poll.id} className="glass-card rounded-2xl p-5 space-y-4">
                 
-                {/* Poll category and indicators */}
+                {/* Poll indicators */}
                 <div className="flex items-center justify-between gap-2 border-b pb-2.5 border-gray-100 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                      poll.category === "design" ? "bg-amber-50 text-amber-700 border border-amber-100" :
-                      poll.category === "meeting" ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-purple-50 text-purple-700 border"
-                    }`}>
-                      {poll.category} Issue
-                    </span>
                     {poll.anonymous && (
                       <span className="flex items-center gap-1 text-gray-400 font-medium text-[10px]">
                         <EyeOff className="w-3 h-3" /> Anonymous
@@ -279,7 +272,6 @@ export default function MeetingPolls({
 
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100/60 text-[10px] text-gray-400">
                   <span>Total votes: {totalVotes} layout staff</span>
-                  <span>Proposed by: {poll.creator.split("@")[0]}</span>
                 </div>
 
               </div>
@@ -316,19 +308,6 @@ export default function MeetingPolls({
                   onChange={(e) => setNewQuestion(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-brand-maroon outline-none"
                 />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-gray-600 block mb-1">Category Type</label>
-                <select
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-brand-maroon outline-none cursor-pointer"
-                >
-                  <option value="design">Design Concept</option>
-                  <option value="meeting">Meeting Scheduling</option>
-                  <option value="editorial">Editorial Layout</option>
-                </select>
               </div>
 
               <div>

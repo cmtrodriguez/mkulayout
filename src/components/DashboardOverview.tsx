@@ -364,7 +364,7 @@ export default function DashboardOverview({
               <button
                 onClick={() => {
                   setOverviewTab("polls");
-                  speakText("Switched to Meeting Polls");
+                  speakText("Switched to Section Polls");
                 }}
                 className={`px-2.5 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 cursor-pointer flex-1 sm:flex-initial justify-center ${
                   overviewTab === "polls"
@@ -373,7 +373,7 @@ export default function DashboardOverview({
                 }`}
               >
                 <Vote className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span>Meeting Polls</span>
+                <span>Section Polls</span>
                 <span className={`text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full font-bold ${
                   overviewTab === "polls" ? "bg-white/20 text-white" : "bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200"
                 }`}>{polls?.length || 0}</span>
