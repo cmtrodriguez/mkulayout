@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { 
   Calendar as CalendarIcon, Clock, Plus, Info, 
-  MapPin, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2, Trash2, Lock 
+  MapPin, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2, Trash2, Lock, X
 } from "lucide-react";
 import { CalendarEvent, Task, PersonalCalendarEvent } from "../types";
 import { fetchPersonalEvents, upsertPersonalEvent, deletePersonalEvent } from "../lib/supabase";
@@ -16,6 +16,19 @@ interface CalendarViewProps {
   onUpdateEvents: (events: CalendarEvent[]) => void;
 }
 
+interface CalendarEntry {
+  id: string;
+  title: string;
+  start: string;
+  type: string;
+  isTask: boolean;
+  isPersonal: boolean;
+  description: string;
+  category: string;
+  assignee?: string;
+  personalId?: string;
+}
+
 export default function CalendarView({
   events,
   tasks,
@@ -27,6 +40,7 @@ export default function CalendarView({
 }: CalendarViewProps) {
   const isEditorOrDeputy = currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy" || currentUserRole === "Online Layout Head";
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [selectedDayDetails, setSelectedDayDetails] = useState<{ day: number; entries: CalendarEntry[] } | null>(null);
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDate, setNewEventDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [newEventType, setNewEventType] = useState<"deadline" | "meeting" | "workshop">("meeting");
@@ -162,10 +176,10 @@ export default function CalendarView({
 
   const taskEntries = tasks
     .filter(t => !isDoneTask(t))
-    .map(t => ({ id: `task-${t.id}`, title: t.title, start: toTaskISO(t.releaseDate || "") || "", type: "deadline" as const, isTask: true, isPersonal: false, description: "", category: t.typeOfContent || "" }))
+    .map(t => ({ id: `task-${t.id}`, title: t.title, start: toTaskISO(t.releaseDate || "") || "", type: "deadline", isTask: true, isPersonal: false, description: "", category: t.typeOfContent || "", assignee: t.illusLayout || "Unassigned" }))
     .filter(e => e.start);
 
-  const eventEntries = events.map(e => ({ id: e.id, title: e.title, start: e.start, type: e.type, isTask: false, isPersonal: false, description: e.description, category: "" }));
+  const eventEntries = events.map(e => ({ id: e.id, title: e.title, start: e.start, type: e.type, isTask: false, isPersonal: false, description: e.description || "", category: e.type }));
 
   // Private reminders belonging to this account only
   const personalEntries = personalEvents.map(ev => ({
@@ -177,16 +191,24 @@ export default function CalendarView({
     isPersonal: true,
     description: ev.notes || "",
     category: ev.category || "Personal",
+    assignee: currentUserName || "You",
     personalId: ev.id
   }));
 
-  const agendaItems = [...eventEntries, ...taskEntries, ...personalEntries].sort((a, b) => a.start.localeCompare(b.start));
+  const agendaItems: CalendarEntry[] = [...eventEntries, ...taskEntries, ...personalEntries].sort((a, b) => a.start.localeCompare(b.start));
 
   // Helper to extract entries (events + task deadlines + personal reminders) on a specific day
   const getEventsForDay = (day: number) => {
     const formattedDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     return agendaItems.filter(e => e.start.startsWith(formattedDate));
   };
+
+  const getEntryTooltip = (entry: CalendarEntry) => [
+    entry.title,
+    entry.category ? `Category: ${entry.category}` : "",
+    entry.isTask || entry.isPersonal ? `Assignee: ${entry.assignee || "Unassigned"}` : "",
+    entry.description,
+  ].filter(Boolean).join("\n");
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -233,7 +255,7 @@ export default function CalendarView({
             return (
               <div 
                 key={`day-${day}`} 
-                className="h-16 bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-lg p-1.5 flex flex-col justify-between hover:border-brand-maroon/20 hover:bg-brand-cream/20 dark:hover:bg-neutral-800 cursor-pointer transition-all"
+                className="h-24 sm:h-28 min-h-0 bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-lg p-1.5 flex flex-col gap-1 hover:border-brand-maroon/20 hover:bg-brand-cream/20 dark:hover:bg-neutral-800 cursor-pointer transition-all overflow-hidden"
                 onClick={() => {
                   if (dayEvents.length > 0) {
                     speakText(`${monthName} ${day} contains ${dayEvents.length} scheduled item: ${dayEvents.map(e => e.title).join(", ")}`);
@@ -245,25 +267,100 @@ export default function CalendarView({
                 <span className="font-mono text-[10px] font-bold text-gray-400 dark:text-neutral-500">{day}</span>
                 
                 {/* Micro dots or titles */}
-                <div className="space-y-0.5">
-                  {dayEvents.map(e => (
-                    <div 
+                <div className="min-h-0 flex-1 space-y-0.5 overflow-hidden">
+                  {dayEvents.slice(0, 2).map(e => (
+                    <button
+                      type="button"
                       key={e.id}
-                      className={`text-[8px] font-bold truncate px-1 rounded uppercase ${
+                      title={getEntryTooltip(e)}
+                      aria-label={`View event details: ${getEntryTooltip(e)}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedDayDetails({ day, entries: dayEvents });
+                      }}
+                      className={`block w-full text-left text-[8px] leading-3 font-bold truncate px-1 rounded uppercase cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-maroon ${
                         e.isPersonal ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300" :
                         e.type === "deadline" ? "bg-red-50 dark:bg-red-950/40 text-brand-red dark:text-red-300" :
                         e.type === "meeting" ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300" : "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-300"
                       }`}
                     >
                       {e.title}
-                    </div>
+                    </button>
                   ))}
+                  {dayEvents.length > 2 && (
+                    <button
+                      type="button"
+                      title={`${dayEvents.length - 2} more scheduled items`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedDayDetails({ day, entries: dayEvents });
+                      }}
+                      className="block w-full text-left text-[8px] leading-3 font-bold text-brand-maroon dark:text-brand-maroon-light hover:underline cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-maroon"
+                    >
+                      +{dayEvents.length - 2} more
+                    </button>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {selectedDayDetails && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setSelectedDayDetails(null)}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="calendar-day-details-title"
+            onClick={(event) => event.stopPropagation()}
+            className="bg-white dark:bg-neutral-900 w-full max-w-lg max-h-[80vh] rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 flex flex-col"
+          >
+            <div className="flex items-center justify-between gap-3 p-4 border-b border-neutral-100 dark:border-neutral-800">
+              <div>
+                <h3 id="calendar-day-details-title" className="font-display font-bold text-neutral-900 dark:text-neutral-100 text-sm">
+                  {monthName} {selectedDayDetails.day}, {year}
+                </h3>
+                <p className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                  {selectedDayDetails.entries.length} scheduled item{selectedDayDetails.entries.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDayDetails(null)}
+                className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                aria-label="Close day details"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-3 sm:p-4 space-y-2 overflow-y-auto">
+              {selectedDayDetails.entries.map((entry) => (
+                <div key={entry.id} className="p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/70 space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="font-bold text-xs text-neutral-900 dark:text-neutral-100 break-words">{entry.title}</h4>
+                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                      entry.isPersonal ? "bg-emerald-100 text-emerald-700" :
+                      entry.type === "deadline" ? "bg-red-100 text-red-700" :
+                      entry.type === "meeting" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
+                    }`}>
+                      {entry.isPersonal ? "Personal" : entry.isTask ? "Task Deadline" : entry.type}
+                    </span>
+                  </div>
+                  {entry.category && <p className="text-[10px] text-neutral-600 dark:text-neutral-300">Category: {entry.category}</p>}
+                  {(entry.isTask || entry.isPersonal) && <p className="text-[10px] text-neutral-600 dark:text-neutral-300">Assignee: {entry.assignee || "Unassigned"}</p>}
+                  {entry.description && <p className="text-[10px] text-neutral-600 dark:text-neutral-300 whitespace-pre-wrap">{entry.description}</p>}
+                  <p className="text-[9px] text-neutral-500 dark:text-neutral-400 font-mono">{entry.start}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Events list and creator sidebar */}
       <div className="space-y-6">
