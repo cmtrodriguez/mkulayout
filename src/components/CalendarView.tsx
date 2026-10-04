@@ -203,13 +203,6 @@ export default function CalendarView({
     return agendaItems.filter(e => e.start.startsWith(formattedDate));
   };
 
-  const getEntryTooltip = (entry: CalendarEntry) => [
-    entry.title,
-    entry.category ? `Category: ${entry.category}` : "",
-    entry.isTask || entry.isPersonal ? `Assignee: ${entry.assignee || "Unassigned"}` : "",
-    entry.description,
-  ].filter(Boolean).join("\n");
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       
@@ -251,57 +244,35 @@ export default function CalendarView({
             }
 
             const dayEvents = getEventsForDay(day);
+            const deadlineCount = dayEvents.filter((entry) => entry.isTask).length;
+            const otherCount = dayEvents.length - deadlineCount;
+            const daySummary = deadlineCount > 0
+              ? `${deadlineCount} task${deadlineCount === 1 ? "" : "s"} for posting`
+              : otherCount > 0
+                ? `${otherCount} scheduled item${otherCount === 1 ? "" : "s"}`
+                : "No deadlines";
 
             return (
-              <div 
+              <button
+                type="button"
                 key={`day-${day}`} 
-                className="h-24 sm:h-28 min-h-0 bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-lg p-1.5 flex flex-col gap-1 hover:border-brand-maroon/20 hover:bg-brand-cream/20 dark:hover:bg-neutral-800 cursor-pointer transition-all overflow-hidden"
+                className="h-16 w-full bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-lg p-1.5 flex flex-col justify-between text-left hover:border-brand-maroon/20 hover:bg-brand-cream/20 dark:hover:bg-neutral-800 cursor-pointer transition-all overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-maroon"
+                aria-label={`${monthName} ${day}: ${daySummary}. Show details.`}
+                title={`${monthName} ${day}: ${daySummary}`}
                 onClick={() => {
                   if (dayEvents.length > 0) {
                     speakText(`${monthName} ${day} contains ${dayEvents.length} scheduled item: ${dayEvents.map(e => e.title).join(", ")}`);
                   } else {
                     speakText(`${monthName} ${day} calendar day has no scheduled events`);
                   }
+                  setSelectedDayDetails({ day, entries: dayEvents });
                 }}
               >
                 <span className="font-mono text-[10px] font-bold text-gray-400 dark:text-neutral-500">{day}</span>
-                
-                {/* Micro dots or titles */}
-                <div className="min-h-0 flex-1 space-y-0.5 overflow-hidden">
-                  {dayEvents.slice(0, 2).map(e => (
-                    <button
-                      type="button"
-                      key={e.id}
-                      title={getEntryTooltip(e)}
-                      aria-label={`View event details: ${getEntryTooltip(e)}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedDayDetails({ day, entries: dayEvents });
-                      }}
-                      className={`block w-full text-left text-[8px] leading-3 font-bold truncate px-1 rounded uppercase cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-maroon ${
-                        e.isPersonal ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300" :
-                        e.type === "deadline" ? "bg-red-50 dark:bg-red-950/40 text-brand-red dark:text-red-300" :
-                        e.type === "meeting" ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300" : "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-300"
-                      }`}
-                    >
-                      {e.title}
-                    </button>
-                  ))}
-                  {dayEvents.length > 2 && (
-                    <button
-                      type="button"
-                      title={`${dayEvents.length - 2} more scheduled items`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedDayDetails({ day, entries: dayEvents });
-                      }}
-                      className="block w-full text-left text-[8px] leading-3 font-bold text-brand-maroon dark:text-brand-maroon-light hover:underline cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-maroon"
-                    >
-                      +{dayEvents.length - 2} more
-                    </button>
-                  )}
-                </div>
-              </div>
+                <span className={`block w-full truncate text-[8px] leading-3 font-bold ${deadlineCount > 0 ? "text-brand-maroon dark:text-brand-maroon-light" : "text-neutral-400 dark:text-neutral-500"}`}>
+                  {daySummary}
+                </span>
+              </button>
             );
           })}
         </div>
@@ -339,7 +310,9 @@ export default function CalendarView({
               </button>
             </div>
             <div className="p-3 sm:p-4 space-y-2 overflow-y-auto">
-              {selectedDayDetails.entries.map((entry) => (
+              {selectedDayDetails.entries.length === 0 ? (
+                <p className="p-4 text-center text-xs text-neutral-500 dark:text-neutral-400">No deadlines or events scheduled for this day.</p>
+              ) : selectedDayDetails.entries.map((entry) => (
                 <div key={entry.id} className="p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/70 space-y-1.5">
                   <div className="flex items-start justify-between gap-2">
                     <h4 className="font-bold text-xs text-neutral-900 dark:text-neutral-100 break-words">{entry.title}</h4>
