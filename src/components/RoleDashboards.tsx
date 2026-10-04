@@ -986,6 +986,7 @@ export function EicDashboard({
               </div>
             ) : (
               filteredPipelineTasks.map(task => {
+              const isDoneTask = task.progress === "Completed" || task.progress === "Approved" || task.progress === "Archived";
               // Map progress state to one of the 5 pipeline stages
               let currentStageIndex = 0;
               if (task.progress === "In Progress" || task.progress === "drafting" || task.progress === "for posting") {
@@ -994,7 +995,7 @@ export function EicDashboard({
                 currentStageIndex = 2;
               } else if (task.progress === "Revision Needed") {
                 currentStageIndex = 3;
-              } else if (task.progress === "Completed" || task.progress === "Approved") {
+              } else if (isDoneTask) {
                 currentStageIndex = 4;
               }
 
@@ -1007,7 +1008,7 @@ export function EicDashboard({
               ];
 
               return (
-                <div key={task.id} className="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-all space-y-4">
+                <div key={task.id} className={`border p-5 rounded-2xl transition-all space-y-4 ${isDoneTask ? "bg-neutral-100 border-neutral-200 opacity-60 grayscale" : "bg-white border-gray-100 shadow-sm hover:shadow-md"}`}>
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
