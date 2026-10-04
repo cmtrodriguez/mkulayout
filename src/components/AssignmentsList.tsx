@@ -31,6 +31,16 @@ export function toISOFormatDate(dateStr: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     return trimmed;
   }
+  const monthDayYear = trimmed.match(/^([a-z]+)\s+(\d{1,2}),?\s+(\d{4})$/i);
+  if (monthDayYear) {
+    const months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+    const month = months.findIndex((name) => name === monthDayYear[1].toLowerCase() || name.slice(0, 3) === monthDayYear[1].toLowerCase());
+    const year = Number(monthDayYear[3]);
+    const day = Number(monthDayYear[2]);
+    if (month !== -1 && day >= 1 && day <= new Date(year, month + 1, 0).getDate()) {
+      return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
   const currentYear = new Date().getFullYear();
   const parsed = new Date(`${trimmed} ${currentYear}`);
   if (!isNaN(parsed.getTime())) {
@@ -538,19 +548,11 @@ export default function AssignmentsList({
                                   <option value={normalizedContentType}>{normalizedContentType}</option>
                                 )}
 
-                                {["Editorial", "Visuals & Layouts", "Branding & Gen"].map(cat => {
-                                  const catTemplates = canvaTemplates.filter(t => t.category === cat);
-                                  if (catTemplates.length === 0) return null;
-                                  return (
-                                    <optgroup key={cat} label={`--- ${cat} ---`}>
-                                      {catTemplates.map(t => (
-                                        <option key={t.id} value={t.name}>
-                                          {t.name}
-                                        </option>
-                                      ))}
-                                    </optgroup>
-                                  );
-                                })}
+                                {canvaTemplates.map((template) => (
+                                  <option key={template.id} value={template.name}>
+                                    {template.name}
+                                  </option>
+                                ))}
                               </select>
                             );
                           })()}

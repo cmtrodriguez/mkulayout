@@ -9,7 +9,7 @@ import {
 
 // Sub Components
 import DashboardOverview from "./components/DashboardOverview";
-import AssignmentsList from "./components/AssignmentsList";
+import AssignmentsList, { toISOFormatDate } from "./components/AssignmentsList";
 import MeetingPolls from "./components/MeetingPolls";
 import TeamDirectory from "./components/TeamDirectory";
 import CalendarView from "./components/CalendarView";
@@ -2163,19 +2163,11 @@ export default function App() {
                   onChange={(e) => setFormContentType(e.target.value)}
                   className="w-full px-2.5 py-2 border border-neutral-200 rounded-xl bg-neutral-50 outline-none cursor-pointer"
                 >
-                  {["Branding & Gen", "Editorial", "Visuals & Layouts"].map((category) => {
-                    const categoryTemplates = getPubmatCanvaTemplates().filter((t) => t.category === category);
-                    if (categoryTemplates.length === 0) return null;
-                    return (
-                      <optgroup key={category} label={`--- ${category} ---`}>
-                        {categoryTemplates.map((t) => (
-                          <option key={t.id} value={t.name}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    );
-                  })}
+                  {getPubmatCanvaTemplates().map((template) => (
+                    <option key={template.id} value={template.name}>
+                      {template.name}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -2235,7 +2227,7 @@ export default function App() {
                 </label>
                 <input
                   type="date"
-                  value={formReleaseDate ? new Date(formReleaseDate).toISOString().split("T")[0] : ""}
+                  value={toISOFormatDate(formReleaseDate)}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val) {

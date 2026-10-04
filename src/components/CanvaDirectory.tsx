@@ -296,9 +296,9 @@ export function CanvaDirectory({ currentUserRole }: CanvaDirectoryProps = {}) {
                     onChange={(e) => setNewCategory(e.target.value as any)}
                     className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white outline-none focus:ring-1 focus:ring-brand-maroon cursor-pointer"
                   >
-                    <option value="Branding & Gen">Branding & Gen</option>
-                    <option value="Editorial">Editorial</option>
-                    <option value="Visuals & Layouts">Visuals & Layouts</option>
+                    <option value="Branding & Gen">Branding</option>
+                    <option value="Editorial">Publishing</option>
+                    <option value="Visuals & Layouts">Visuals</option>
                   </select>
                 </div>
 
@@ -345,11 +345,8 @@ export function CanvaDirectory({ currentUserRole }: CanvaDirectoryProps = {}) {
                   key={t.id}
                   className="p-3 rounded-xl border border-neutral-150 bg-neutral-50/50 hover:bg-neutral-50 hover:border-neutral-200 transition-all flex flex-col justify-between space-y-2 group relative"
                 >
-                  {/* Item badge/meta */}
+                  {/* Item actions */}
                   <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-mono font-bold bg-brand-maroon/5 text-brand-maroon px-2 py-0.5 rounded">
-                      {t.category}
-                    </span>
                     {!isLayoutStaff && (
                       <button
                         onClick={() => handleRemoveTemplate(t.id)}
