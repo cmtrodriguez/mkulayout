@@ -212,6 +212,7 @@ export function taskFromDb(row: any): Task {
     addedToLayout: row.added_to_layout || undefined,
     graphicsIllus: row.graphics_illus || undefined,
     onlineHandler: row.online_handler || undefined,
+    sourceSheetTitle: row.source_sheet_title || undefined,
     isPendingConfirmation: Boolean(row.is_pending_confirmation)
   };
 }
@@ -254,6 +255,7 @@ export function taskToDb(task: Partial<Task>): any {
     added_to_layout: task.addedToLayout ?? null,
     graphics_illus: task.graphicsIllus ?? null,
     online_handler: task.onlineHandler ?? null,
+    source_sheet_title: task.sourceSheetTitle ?? null,
     is_pending_confirmation: Boolean(task.isPendingConfirmation),
     updated_at: new Date().toISOString()
   };
@@ -273,10 +275,15 @@ export async function upsertTask(task: Partial<Task>): Promise<Task | null> {
   if (!supabase) return null;
   const dbPayload = taskToDb(task);
   let { data, error } = await supabase.from("tasks").upsert(dbPayload).select().single();
-  if (error?.code === "PGRST204" && error.message?.includes("medium_canva_link")) {
-    const compatiblePayload = { ...dbPayload };
-    delete compatiblePayload.medium_canva_link;
-    ({ data, error } = await supabase.from("tasks").upsert(compatiblePayload).select().single());
+  // Retry without any column the deployed schema doesn't have yet (migration not
+  // applied), e.g. "Could not find the 'x' column of 'tasks' in the schema cache".
+  let attempts = 0;
+  while (error?.code === "PGRST204" && attempts < 3) {
+    const missingColumn = /'([^']+)' column/.exec(error.message || "")?.[1];
+    if (!missingColumn || !(missingColumn in dbPayload)) break;
+    delete dbPayload[missingColumn];
+    ({ data, error } = await supabase.from("tasks").upsert(dbPayload).select().single());
+    attempts++;
   }
   if (error) {
     console.error("Error saving task to Supabase:", error.message);

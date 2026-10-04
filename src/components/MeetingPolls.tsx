@@ -14,6 +14,16 @@ interface MeetingPollsProps {
   onUpdatePolls: (polls: Poll[]) => void;
 }
 
+function toDateInputValue(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function defaultPollDeadlineInput(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  return toDateInputValue(d);
+}
+
 export default function MeetingPolls({
   polls,
   members,
@@ -28,6 +38,7 @@ export default function MeetingPolls({
   const [newCategory, setNewCategory] = useState<Poll["category"]>("design");
   const [newAnonymous, setNewAnonymous] = useState(false);
   const [newOptions, setNewOptions] = useState<string[]>(["", ""]);
+  const [newEndsAt, setNewEndsAt] = useState<string>(defaultPollDeadlineInput);
 
   const speakText = (text: string) => {
     if (!speechEnabled) return;
@@ -91,6 +102,16 @@ export default function MeetingPolls({
       return;
     }
 
+    const deadline = new Date(`${newEndsAt}T23:59:59`);
+    if (isNaN(deadline.getTime())) {
+      speakText("Please pick a valid poll deadline date.");
+      return;
+    }
+    if (deadline.getTime() < Date.now()) {
+      speakText("Poll deadline must be set in the future.");
+      return;
+    }
+
     const newPoll: Poll = {
       id: crypto.randomUUID(),
       question: newQuestion,
@@ -102,7 +123,7 @@ export default function MeetingPolls({
       category: newCategory,
       anonymous: newAnonymous,
       active: true,
-      endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+      endsAt: deadline.toISOString(),
       creator: currentUserEmail
     };
 
@@ -110,6 +131,7 @@ export default function MeetingPolls({
     setShowCreate(false);
     setNewQuestion("");
     setNewOptions(["", ""]);
+    setNewEndsAt(defaultPollDeadlineInput());
     speakText("New design coordination poll launched successfully.");
   };
 
@@ -157,6 +179,19 @@ export default function MeetingPolls({
             // Check if user voted in this poll
             const userVotedOptionId = poll.options.find(o => o.votes.includes(currentUserEmail))?.id;
 
+            // Deadline countdown derived from the poll's endsAt timestamp
+            const deadlineDate = new Date(poll.endsAt);
+            const msRemaining = deadlineDate.getTime() - Date.now();
+            const daysRemaining = Math.ceil(msRemaining / (24 * 60 * 60 * 1000));
+            const isClosed = !isNaN(deadlineDate.getTime()) && msRemaining <= 0;
+            const deadlineLabel = isNaN(deadlineDate.getTime())
+              ? "No deadline set"
+              : isClosed
+                ? "Poll closed"
+                : daysRemaining <= 0
+                  ? "Closes today"
+                  : `Closes in ${daysRemaining} Day${daysRemaining === 1 ? "" : "s"}`;
+
             return (
               <div key={poll.id} className="glass-card rounded-2xl p-5 space-y-4">
                 
@@ -176,8 +211,11 @@ export default function MeetingPolls({
                     )}
                   </div>
 
-                  <span className="text-[10px] font-mono text-gray-400 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" /> Closes in 5 Days
+                  <span
+                    className={`text-[10px] font-mono flex items-center gap-1 ${isClosed ? "text-rose-500 font-bold" : "text-gray-400"}`}
+                    title={isNaN(deadlineDate.getTime()) ? undefined : `Deadline: ${deadlineDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`}
+                  >
+                    <Clock className="w-3.5 h-3.5" /> {deadlineLabel}
                   </span>
 
                   {isLeader && (
@@ -291,6 +329,19 @@ export default function MeetingPolls({
                   <option value="meeting">Meeting Scheduling</option>
                   <option value="editorial">Editorial Layout</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Poll Deadline (When the Poll Ends)</label>
+                <input
+                  type="date"
+                  value={newEndsAt}
+                  min={toDateInputValue(new Date())}
+                  onChange={(e) => setNewEndsAt(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-brand-maroon outline-none cursor-pointer"
+                  aria-label="Poll deadline date"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Voting closes at the end of this day.</p>
               </div>
 
               {/* Multiple Options entries */}

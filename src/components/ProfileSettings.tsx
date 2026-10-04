@@ -569,7 +569,8 @@ export default function ProfileSettings({
                   <div className="min-w-0">
                     <p className="font-bold text-gray-800 dark:text-neutral-200 truncate">{task.title}</p>
                     <p className="text-[10px] text-gray-400 dark:text-neutral-500 truncate">
-                      {task.typeOfRelease} • {task.typeOfContent} • Target: {task.releaseDate || "—"}
+                      {task.typeOfRelease} • {task.typeOfContent}
+                      {task.sourceSheetTitle ? ` • Sheet: ${task.sourceSheetTitle}` : ""} • Target: {task.releaseDate || "—"}
                     </p>
                   </div>
                   <span className="shrink-0 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[9px] font-bold uppercase">

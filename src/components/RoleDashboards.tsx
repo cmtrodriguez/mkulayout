@@ -209,6 +209,11 @@ export function LayoutStaffDashboard({
                         <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-brand-maroon/10 text-brand-maroon">
                           {task.typeOfRelease}
                         </span>
+                        {task.sourceSheetTitle && (
+                          <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200">
+                            Sheet: {task.sourceSheetTitle}
+                          </span>
+                        )}
                         <span className="text-[11px] sm:text-xs text-gray-500 font-medium">Priority: <strong className="text-gray-800">{task.priority}</strong></span>
                         <span className="text-[11px] sm:text-xs text-gray-500 font-medium">• Target: <strong className="text-gray-800">{task.releaseDate}</strong></span>
                       </div>
@@ -826,6 +831,11 @@ export function EicDashboard({
                             <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon">
                               {task.typeOfRelease}
                             </span>
+                            {task.sourceSheetTitle && (
+                              <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200">
+                                Sheet: {task.sourceSheetTitle}
+                              </span>
+                            )}
                             <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded ${
                               task.progress === "For Review" ? "bg-purple-100 text-purple-700" : "bg-rose-100 text-rose-700"
                             }`}>
@@ -1015,6 +1025,11 @@ export function EicDashboard({
                         <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon border border-brand-maroon/10">
                           {task.typeOfRelease}
                         </span>
+                        {task.sourceSheetTitle && (
+                          <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200">
+                            Sheet: {task.sourceSheetTitle}
+                          </span>
+                        )}
                       </div>
                       <h4 className="font-bold text-gray-900 text-sm mt-1">{task.title}</h4>
                       <p className="text-xs text-gray-500 mt-0.5">

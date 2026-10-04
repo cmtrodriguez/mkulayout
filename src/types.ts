@@ -116,6 +116,7 @@ export interface Task {
   graphicsIllus?: string;
   onlineHandler?: string;
   sourceIssueRowId?: string;
+  sourceSheetTitle?: string; // name of the issue sheet the task came from (e.g. "1K1-2")
 }
 
 export interface CalendarEvent {

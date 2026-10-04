@@ -185,17 +185,22 @@ export default function App() {
 
   // Tasks persisted from issue-sheet rows carry deterministic ids; re-attach the
   // source row id after a fetch so sheet edits can still find and replace them.
+  // The sheet title is refreshed from the current sheet so renames propagate.
   const tagTasksWithSourceRows = (list: Task[], sheets: typeof issueSheets): Task[] => {
     const rowIdByTaskId = new Map<string, string>();
+    const sheetTitleByRowId = new Map<string, string>();
     sheets.forEach((sheet) => sheet.rows.forEach((row) => {
       rowIdByTaskId.set(seededUuid(`issue-task-${row.id}`), row.id);
       rowIdByTaskId.set(seededUuid(`online-task-${row.id}`), row.id);
       rowIdByTaskId.set(seededUuid(`issue-pending-${row.id}`), row.id);
+      sheetTitleByRowId.set(row.id, sheet.title);
     }));
     return list.map((t) => {
-      if (t.sourceIssueRowId) return t;
-      const rowId = rowIdByTaskId.get(t.id);
-      return rowId ? { ...t, sourceIssueRowId: rowId } : t;
+      const rowId = t.sourceIssueRowId || rowIdByTaskId.get(t.id);
+      if (!rowId) return t;
+      const sheetTitle = sheetTitleByRowId.get(rowId) ?? t.sourceSheetTitle;
+      if (t.sourceIssueRowId === rowId && t.sourceSheetTitle === sheetTitle) return t;
+      return { ...t, sourceIssueRowId: rowId, sourceSheetTitle: sheetTitle };
     });
   };
 
@@ -869,6 +874,7 @@ export default function App() {
       onlineHandler: row.online || "",
       ...(row.online ? { graphics: row.online } : {}),
       sourceIssueRowId: row.id,
+      sourceSheetTitle: issueSheetTitle,
     } as Task & { sourceIssueRowId?: string };
 
     commitTasks((prev) => {
@@ -944,6 +950,7 @@ export default function App() {
       onlineHandler: issueRowDraft.online || "",
       isPendingConfirmation: true,
       sourceIssueRowId: issueRowDraft.id,
+      sourceSheetTitle: issueSheetTitle,
     };
 
     commitTasks((prev) => {
@@ -1836,10 +1843,17 @@ export default function App() {
                           }`}
                         >
                           <div className="space-y-2 sm:space-y-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-brand-maroon/5 dark:bg-brand-maroon/20 text-brand-maroon dark:text-brand-maroon-light border border-brand-maroon/10 dark:border-brand-maroon/30">
-                                {task.typeOfRelease || "Issue Article"}
-                              </span>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-brand-maroon/5 dark:bg-brand-maroon/20 text-brand-maroon dark:text-brand-maroon-light border border-brand-maroon/10 dark:border-brand-maroon/30">
+                                  {task.typeOfRelease || "Issue Article"}
+                                </span>
+                                {task.sourceSheetTitle && (
+                                  <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
+                                    Sheet: {task.sourceSheetTitle}
+                                  </span>
+                                )}
+                              </div>
                               <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded ${
                                 task.priority === "Urgent" ? "bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800" :
                                 task.priority === "High" ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800" :

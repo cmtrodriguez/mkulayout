@@ -645,6 +645,7 @@ export default function SheetsSync({
         writeup: draftLink || ext.writeup,
         addedToLayout: addedToLayout || ext.addedToLayout,
         sourceIssueRowId: ext.sourceIssueRowId || sourceIssueRowId,
+        sourceSheetTitle: activeSheetTitle,
         lastUpdated: new Date().toISOString()
       };
     } else {
@@ -666,6 +667,7 @@ export default function SheetsSync({
         addedToLayout,
         isPendingConfirmation: true, // Dispatches request to Online Pubmat!
         sourceIssueRowId,
+        sourceSheetTitle: activeSheetTitle,
         files: [],
         commentsCount: 0,
         revisionCount: 0,
