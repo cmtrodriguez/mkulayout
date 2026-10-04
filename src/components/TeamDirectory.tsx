@@ -265,7 +265,7 @@ export default function TeamDirectory({
         {/* Counter banner */}
         <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
           <span className="font-medium">
-            Showing <strong className="text-gray-800">{filteredMembers.length}</strong> of {effectiveMembers.length} MKule Layout Desk members
+            Showing <strong className="text-gray-800">{filteredMembers.length}</strong> of {effectiveMembers.length} MKule Layout Section members
           </span>
           <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold border border-emerald-200">
             Term AY 2026-2027 • Semester 1

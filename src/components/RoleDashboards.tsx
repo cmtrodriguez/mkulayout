@@ -174,7 +174,7 @@ export function LayoutStaffDashboard({
         {myTasks.length === 0 ? (
           <div className="bg-white/50 border border-gray-100 rounded-xl sm:rounded-2xl p-4 sm:p-8 text-center text-gray-500 text-xs space-y-1">
             <p className="font-bold text-gray-700">No active design assignments found.</p>
-            <p>You can check the general schedule in the table or sync spreadsheets if a new row was added.</p>
+            <p>Pahinga ka muna, bessed, Done'd ka muna, YES I!</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3.5 sm:gap-5">
