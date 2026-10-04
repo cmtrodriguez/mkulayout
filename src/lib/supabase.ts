@@ -525,7 +525,7 @@ export async function fetchPolls(): Promise<Poll[]> {
     console.error("Error fetching polls:", pollsErr.message);
     return [];
   }
-  const { data: optionsData, error: optionsErr } = await supabase.from("poll_options").select("*");
+  const { data: optionsData, error: optionsErr } = await supabase.from("poll_options").select("*").order("created_at", { ascending: true }).order("id", { ascending: true });
   if (optionsErr) {
     console.error("Error fetching poll options:", optionsErr.message);
   }
@@ -571,11 +571,14 @@ export async function createPoll(poll: Partial<Poll>): Promise<Poll | null> {
     return null;
   }
 
-  const optionRows = (poll.options || []).map(opt => ({
+  const optionRows = (poll.options || []).map((opt, index) => ({
     id: ensureUuid(opt.id),
     poll_id: pollId,
     text: opt.text,
-    votes: Array.isArray(opt.votes) ? opt.votes : []
+    votes: Array.isArray(opt.votes) ? opt.votes : [],
+    // created_at is the only orderable column on poll_options; stagger it per
+    // option so fetches can restore the order the options were added in
+    created_at: new Date(Date.now() + index).toISOString()
   }));
 
   if (optionRows.length > 0) {
