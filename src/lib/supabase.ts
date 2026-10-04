@@ -14,6 +14,7 @@ import {
   normalizeEmail 
 } from "../types";
 import { getOfficialDisplayName, resolveMemberEmail } from "./memberUtils";
+import { isOnlinePubmatTask, MEDIUM_CANVA_LINK } from "./canvaTemplates";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -179,10 +180,12 @@ export function taskFromDb(row: any): Task {
   // The tasks table has no assignee columns; the assigned artist's display name lives
   // in illus_layout, so the assignee email is re-derived from the member registry.
   const illusLayout = row.illus_layout || "Unassigned";
+  const title = row.title || "";
+  const typeOfRelease = row.type_of_release || "Online Article";
   return {
     id: row.id,
-    title: row.title || "",
-    typeOfRelease: row.type_of_release || "Online Article",
+    title,
+    typeOfRelease,
     typeOfContent: row.type_of_content || "feats artx",
     writer: row.writer || "",
     illusLayout,
@@ -203,7 +206,7 @@ export function taskFromDb(row: any): Task {
     revisionCount: row.revision_count != null ? Number(row.revision_count) : 0,
     lastUpdated: row.last_updated || row.updated_at || new Date().toISOString(),
     canvaLink: row.canva_link || undefined,
-    mediumCanvaLink: row.medium_canva_link || undefined,
+    mediumCanvaLink: row.medium_canva_link || (isOnlinePubmatTask(typeOfRelease, title) ? MEDIUM_CANVA_LINK : undefined),
     pubmatLink: row.pubmat_link || undefined,
     draftLink: row.draft_link || undefined,
     addedToLayout: row.added_to_layout || undefined,
@@ -269,7 +272,12 @@ export async function fetchTasks(): Promise<Task[]> {
 export async function upsertTask(task: Partial<Task>): Promise<Task | null> {
   if (!supabase) return null;
   const dbPayload = taskToDb(task);
-  const { data, error } = await supabase.from("tasks").upsert(dbPayload).select().single();
+  let { data, error } = await supabase.from("tasks").upsert(dbPayload).select().single();
+  if (error?.code === "PGRST204" && error.message?.includes("medium_canva_link")) {
+    const compatiblePayload = { ...dbPayload };
+    delete compatiblePayload.medium_canva_link;
+    ({ data, error } = await supabase.from("tasks").upsert(compatiblePayload).select().single());
+  }
   if (error) {
     console.error("Error saving task to Supabase:", error.message);
     return null;
