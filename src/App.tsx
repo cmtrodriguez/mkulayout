@@ -70,7 +70,7 @@ export default function App() {
     { id: "issue-row-8", page: "8", section: "Cult", title: "Farmer Tula about Kanin", writer: "Jhe", graphics: "", layout: "Jhe", online: "", progress: "" }
   ];
 
-  const [issueSheets, setIssueSheets] = useState<Array<{ id: string; title: string; rows: Array<{ id: string; page: string; section: string; title: string; writer: string; graphics: string; layout: string; online: string; progress: string }> }>>(() => {
+  const [issueSheets, setIssueSheets] = useState<Array<{ id: string; title: string; rows: Array<{ id: string; page: string; section: string; title: string; writer: string; graphics: string; layout: string; online: string; progress: string; draftLink?: string }> }>>(() => {
     // Issue sheets are shared team data, so the backend copy (loaded in the
     // fetch effect below) is authoritative. Local storage is only a seed cache
     // so the first paint is not empty before the network round-trip.
@@ -835,7 +835,7 @@ export default function App() {
     }));
   };
 
-  const syncIssueRowTask = (row: { id: string; page: string; section: string; title: string; writer: string; graphics: string; layout: string; online: string; progress: string }) => {
+  const syncIssueRowTask = (row: { id: string; page: string; section: string; title: string; writer: string; graphics: string; layout: string; online: string; progress: string; draftLink?: string }) => {
     const rowTitle = row.title?.trim() || `${row.section || "Issue"}${row.page ? ` ${row.page}` : ""}`.trim() || `Issue Row ${row.id}`;
     if (!row.layout && !row.online && !row.title && !row.writer) {
       commitTasks((prev) => prev.filter((task: any) => task.sourceIssueRowId !== row.id));
@@ -864,7 +864,7 @@ export default function App() {
       canvaLink: getCanvaLinkForContent(row.section || "News"),
       mediumCanvaLink: undefined,
       pubmatLink: "",
-      draftLink: "",
+      draftLink: row.draftLink || "",
       addedToLayout: "",
       onlineHandler: row.online || "",
       ...(row.online ? { graphics: row.online } : {}),
@@ -939,7 +939,7 @@ export default function App() {
       canvaLink: getCanvaLinkForContent(issueRowDraft.section || "News"),
       mediumCanvaLink: undefined,
       pubmatLink: "",
-      draftLink: "",
+      draftLink: issueRowDraft.draftLink || "",
       addedToLayout: "",
       onlineHandler: issueRowDraft.online || "",
       isPendingConfirmation: true,
@@ -2040,6 +2040,16 @@ export default function App() {
             <div className="md:col-span-2">
               <label className="block text-neutral-600 dark:text-neutral-300 font-semibold mb-1">Title or summary</label>
               <input value={issueRowDraft.title || ""} onChange={(e) => setIssueRowDraft({ ...issueRowDraft, title: e.target.value })} className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-neutral-50 dark:bg-neutral-800 outline-none" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-neutral-600 dark:text-neutral-300 font-semibold mb-1">ArtX Document Link</label>
+              <input
+                type="url"
+                value={issueRowDraft.draftLink || ""}
+                onChange={(e) => setIssueRowDraft({ ...issueRowDraft, draftLink: e.target.value })}
+                placeholder="https://docs.google.com/document/..."
+                className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-neutral-50 dark:bg-neutral-800 outline-none font-mono"
+              />
             </div>
             <div>
               <label className="block text-neutral-600 dark:text-neutral-300 font-semibold mb-1">Writer</label>
