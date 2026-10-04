@@ -4,7 +4,7 @@ import {
   Clock, Flame, Users, BookOpen, BellRing, CheckSquare, Sparkles,
   ArrowRight, Award, Trophy, GraduationCap, ChevronRight, FileText, Vote,
   Folder, ExternalLink, Trash2, X, BarChart3, Filter,
-  CheckCircle2, Tag, Download, FileSpreadsheet
+  CheckCircle2, Download, FileSpreadsheet
 } from "lucide-react";
 import { Task, TeamMember, CalendarEvent, Poll } from "../types";
 import { getPreferredFirstName, isUserAssignedToTask } from "../lib/memberUtils";
@@ -12,6 +12,9 @@ import { createPoll, updatePollOptionVotes, deletePoll, createAnnouncement, dele
 import CalendarView from "./CalendarView";
 import MeetingPolls from "./MeetingPolls";
 import AvailableTodayCard from "./AvailableTodayCard";
+
+const CURRENT_MONTH = new Date().toLocaleString("en-US", { month: "long" });
+const STAFF_STATS_MONTHS = ["July", "August", "September", "October", "November", "December", "January"];
 
 interface DashboardOverviewProps {
   tasks: Task[];
@@ -57,7 +60,7 @@ export default function DashboardOverview({
 
   // Staffer & Probi Personal Task Stats & Category period
   const [staffStatsPeriod, setStaffStatsPeriod] = useState<"semester" | "month">("semester");
-  const [staffStatsMonth, setStaffStatsMonth] = useState<string>("September");
+  const [staffStatsMonth, setStaffStatsMonth] = useState<string>(CURRENT_MONTH);
 
   // Announcement state
   const [showAddAnnouncement, setShowAddAnnouncement] = useState(false);
@@ -971,9 +974,6 @@ export default function DashboardOverview({
                           <CheckCircle2 className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 font-semibold uppercase tracking-wider">
-                            {staffStatsPeriod === "semester" ? "Semester 1 Total Completed" : `Month (${staffStatsMonth}) Completed`}
-                          </p>
                           <p className="font-sans font-black text-sm sm:text-base text-neutral-900 dark:text-neutral-100">
                             {effectiveCompletedTasks.length} Publication Tasks Done
                           </p>
@@ -988,24 +988,18 @@ export default function DashboardOverview({
                             onChange={(e) => setStaffStatsMonth(e.target.value)}
                             className="px-2 py-0.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded text-[10px] font-bold text-neutral-800 dark:text-neutral-200 outline-none cursor-pointer"
                           >
-                            <option value="July">July</option>
-                            <option value="August">August</option>
-                            <option value="September">September (Current)</option>
-                            <option value="October">October</option>
-                            <option value="November">November</option>
-                            <option value="December">December</option>
-                            <option value="January">January</option>
+                            {STAFF_STATS_MONTHS.map(month => (
+                              <option key={month} value={month}>
+                                {month === CURRENT_MONTH ? `${month} (Current)` : month}
+                              </option>
+                            ))}
                           </select>
                         </div>
                       )}
                     </div>
 
-                    <div>
-                      <h4 className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                        <Tag className="w-3 h-3 text-brand-maroon" /> Editorial Content Categories Breakdown
-                      </h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {CATEGORIES.map(cat => {
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {CATEGORIES.map(cat => {
                           const count = categoryCounts[cat] || 0;
                           return (
                             <div 
@@ -1025,7 +1019,6 @@ export default function DashboardOverview({
                             </div>
                           );
                         })}
-                      </div>
                     </div>
                   </div>
               </div>
