@@ -496,7 +496,7 @@ export default function TeamDirectory({
                   <th className="py-3 px-4">Display Name &amp; Member</th>
                   <th className="py-3 px-3">Role</th>
                   <th className="py-3 px-3">College</th>
-                  <th className="py-3 px-3">Sem 1 Pubs Done</th>
+                  {canViewWorkload && <th className="py-3 px-3">Sem 1 Pubs Done</th>}
                   <th className="py-3 px-4">Schedule Availability</th>
                   <th className="py-3 px-4">UP Webmail</th>
                   <th className="py-3 px-4">Contact</th>
@@ -529,9 +529,11 @@ export default function TeamDirectory({
                           {m.college}
                         </span>
                       </td>
-                      <td className="py-3 px-3 whitespace-nowrap">
-                        <span className="font-bold text-neutral-900">{m.currentSemPubs || 0} pubs</span>
-                      </td>
+                      {canViewWorkload && (
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <span className="font-bold text-neutral-900">{m.currentSemPubs || 0} pubs</span>
+                        </td>
+                      )}
                       <td className="py-3 px-4 max-w-[200px]">
                         <div className="truncate text-[11px] text-neutral-700" title={schedText}>
                           {schedText}
