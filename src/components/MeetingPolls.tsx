@@ -125,7 +125,7 @@ export default function MeetingPolls({
               Layout Decisions & Scheduling Polls
             </h2>
             <p className="text-xs text-gray-500">
-              Cast your vote on front-page layout orientations, typography matching, or Figma team sessions.
+              Cast your vote on our current polls!
             </p>
           </div>
 
