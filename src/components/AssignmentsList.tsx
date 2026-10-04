@@ -1022,7 +1022,6 @@ export default function AssignmentsList({
                       onClick={() => onOpenTaskDetails(task)}>
                     {task.title}
                   </h4>
-                  <p className="text-[9px] sm:text-[10px] text-gray-400 dark:text-neutral-400 mt-0.5 font-mono">ID: {task.writeup || "Drafting"}</p>
                 </div>
 
                 {task.canvaLink && (

@@ -1015,7 +1015,6 @@ export function EicDashboard({
                         <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon border border-brand-maroon/10">
                           {task.typeOfRelease}
                         </span>
-                        <span className="text-[9px] font-mono text-gray-400">ID: {task.writeup}</span>
                       </div>
                       <h4 className="font-bold text-gray-900 text-sm mt-1">{task.title}</h4>
                       <p className="text-xs text-gray-500 mt-0.5">

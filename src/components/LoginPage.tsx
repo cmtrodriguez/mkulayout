@@ -323,7 +323,7 @@ export default function LoginPage({ members, onLogin, speechEnabled, darkMode = 
       {/* Footer Info Rail */}
       <div className="mt-8 text-center z-10 shrink-0">
         <p className="text-[10px] text-neutral-400 tracking-wider font-mono font-medium">
-          MKule Layout Task Organizer Website ▾ Version 1.0 ▾ 2026
+          MKule Layout Task Organizer Website ▾ Version 1.1 ▾ 2026
         </p>
       </div>
 
