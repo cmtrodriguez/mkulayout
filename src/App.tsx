@@ -23,7 +23,7 @@ import { OFFICIAL_MEMBERS_MAP, getPreferredFirstName, resolveLayoutAssignee, res
 import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
 import { getCanvaLinkForContent, getPubmatCanvaTemplates, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
-import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, upsertCalendarEvent, deleteCalendarEvent, createPoll, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, subscribeToLayoutRealtime } from "./lib/supabase";
+import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, upsertCalendarEvent, deleteCalendarEvent, createPoll, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, clearNotifications, createAnnouncement, saveIssueSheets, subscribeToLayoutRealtime } from "./lib/supabase";
 import mkuleImg from "./mkule.png";
 
 // Domain Models
@@ -1512,12 +1512,26 @@ export default function App() {
                 >
                   <div className="flex items-center justify-between border-b pb-1.5 border-neutral-100 dark:border-neutral-800">
                     <h3 className="font-bold text-neutral-900 dark:text-neutral-100 font-display">Alert Feed</h3>
-                    <button
-                      onClick={() => setNotifications(prev => prev.filter(n => !(n.targetEmails || []).some(email => email.toLowerCase() === userEmail.toLowerCase())))}
-                      className="text-[10px] text-red-700 dark:text-red-400 hover:underline font-bold cursor-pointer"
-                    >
-                      Clear
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {(userRole === "Layout Editor" || userRole === "Layout Deputy" || userRole === "Online Layout Head") && (
+                        <button
+                          onClick={async () => {
+                            if (!window.confirm("Clear all notifications for everyone?")) return;
+                            await clearNotifications();
+                            setNotifications([]);
+                          }}
+                          className="text-[10px] text-red-700 dark:text-red-400 hover:underline font-bold cursor-pointer"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setNotifications(prev => prev.filter(n => !(n.targetEmails || []).some(email => email.toLowerCase() === userEmail.toLowerCase())))}
+                        className="text-[10px] text-red-700 dark:text-red-400 hover:underline font-bold cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-2 max-h-48 overflow-y-auto">

@@ -643,6 +643,16 @@ export async function fetchNotifications(): Promise<Notification[]> {
   return (data || []).map(notificationFromDb);
 }
 
+export async function clearNotifications(): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.from("notifications").delete().not("id", "is", null);
+  if (error) {
+    console.error("Error clearing notifications:", error.message);
+    return false;
+  }
+  return true;
+}
+
 export async function createNotification(n: Partial<Notification>): Promise<Notification | null> {
   if (!supabase || !n.title) return null;
   const id = ensureUuid(n.id);
