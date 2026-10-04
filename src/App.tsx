@@ -1518,7 +1518,7 @@ export default function App() {
                   className="absolute right-0 mt-2 w-72 bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-100 dark:border-neutral-800 p-4 space-y-3 z-50 text-left text-xs"
                 >
                   <div className="flex items-center justify-between border-b pb-1.5 border-neutral-100 dark:border-neutral-800">
-                    <h3 className="font-bold text-neutral-900 dark:text-neutral-100 font-display">Alert Feed</h3>
+                    <h3 className="font-bold text-neutral-900 dark:text-neutral-100 font-display">Notifications</h3>
                     <div className="flex items-center gap-2">
                       {(userRole === "Layout Editor" || userRole === "Layout Deputy" || userRole === "Online Layout Head") && (
                         <button
