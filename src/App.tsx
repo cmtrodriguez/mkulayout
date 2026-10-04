@@ -2041,16 +2041,6 @@ export default function App() {
               <label className="block text-neutral-600 dark:text-neutral-300 font-semibold mb-1">Title or summary</label>
               <input value={issueRowDraft.title || ""} onChange={(e) => setIssueRowDraft({ ...issueRowDraft, title: e.target.value })} className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-neutral-50 dark:bg-neutral-800 outline-none" />
             </div>
-            <div className="md:col-span-2">
-              <label className="block text-neutral-600 dark:text-neutral-300 font-semibold mb-1">ArtX Document Link</label>
-              <input
-                type="url"
-                value={issueRowDraft.draftLink || ""}
-                onChange={(e) => setIssueRowDraft({ ...issueRowDraft, draftLink: e.target.value })}
-                placeholder="https://docs.google.com/document/..."
-                className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-neutral-50 dark:bg-neutral-800 outline-none font-mono"
-              />
-            </div>
             <div>
               <label className="block text-neutral-600 dark:text-neutral-300 font-semibold mb-1">Writer</label>
               <input value={issueRowDraft.writer || ""} onChange={(e) => setIssueRowDraft({ ...issueRowDraft, writer: e.target.value })} className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-neutral-50 dark:bg-neutral-800 outline-none" />
@@ -2081,6 +2071,16 @@ export default function App() {
                 <option value="For Review">For Review</option>
                 <option value="Completed">Completed</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-neutral-600 dark:text-neutral-300 font-semibold mb-1">ArtX Document Link</label>
+              <input
+                type="url"
+                value={issueRowDraft.draftLink || ""}
+                onChange={(e) => setIssueRowDraft({ ...issueRowDraft, draftLink: e.target.value })}
+                placeholder="https://docs.google.com/document/..."
+                className="w-full px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-xl bg-neutral-50 dark:bg-neutral-800 outline-none font-mono"
+              />
             </div>
           </div>
 
