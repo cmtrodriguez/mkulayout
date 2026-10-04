@@ -751,20 +751,6 @@ export function EicDashboard({
   return (
     <div className="space-y-3 sm:space-y-6">
       
-      {/* Overview */}
-      <div className="bg-white p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-brand-maroon/5 shadow-sm text-left">
-        <h2 className="font-display font-bold text-gray-900 text-sm sm:text-lg flex items-center gap-1.5 sm:gap-2">
-          <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-brand-maroon" />
-          {currentUserRole === "Layout Editor" ? "Layout Editorial Review Desk" : "Publication Oversight Desk (EIC Dashboard)"}
-        </h2>
-        <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
-          {currentUserRole === "Layout Editor"
-            ? "As Layout Editor, review submitted design drafts from layout staff, verify Canva elements, suggest revisions, or sign off and approve for release."
-            : "As Publication Editor-in-Chief, review layout submissions, verify margins/contrast ratios, request structural revisions, or oversee the entire publication pipeline from draft to final lock."
-          }
-        </p>
-      </div>
-
       {/* Sub-tab selection row */}
       <div className="flex gap-1.5 sm:gap-2 border-b border-gray-100 pb-1 text-left">
         <button
