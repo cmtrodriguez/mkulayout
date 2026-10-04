@@ -204,7 +204,7 @@ export default function CalendarView({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
       
       {/* Calendar Grid Section */}
       <div className="lg:col-span-2 glass-card rounded-2xl p-5 space-y-4 text-left">
@@ -250,15 +250,15 @@ export default function CalendarView({
               ? `${deadlineCount} task${deadlineCount === 1 ? "" : "s"} for posting`
               : otherCount > 0
                 ? `${otherCount} scheduled item${otherCount === 1 ? "" : "s"}`
-                : "No deadlines";
+                : "";
 
             return (
               <button
                 type="button"
                 key={`day-${day}`} 
                 className="h-16 w-full bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-lg p-1.5 flex flex-col justify-between text-left hover:border-brand-maroon/20 hover:bg-brand-cream/20 dark:hover:bg-neutral-800 cursor-pointer transition-all overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-maroon"
-                aria-label={`${monthName} ${day}: ${daySummary}. Show details.`}
-                title={`${monthName} ${day}: ${daySummary}`}
+                aria-label={`${monthName} ${day}: ${daySummary || "No scheduled items"}. Show details.`}
+                title={daySummary ? `${monthName} ${day}: ${daySummary}` : undefined}
                 onClick={() => {
                   if (dayEvents.length > 0) {
                     speakText(`${monthName} ${day} contains ${dayEvents.length} scheduled item: ${dayEvents.map(e => e.title).join(", ")}`);
@@ -269,7 +269,7 @@ export default function CalendarView({
                 }}
               >
                 <span className="font-mono text-[10px] font-bold text-gray-400 dark:text-neutral-500">{day}</span>
-                <span className={`block w-full truncate text-[8px] leading-3 font-bold ${deadlineCount > 0 ? "text-brand-maroon dark:text-brand-maroon-light" : "text-neutral-400 dark:text-neutral-500"}`}>
+                <span className="block w-full truncate text-[8px] leading-3 font-bold text-brand-maroon dark:text-brand-maroon-light">
                   {daySummary}
                 </span>
               </button>
@@ -470,7 +470,7 @@ export default function CalendarView({
             Calendar Schedule Agenda
           </h3>
 
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
             {agendaItems.length === 0 ? (
               <div className="p-6 text-center text-gray-400 dark:text-neutral-500 text-xs">
                 No events or task deadlines scheduled on the calendar yet.
