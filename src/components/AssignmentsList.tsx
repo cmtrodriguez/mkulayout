@@ -1008,7 +1008,7 @@ export default function AssignmentsList({
                     </span>
                     {task.sourceSheetTitle && (
                       <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
-                        Sheet: {task.sourceSheetTitle}
+                        {task.sourceSheetTitle}
                       </span>
                     )}
                   </div>

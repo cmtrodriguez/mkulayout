@@ -519,7 +519,7 @@ export default function DashboardOverview({
                           </span>
                           {task.sourceSheetTitle && (
                             <span className="bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block ml-1">
-                              Sheet: {task.sourceSheetTitle}
+                              {task.sourceSheetTitle}
                             </span>
                           )}
                           

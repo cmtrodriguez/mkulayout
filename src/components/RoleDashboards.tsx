@@ -211,7 +211,7 @@ export function LayoutStaffDashboard({
                         </span>
                         {task.sourceSheetTitle && (
                           <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200">
-                            Sheet: {task.sourceSheetTitle}
+                            {task.sourceSheetTitle}
                           </span>
                         )}
                         <span className="text-[11px] sm:text-xs text-gray-500 font-medium">Priority: <strong className="text-gray-800">{task.priority}</strong></span>
@@ -833,7 +833,7 @@ export function EicDashboard({
                             </span>
                             {task.sourceSheetTitle && (
                               <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200">
-                                Sheet: {task.sourceSheetTitle}
+                                {task.sourceSheetTitle}
                               </span>
                             )}
                             <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded ${
@@ -1027,7 +1027,7 @@ export function EicDashboard({
                         </span>
                         {task.sourceSheetTitle && (
                           <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200">
-                            Sheet: {task.sourceSheetTitle}
+                            {task.sourceSheetTitle}
                           </span>
                         )}
                       </div>

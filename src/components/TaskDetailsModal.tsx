@@ -208,7 +208,7 @@ export default function TaskDetailsModal({
               </span>
               {task.sourceSheetTitle && (
                 <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
-                  Sheet: {task.sourceSheetTitle}
+                  {task.sourceSheetTitle}
                 </span>
               )}
               <h2 className="text-lg sm:text-xl font-display font-black text-gray-900 dark:text-neutral-100 leading-tight">
