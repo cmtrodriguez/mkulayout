@@ -6,7 +6,7 @@ import {
   Lock, ShieldAlert, ImagePlus, X, Pencil, Trash2
 } from "lucide-react";
 import { Task, TeamMember, TaskComment, UserRole } from "../types";
-import { extractHyperlinkDetails, isOnlinePubmatTask } from "../lib/canvaTemplates";
+import { extractHyperlinkDetails, isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK } from "../lib/canvaTemplates";
 import { compressCommentImage, formatCommentDetails, handleBulletKeyDown, MAX_COMMENT_IMAGES, RenderFormattedComment } from "../lib/commentUtils";
 import { isUserAssignedToTask, resolveMemberEmail, getEditorDeputyEmails } from "../lib/memberUtils";
 import CommentImageAnnotator from "./CommentImageAnnotator";
@@ -304,7 +304,23 @@ export function LayoutStaffDashboard({
                     })()}
 
                     {/* 2. Assigned Canva Design Link */}
-                    {(() => {
+                    {isIssueArticleTask(task.typeOfRelease) ? (
+                      <a
+                        href={ISSUE_TEMPLATE_LINK}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-2.5 sm:p-3 bg-amber-50/80 hover:bg-amber-100 border border-amber-200/80 rounded-lg sm:rounded-xl transition-all group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-700 shrink-0" />
+                          <div className="min-w-0 text-left">
+                            <span className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-amber-700">Issue Template</span>
+                            <span className="block text-[11px] sm:text-xs font-semibold text-amber-900 truncate">Open Issue Layout Template</span>
+                          </div>
+                        </div>
+                        <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-700 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </a>
+                    ) : (() => {
                       const canvaRaw = task.canvaLink || "";
                       const details = extractHyperlinkDetails(canvaRaw);
                       const hasCanva = details.url && details.url.startsWith("http");

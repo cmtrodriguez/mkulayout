@@ -31,6 +31,7 @@ export const DEFAULT_CANVA_TEMPLATES: CanvaTemplate[] = [
 ];
 
 export const MEDIUM_CANVA_LINK = "https://canva.link/5yuv72zezab85he";
+export const ISSUE_TEMPLATE_LINK = "https://drive.google.com/drive/folders/1hGmrOahAVnzllljvObUlPSNkPY4THtBn?usp=drive_link";
 
 export function normalizeContentCategory(category: string | undefined): string {
   const value = (category || "").trim();
@@ -39,6 +40,10 @@ export function normalizeContentCategory(category: string | undefined): string {
 
 export function isOnlinePubmatTask(typeOfRelease: string | undefined, title: string | undefined): boolean {
   return Boolean(typeOfRelease?.toLowerCase().includes("online") || /\(online pubmat\)$/i.test(title || ""));
+}
+
+export function isIssueArticleTask(typeOfRelease: string | undefined): boolean {
+  return typeOfRelease === "Issue Article" || typeOfRelease === "Newspaper Issue";
 }
 
 export function getCanvaLinkForContent(category: string | undefined): string {

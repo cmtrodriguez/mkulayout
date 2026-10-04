@@ -8,7 +8,7 @@ import { extractHyperlinkDetails } from "../lib/canvaTemplates";
 import { isUserAssignedToTask } from "../lib/memberUtils";
 import { compressCommentImage, formatCommentDetails, handleBulletKeyDown, MAX_COMMENT_IMAGES, RenderFormattedComment } from "../lib/commentUtils";
 import { getPreferredFirstName } from "../lib/memberUtils";
-import { isOnlinePubmatTask } from "../lib/canvaTemplates";
+import { isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK } from "../lib/canvaTemplates";
 import { toISOFormatDate, formatISOToDisplayDate } from "./AssignmentsList";
 import GoogleDocShareWidget from "./GoogleDocShareWidget";
 import { shareGoogleDocWithMember } from "../lib/googleDriveShare";
@@ -57,6 +57,7 @@ export default function TaskDetailsModal({
   const [savingCommentId, setSavingCommentId] = useState<string | null>(null);
   const [commentActionError, setCommentActionError] = useState("");
   const isEditorOrDeputy = currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy" || currentUserRole === "Online Layout Head";
+  const showIssueTemplate = isIssueArticleTask(task.typeOfRelease);
   const showMediumCanvaLink = isOnlinePubmatTask(task.typeOfRelease, task.title);
 
   const isAssignedStaffer = (task.illusLayout || "").toLowerCase().includes((currentUserName || "").toLowerCase()) || 
@@ -312,7 +313,17 @@ export default function TaskDetailsModal({
           {/* Active Workspace & Link Sync Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             
-            {/* Canva Workspace Link Editor */}
+            {showIssueTemplate ? (
+              <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 p-3 sm:p-3.5 rounded-xl space-y-2 text-xs">
+                <span className="font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  Issue Template
+                </span>
+                <p className="text-[10px] text-amber-900 dark:text-amber-200 font-mono truncate bg-white dark:bg-neutral-800 px-2 py-1 rounded border border-amber-100 dark:border-amber-800">Issue layout template folder</p>
+                <a href={ISSUE_TEMPLATE_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[10px] items-center gap-1 shadow-sm cursor-pointer">Open Issue Template</a>
+              </div>
+            ) : (
+            /* Canva Workspace Link Editor */
             <div className="bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-800/60 p-3 sm:p-3.5 rounded-xl space-y-2 text-xs">
               <span className="font-bold text-cyan-800 dark:text-cyan-400 uppercase tracking-wide flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
@@ -360,6 +371,7 @@ export default function TaskDetailsModal({
                 </div>
               )}
             </div>
+            )}
 
             {/* Medium Canva Link Editor */}
             {showMediumCanvaLink && <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/60 p-3 sm:p-3.5 rounded-xl space-y-2 text-xs">
