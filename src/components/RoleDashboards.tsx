@@ -1024,7 +1024,7 @@ export function EicDashboard({
                     </div>
 
                     <div className="flex items-center gap-3 self-start md:self-center">
-                      {task.canvaLink ? (
+                      {isOnlinePubmatTask(task.typeOfRelease, task.title) && task.canvaLink ? (
                         <a
                           href={task.canvaLink}
                           target="_blank"
