@@ -56,7 +56,7 @@ export default function DashboardOverview({
 
   // Workload Tracker period & filter state (for Editor & Deputy)
   const [workloadPeriod, setWorkloadPeriod] = useState<"month" | "semester">("semester");
-  const [selectedMonth, setSelectedMonth] = useState<string>("September");
+  const [selectedMonth, setSelectedMonth] = useState<string>(CURRENT_MONTH);
 
   // Staffer & Probi Personal Task Stats & Category period
   const [staffStatsPeriod, setStaffStatsPeriod] = useState<"semester" | "month">("semester");
@@ -821,13 +821,11 @@ export default function DashboardOverview({
                         className="px-2 py-0.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded text-[10px] font-bold text-neutral-800 dark:text-neutral-200 outline-none cursor-pointer"
                       >
                         <option value="All">All Months</option>
-                        <option value="July">July</option>
-                        <option value="August">August</option>
-                        <option value="September">September (Current)</option>
-                        <option value="October">October</option>
-                        <option value="November">November</option>
-                        <option value="December">December</option>
-                        <option value="January">January</option>
+                        {STAFF_STATS_MONTHS.map(month => (
+                          <option key={month} value={month}>
+                            {month === CURRENT_MONTH ? `${month} (Current)` : month}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   )}
