@@ -23,7 +23,7 @@ import { OFFICIAL_MEMBERS_MAP, getPreferredFirstName, resolveLayoutAssignee, res
 import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
 import { getCanvaLinkForContent, getPubmatCanvaTemplates, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
-import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, upsertCalendarEvent, deleteCalendarEvent, createPoll, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, clearNotifications, createAnnouncement, saveIssueSheets, subscribeToLayoutRealtime } from "./lib/supabase";
+import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, upsertCalendarEvent, deleteCalendarEvent, createPoll, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, clearNotifications, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, type MemberLoginMap } from "./lib/supabase";
 import mkuleImg from "./mkule.png";
 
 // Domain Models
@@ -39,6 +39,7 @@ export default function App() {
   const tasksRef = useRef<Task[]>(tasks);
   tasksRef.current = tasks;
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [memberLogins, setMemberLogins] = useState<MemberLoginMap>({});
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [polls, setPolls] = useState<Poll[]>([]);
   const [comments, setComments] = useState<TaskComment[]>([]);
@@ -150,6 +151,9 @@ export default function App() {
   // never writes the previous account's value onto the new account's key.
   const themeSkipPersist = useRef(false);
   const wasAuthenticatedRef = useRef(false);
+  // Guards "last opened" recording so it fires once per app load, not on every
+  // background token refresh, matching the "each app open" semantics.
+  const memberLoginRecordedRef = useRef(false);
   const themeKeyFor = (email: string) => `mkule_theme_${email.toLowerCase()}`;
 
   // Load the signed-in account's own theme preference; light when unset.
@@ -302,7 +306,7 @@ export default function App() {
   // Fetch all app data from Supabase and initialise local state
   const fetchAllState = async () => {
     try {
-      const [sbTasks, sbMembers, sbComments, sbEvents, sbPolls, sbAnnouncements, sbNotifications, sbIssueSheets] = await Promise.all([
+      const [sbTasks, sbMembers, sbComments, sbEvents, sbPolls, sbAnnouncements, sbNotifications, sbIssueSheets, sbMemberLogins] = await Promise.all([
         fetchTasks(),
         fetchMembers(),
         fetchComments(),
@@ -310,11 +314,13 @@ export default function App() {
         fetchPolls(),
         fetchAnnouncements(),
         fetchNotifications(),
-        fetchIssueSheets()
+        fetchIssueSheets(),
+        fetchMemberLogins()
       ]);
 
       setTasks(tagTasksWithSourceRows(applyAssignmentLinkDefaults(sbTasks), (sbIssueSheets && sbIssueSheets.length > 0) ? sbIssueSheets : issueSheetsRef.current));
       setMembers(sbMembers);
+      setMemberLogins(sbMemberLogins);
       setComments(sbComments);
       setEvents(sbEvents);
       setPolls(sbPolls);
@@ -364,6 +370,7 @@ export default function App() {
       onNotificationsChange: async () => { setNotifications(await fetchNotifications()); },
       onAnnouncementsChange: async () => { setAnnouncements(await fetchAnnouncements()); },
       onMembersChange: async () => { setMembers(await fetchMembers()); },
+      onMemberLoginsChange: (data) => { setMemberLogins(data || {}); },
       onIssueSheetsChange: (data) => {
         if (Array.isArray(data) && data.length > 0) {
           setIssueSheets(data);
@@ -637,6 +644,16 @@ export default function App() {
     setUserEmail("");
     setUserName("");
   };
+
+  // Record the "last opened" timestamp once per app load for the signed-in member.
+  // Visible only to Editor/Deputy in the Layout Member Directory.
+  useEffect(() => {
+    if (!isAuthenticated || !userEmail || memberLoginRecordedRef.current) return;
+    memberLoginRecordedRef.current = true;
+    void recordMemberLogin(userEmail).then((updated) => {
+      if (updated) setMemberLogins(updated);
+    });
+  }, [isAuthenticated, userEmail]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -2016,6 +2033,7 @@ export default function App() {
                 currentUserEmail={userEmail}
                 currentUserName={userName}
                 tasks={tasks}
+                memberLogins={memberLogins}
                 onUpdateMembers={handleUpdateMembers}
               />
             )}

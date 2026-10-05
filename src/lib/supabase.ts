@@ -825,6 +825,43 @@ export function subscribeToCanvaState(onChange: (state: CanvaDirectoryState) => 
 }
 
 // ============================================================================
+// MEMBER "LAST OPENED" ACTIVITY (shared team state via app_state)
+// ============================================================================
+
+// Timestamps are stored as a single app_state row keyed "member_logins" holding a
+// map of normalized member email -> ISO timestamp. Kept in app_state so the feature
+// needs no schema migration; only Editor/Deputy views surface it in the UI.
+export type MemberLoginMap = Record<string, string>;
+
+export async function fetchMemberLogins(): Promise<MemberLoginMap> {
+  if (!supabase) return {};
+  const { data, error } = await supabase.from("app_state").select("data").eq("id", "member_logins").maybeSingle();
+  if (error && error.code !== "PGRST116") {
+    console.warn("Member logins fetch failed:", error.message);
+    return {};
+  }
+  if (!data?.data || typeof data.data !== "object") return {};
+  return data.data as MemberLoginMap;
+}
+
+export async function recordMemberLogin(email: string): Promise<MemberLoginMap | null> {
+  if (!supabase || !email) return null;
+  const key = normalizeEmail(email).toLowerCase();
+  const existing = await fetchMemberLogins();
+  const next: MemberLoginMap = { ...existing, [key]: new Date().toISOString() };
+  const { error } = await supabase.from("app_state").upsert({
+    id: "member_logins",
+    data: next,
+    updated_at: new Date().toISOString()
+  });
+  if (error) {
+    console.error("Error recording member login:", error.message);
+    return null;
+  }
+  return next;
+}
+
+// ============================================================================
 // REALTIME SUBSCRIPTION MANAGER
 // ============================================================================
 
@@ -838,6 +875,7 @@ export interface RealtimeHandlers {
   onAnnouncementsChange?: () => void;
   onMembersChange?: () => void;
   onIssueSheetsChange?: (data: any) => void;
+  onMemberLoginsChange?: (data: MemberLoginMap) => void;
 }
 
 export function subscribeToLayoutRealtime(handlers: RealtimeHandlers): () => void {
@@ -875,8 +913,12 @@ export function subscribeToLayoutRealtime(handlers: RealtimeHandlers): () => voi
       handlers.onMembersChange?.();
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "app_state" }, (payload) => {
-      if (payload.new && (payload.new as any).id === "issue_sheets") {
-        handlers.onIssueSheetsChange?.((payload.new as any).data);
+      const rec = payload.new as any;
+      if (!rec) return;
+      if (rec.id === "issue_sheets") {
+        handlers.onIssueSheetsChange?.(rec.data);
+      } else if (rec.id === "member_logins" && rec.data && typeof rec.data === "object") {
+        handlers.onMemberLoginsChange?.(rec.data as MemberLoginMap);
       }
     });
 

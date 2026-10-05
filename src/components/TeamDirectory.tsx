@@ -11,6 +11,19 @@ import AvailableTodayCard from "./AvailableTodayCard";
 
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+function formatLastOpened(iso?: string): string {
+  if (!iso) return "Not recorded yet";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "Not recorded yet";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 interface TeamDirectoryProps {
   members: TeamMember[];
   speechEnabled: boolean;
@@ -18,6 +31,7 @@ interface TeamDirectoryProps {
   currentUserEmail?: string;
   currentUserName?: string;
   tasks?: Task[];
+  memberLogins?: Record<string, string>;
   onUpdateMembers?: (members: TeamMember[]) => void;
 }
 
@@ -28,6 +42,7 @@ export default function TeamDirectory({
   currentUserEmail = "",
   currentUserName = "",
   tasks = [],
+  memberLogins = {},
   onUpdateMembers,
 }: TeamDirectoryProps) {
   const [search, setSearch] = useState("");
@@ -327,6 +342,18 @@ export default function TeamDirectory({
                       </div>
                       <span className="text-[9px] text-neutral-400 font-mono text-right">
                         Resets Jan 2027<br />(Sem 2)
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Last account activity — Editor/Deputy only */}
+                  {canViewWorkload && (
+                    <div className="bg-neutral-50 border border-neutral-200/80 rounded-xl p-2.5 flex items-center justify-between gap-2">
+                      <span className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1 shrink-0">
+                        <Clock className="w-3 h-3 text-brand-maroon" /> Last Opened
+                      </span>
+                      <span className="text-[11px] font-semibold text-neutral-800 text-right">
+                        {formatLastOpened(memberLogins[normalizeEmail(m.email).toLowerCase()])}
                       </span>
                     </div>
                   )}
