@@ -95,7 +95,7 @@ export const OFFICIAL_ACCOUNTS: OfficialAccount[] = [
     displayName: "Zoe Atienza",
     college: "CAS",
     email: "ztatienza@up.edu.ph",
-    contact: "9171234567",
+    contact: "9989500413",
     pin: "Z4mE8t9A",
   },
   {
@@ -104,7 +104,7 @@ export const OFFICIAL_ACCOUNTS: OfficialAccount[] = [
     displayName: "Eve Magno",
     college: "CAS",
     email: "jcmagno1@up.edu.ph",
-    contact: "9189876543",
+    contact: "9667320169",
     pin: "M5eX2q7G",
   },
   {
@@ -113,7 +113,7 @@ export const OFFICIAL_ACCOUNTS: OfficialAccount[] = [
     displayName: "Iris Dizon",
     college: "CAMP",
     email: "ibdizon@up.edu.ph",
-    contact: "9195551234",
+    contact: "9955338010",
     pin: "I9dB3w1Z",
   },
 ];

@@ -81,7 +81,7 @@ export const OFFICIAL_MEMBERS_MAP: Record<string, MemberOfficialInfo> = {
     preferredFirstName: "Zoe",
     role: "Layout Probi",
     college: "CAS",
-    contact: "9171234567"
+    contact: "9989500413"
   },
   "jcmagno1@up.edu.ph": {
     email: "jcmagno1@up.edu.ph",
@@ -90,7 +90,7 @@ export const OFFICIAL_MEMBERS_MAP: Record<string, MemberOfficialInfo> = {
     preferredFirstName: "Eve",
     role: "Layout Probi",
     college: "CAS",
-    contact: "9189876543"
+    contact: "9667320169"
   },
   "ibdizon@up.edu.ph": {
     email: "ibdizon@up.edu.ph",
@@ -99,7 +99,7 @@ export const OFFICIAL_MEMBERS_MAP: Record<string, MemberOfficialInfo> = {
     preferredFirstName: "Iris",
     role: "Layout Probi",
     college: "CAMP",
-    contact: "9195551234"
+    contact: "9955338010"
   }
 };
 
