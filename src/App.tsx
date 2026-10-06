@@ -46,6 +46,7 @@ export default function App() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const bootTimeRef = useRef<number>(Date.now());
 
   // Live clock for the Desk Active Console header (ticks every second).
   const [currentDateTime, setCurrentDateTime] = useState<Date>(() => new Date());
@@ -354,7 +355,8 @@ export default function App() {
         console.error("Failed to load initial layout state", fallbackErr);
       }
     } finally {
-      setLoading(false);
+      const remainMs = Math.max(0, 3000 - (Date.now() - bootTimeRef.current));
+      setTimeout(() => setLoading(false), remainMs);
     }
   };
 
@@ -1218,7 +1220,7 @@ export default function App() {
         <div
           role="img"
           aria-label="MKuLayout logo"
-          className="w-12 h-12 bg-brand-maroon animate-spin"
+          className="w-12 h-12 bg-brand-maroon"
           style={{
             maskImage: `url(${mkuleImg})`,
             WebkitMaskImage: `url(${mkuleImg})`,
