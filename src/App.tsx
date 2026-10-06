@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { 
   LayoutGrid, FileSpreadsheet, Kanban, GraduationCap, Calendar, 
   HelpCircle, Bot, Users, Bell, AlertOctagon, Plus, X, Shield, Ban, Trash2,
-  Sparkles, ShieldCheck, HeartPulse, CheckSquare, RefreshCw, BookOpen,
+  Sparkles, ShieldCheck, HeartPulse, CheckSquare, BookOpen,
   Menu, LogOut, Link2, Sun, Moon, FileText, CheckCircle2, ExternalLink, Loader2, User, ArrowRight
 } from "lucide-react";
 
@@ -1215,9 +1215,23 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-brand-cream/40 flex flex-col items-center justify-center p-6 space-y-4 font-sans text-gray-800">
-        <RefreshCw className="w-8 h-8 text-brand-maroon animate-spin" />
+        <div
+          role="img"
+          aria-label="MKuLayout logo"
+          className="w-12 h-12 bg-brand-maroon animate-spin"
+          style={{
+            maskImage: `url(${mkuleImg})`,
+            WebkitMaskImage: `url(${mkuleImg})`,
+            maskSize: "contain",
+            WebkitMaskSize: "contain",
+            maskRepeat: "no-repeat",
+            WebkitMaskRepeat: "no-repeat",
+            maskPosition: "center",
+            WebkitMaskPosition: "center"
+          }}
+        />
         <p className="font-display font-bold text-sm tracking-wide">
-          Booting publication layout desk...
+          MKuLayout loading...
         </p>
       </div>
     );
