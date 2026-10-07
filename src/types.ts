@@ -187,3 +187,23 @@ export interface SheetMerge {
   label?: string;
 }
 
+
+/* Probi graduation tracking */
+export interface OpinionArticle {
+  id: string;
+  memberEmail: string;
+  memberName: string;
+  docLink: string;
+  submittedAt: string;
+  status: "Submitted" | "Done";
+  doneBy?: string;
+  doneAt?: string;
+}
+
+export interface ProbiTrackerState {
+  congratsMessage: string;
+  articles: OpinionArticle[];
+}
+
+export const DEFAULT_PROBI_CONGRATS_MESSAGE =
+  "Congratulations! You have graduated as a layout probi; may you carry the same determination as you continue your journey as a layout staffer.";

@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { 
   Users, Search, ShieldCheck, Mail, Phone, GraduationCap, 
   AlertCircle, Key, Eye, EyeOff, Copy, Check, LayoutGrid, TableProperties,
-  Calendar, Clock, X, Lock, BookOpen
+  Calendar, Clock, X, Lock, BookOpen, ExternalLink
 } from "lucide-react";
-import { TeamMember, MemberSchedule, Task, normalizeEmail } from "../types";
+import { TeamMember, MemberSchedule, Task, normalizeEmail, ProbiTrackerState } from "../types";
 import { OFFICIAL_ACCOUNTS } from "./LoginPage";
 import { getOfficialFullName } from "../lib/memberUtils";
 import AvailableTodayCard from "./AvailableTodayCard";
@@ -33,6 +33,9 @@ interface TeamDirectoryProps {
   tasks?: Task[];
   memberLogins?: Record<string, string>;
   onUpdateMembers?: (members: TeamMember[]) => void;
+  probiTracker?: ProbiTrackerState;
+  onMarkOpinionArticleDone?: (articleId: string) => void;
+  onUpdateProbiCongratsMessage?: (message: string) => void;
 }
 
 export default function TeamDirectory({
@@ -44,6 +47,9 @@ export default function TeamDirectory({
   tasks = [],
   memberLogins = {},
   onUpdateMembers,
+  probiTracker,
+  onMarkOpinionArticleDone,
+  onUpdateProbiCongratsMessage,
 }: TeamDirectoryProps) {
   const [search, setSearch] = useState("");
   const [collegeFilter, setCollegeFilter] = useState("All");
@@ -51,6 +57,8 @@ export default function TeamDirectory({
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [probiMessageEditFor, setProbiMessageEditFor] = useState<string | null>(null);
+  const [probiMessageDraft, setProbiMessageDraft] = useState("");
 
   // Schedule Modal State
   const [selectedMemberForSchedule, setSelectedMemberForSchedule] = useState<any | null>(null);
@@ -296,6 +304,28 @@ export default function TeamDirectory({
             const isSelf = normalizeEmail(m.email).toLowerCase() === normalizeEmail(currentUserEmail).toLowerCase();
             const canViewThisPassword = isLayoutEditor || isSelf;
 
+            const isProbiCard = m.role === "Layout Probi" && (isLayoutEditor || isLayoutDeputy);
+            const probiNameKeys = [
+              getOfficialFullName(m.name, m.email),
+              m.name,
+              (m.name || "").split(",")[0],
+              (m.name || "").split(" ")[0]
+            ].filter(Boolean).map((v: string) => v.toLowerCase());
+            const probiDoneTasks = tasks.filter((t) =>
+              (t.typeOfRelease === "Issue Article" || t.typeOfRelease === "Online Article") &&
+              (t.progress === "Completed" || t.progress === "Approved") &&
+              probiNameKeys.some((k) =>
+                (t.illusLayout || "").toLowerCase().includes(k) ||
+                (t.graphics || "").toLowerCase().includes(k) ||
+                (t.writer || "").toLowerCase().includes(k)
+              )
+            ).length;
+            const probiArticles = (probiTracker?.articles || []).filter(
+              (a) => normalizeEmail(a.memberEmail).toLowerCase() === normalizeEmail(m.email).toLowerCase()
+            );
+            const probiOpinionDone = probiArticles.some((a) => a.status === "Done");
+            const probiGraduatedCard = probiDoneTasks >= 8 && probiOpinionDone;
+
             const schedText = typeof m.schedule === "string" 
               ? m.schedule 
               : m.schedule?.summary || "No schedule submitted yet.";
@@ -355,6 +385,97 @@ export default function TeamDirectory({
                       <span className="text-[11px] font-semibold text-neutral-800 text-right">
                         {formatLastOpened(memberLogins[normalizeEmail(m.email).toLowerCase()])}
                       </span>
+                    </div>
+                  )}
+
+                  {/* Probi graduation tracking — Editor/Deputy only */}
+                  {isProbiCard && (
+                    <div className="bg-neutral-50 border border-neutral-200/80 rounded-xl p-2.5 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+                          <GraduationCap className="w-3 h-3 text-brand-maroon" /> Probi Tracker
+                        </span>
+                        {probiGraduatedCard ? (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">Graduated</span>
+                        ) : (
+                          <span className="text-[9px] font-mono text-neutral-500">
+                            {Math.min(probiDoneTasks, 8)}/8 tasks • {probiOpinionDone ? 1 : 0}/1 opinion
+                          </span>
+                        )}
+                      </div>
+                      {probiArticles.length === 0 ? (
+                        <p className="text-[10px] text-neutral-500">No opinion article submitted yet.</p>
+                      ) : (
+                        probiArticles.map((a) => (
+                          <div key={a.id} className="flex items-center justify-between gap-2 bg-white border border-neutral-200 rounded-lg px-2 py-1.5">
+                            <a
+                              href={a.docLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[10px] font-semibold text-brand-maroon hover:underline flex items-center gap-1 truncate"
+                            >
+                              <ExternalLink className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{a.docLink}</span>
+                            </a>
+                            {a.status === "Done" ? (
+                              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0">
+                                Done{a.doneBy ? ` • ${a.doneBy}` : ""}
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => onMarkOpinionArticleDone && onMarkOpinionArticleDone(a.id)}
+                                className="text-[9px] font-bold text-white bg-brand-maroon hover:bg-brand-maroon-dark px-2 py-1 rounded shrink-0 cursor-pointer"
+                              >
+                                Mark Done
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      )}
+                      {isLayoutEditor && (
+                        probiMessageEditFor === m.email ? (
+                          <div className="space-y-1.5">
+                            <textarea
+                              value={probiMessageDraft}
+                              onChange={(e) => setProbiMessageDraft(e.target.value)}
+                              rows={3}
+                              className="w-full rounded-lg border border-neutral-200 bg-white px-2 py-1.5 text-[10px] text-neutral-800 focus:outline-none focus:ring-1 focus:ring-brand-maroon"
+                            />
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (onUpdateProbiCongratsMessage) onUpdateProbiCongratsMessage(probiMessageDraft);
+                                  setProbiMessageEditFor(null);
+                                  speakText("Graduation message updated.");
+                                }}
+                                className="text-[9px] font-bold text-white bg-brand-maroon hover:bg-brand-maroon-dark px-2 py-1 rounded cursor-pointer"
+                              >
+                                Save Message
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setProbiMessageEditFor(null)}
+                                className="text-[9px] font-bold text-neutral-500 hover:underline px-2 py-1 cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProbiMessageDraft(probiTracker?.congratsMessage || "");
+                              setProbiMessageEditFor(m.email);
+                            }}
+                            className="text-[9px] font-bold text-brand-maroon hover:underline cursor-pointer"
+                          >
+                            Edit graduation message
+                          </button>
+                        )
+                      )}
                     </div>
                   )}
 

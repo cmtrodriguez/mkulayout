@@ -6,7 +6,7 @@ import {
   ShieldCheck, Mail, Phone, GraduationCap, Users,
   Gamepad2, Play, RotateCw, ArrowLeft, ArrowRight, ArrowDown, ChevronsDown, Trophy
 } from "lucide-react";
-import { TeamMember, UserRole, normalizeEmail } from "../types";
+import { TeamMember, UserRole, normalizeEmail, ProbiTrackerState, DEFAULT_PROBI_CONGRATS_MESSAGE } from "../types";
 import { OFFICIAL_ACCOUNTS } from "./LoginPage";
 import { OFFICIAL_MEMBERS_MAP, getOfficialFullName, getPreferredFirstName } from "../lib/memberUtils";
 import { AccentTheme, ACCENT_OPTIONS } from "../lib/accentTheme";
@@ -17,6 +17,8 @@ interface ProfileSettingsProps {
   currentUserEmail: string;
   members: TeamMember[];
   tasks?: any[];
+  probiTracker?: ProbiTrackerState;
+  onSubmitOpinionArticle?: (docLink: string) => void;
   speechEnabled: boolean;
   setSpeechEnabled: (v: boolean) => void;
   fontSizeMultiplier: number;
@@ -254,6 +256,8 @@ export default function ProfileSettings({
   currentUserEmail,
   members,
   tasks = [],
+  probiTracker,
+  onSubmitOpinionArticle,
   speechEnabled,
   setSpeechEnabled,
   fontSizeMultiplier,
@@ -268,6 +272,7 @@ export default function ProfileSettings({
   setDyslexicFont,
   onLogout,
 }: ProfileSettingsProps) {
+  const [probiDocLink, setProbiDocLink] = useState("");
   // Find current user's full member object for details
   const officialAccount = OFFICIAL_ACCOUNTS.find(
     (a) =>
@@ -423,6 +428,26 @@ export default function ProfileSettings({
     utterance.rate = 1.1;
     window.speechSynthesis.speak(utterance);
   };
+
+  // Probi Tracker — term requirements for graduation to layout staffer
+  const isLayoutProbi = currentUserRole === "Layout Probi";
+  const probiTaskDoneCount = memberTasks.filter(
+    (task: any) =>
+      (task.typeOfRelease === "Issue Article" || task.typeOfRelease === "Online Article") &&
+      (task.progress === "Completed" || task.progress === "Approved")
+  ).length;
+  const myOpinionArticles = (probiTracker?.articles || []).filter(
+    (a) => normalizeEmail(a.memberEmail).toLowerCase() === normalizeEmail(currentUserEmail).toLowerCase()
+  );
+  const probiOpinionDone = myOpinionArticles.filter((a) => a.status === "Done").length;
+  const probiGraduated = probiTaskDoneCount >= 8 && probiOpinionDone >= 1;
+
+  useEffect(() => {
+    if (isLayoutProbi && probiGraduated) {
+      speakText(probiTracker?.congratsMessage || DEFAULT_PROBI_CONGRATS_MESSAGE);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [probiGraduated]);
 
   const handleAccentChange = (color: AccentTheme) => {
     if (setAccentTheme) {
@@ -772,7 +797,107 @@ export default function ProfileSettings({
                 <span className="font-bold text-gray-800 dark:text-neutral-200">{peakMonth.month} • {peakMonth.count}</span>
               </div>
             </div>
-            
+
+              {isLayoutProbi && (
+                <div className="rounded-2xl border border-gray-200 dark:border-neutral-700 bg-gradient-to-br from-gray-50 via-white to-amber-50 dark:from-neutral-800 dark:via-neutral-900 dark:to-amber-950/30 p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 text-brand-maroon dark:text-brand-maroon-light">
+                        <GraduationCap className="w-4 h-4" />
+                        <h4 className="font-bold text-xs text-gray-900 dark:text-neutral-100">Probi Tracker</h4>
+                      </div>
+                      <p className="text-[10px] text-gray-500 dark:text-neutral-400 mt-1">Term requirements for graduation to layout staffer</p>
+                    </div>
+                    {probiGraduated && (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-full shrink-0">Graduated</span>
+                    )}
+                  </div>
+
+                  {probiGraduated && (
+                    <div className="rounded-xl border border-amber-300 bg-gradient-to-br from-amber-50 via-white to-emerald-50 dark:from-neutral-900 dark:via-neutral-900 dark:to-emerald-950/40 p-4 text-center space-y-2">
+                      <Trophy className="w-6 h-6 text-amber-500 mx-auto" />
+                      <p className="text-xs font-bold text-gray-900 dark:text-neutral-100 italic leading-relaxed">
+                        {probiTracker?.congratsMessage || DEFAULT_PROBI_CONGRATS_MESSAGE}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2 text-[11px]">
+                      <span className="font-semibold text-gray-700 dark:text-neutral-200 flex items-center gap-1.5">
+                        <CheckCircle className={`w-3.5 h-3.5 ${probiTaskDoneCount >= 8 ? "text-emerald-600" : "text-gray-300 dark:text-neutral-600"}`} />
+                        Mkule issue / online tasks completed
+                      </span>
+                      <span className="font-bold text-gray-900 dark:text-neutral-100">{Math.min(probiTaskDoneCount, 8)} / 8</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-gray-200 dark:bg-neutral-700 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-brand-maroon to-brand-maroon-light"
+                        style={{ width: `${Math.min((probiTaskDoneCount / 8) * 100, 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-2 text-[11px] pt-1">
+                      <span className="font-semibold text-gray-700 dark:text-neutral-200 flex items-center gap-1.5">
+                        <CheckCircle className={`w-3.5 h-3.5 ${probiOpinionDone >= 1 ? "text-emerald-600" : "text-gray-300 dark:text-neutral-600"}`} />
+                        Opinion article completed
+                      </span>
+                      <span className="font-bold text-gray-900 dark:text-neutral-100">{Math.min(probiOpinionDone, 1)} / 1</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">My opinion articles</span>
+                    {myOpinionArticles.length === 0 && (
+                      <p className="text-[11px] text-gray-500 dark:text-neutral-400">No opinion article submitted yet.</p>
+                    )}
+                    {myOpinionArticles.map((a) => (
+                      <div key={a.id} className="flex items-center justify-between gap-2 bg-white/70 dark:bg-neutral-900/70 border border-gray-200 dark:border-neutral-700 rounded-lg px-2.5 py-2">
+                        <a
+                          href={a.docLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] font-semibold text-brand-maroon dark:text-brand-maroon-light hover:underline flex items-center gap-1.5 truncate"
+                        >
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{a.docLink}</span>
+                        </a>
+                        {a.status === "Done" ? (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0">
+                            Done{a.doneBy ? ` • ${a.doneBy}` : ""}
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shrink-0">Submitted</span>
+                        )}
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="url"
+                        value={probiDocLink}
+                        onChange={(e) => setProbiDocLink(e.target.value)}
+                        placeholder="Paste opinion article docs link"
+                        className="flex-1 min-w-0 rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1.5 text-[11px] text-gray-800 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-brand-maroon"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!probiDocLink.trim() || !onSubmitOpinionArticle) return;
+                          onSubmitOpinionArticle(probiDocLink);
+                          setProbiDocLink("");
+                          speakText("Opinion article submitted to the layout editor and deputy.");
+                        }}
+                        className="text-[10px] font-bold text-white bg-brand-maroon hover:bg-brand-maroon-dark px-2.5 py-1.5 rounded-lg shrink-0 cursor-pointer"
+                      >
+                        Submit
+                      </button>
+                    </div>
+                    <p className="text-[9px] text-gray-400 dark:text-neutral-500">
+                      Submissions go to the Layout Editor and Layout Deputy for review and marking as done.
+                    </p>
+                  </div>
+                </div>
+              )}
+
             {/* Dark / Light Mode Selector */}
             <div className="space-y-2">
               <label className="font-semibold text-gray-700 dark:text-neutral-200 flex items-center gap-2">

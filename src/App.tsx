@@ -23,11 +23,11 @@ import { OFFICIAL_MEMBERS_MAP, getPreferredFirstName, resolveLayoutAssignee, res
 import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
 import { getCanvaLinkForContent, getPubmatCanvaTemplates, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
-import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, upsertCalendarEvent, deleteCalendarEvent, createPoll, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, clearNotifications, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, type MemberLoginMap } from "./lib/supabase";
+import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, upsertCalendarEvent, deleteCalendarEvent, createPoll, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, clearNotifications, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, type MemberLoginMap } from "./lib/supabase";
 import mkuleImg from "./mkule.png";
 
 // Domain Models
-import { Task, TeamMember, CalendarEvent, Poll, Notification, TaskComment, UserRole, normalizeEmail } from "./types";
+import { Task, TeamMember, CalendarEvent, Poll, Notification, TaskComment, UserRole, normalizeEmail, OpinionArticle, ProbiTrackerState, DEFAULT_PROBI_CONGRATS_MESSAGE } from "./types";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
@@ -45,6 +45,7 @@ export default function App() {
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [probiTracker, setProbiTracker] = useState<ProbiTrackerState>({ congratsMessage: DEFAULT_PROBI_CONGRATS_MESSAGE, articles: [] });
   const [loading, setLoading] = useState(true);
   const bootTimeRef = useRef<number>(Date.now());
 
@@ -307,7 +308,7 @@ export default function App() {
   // Fetch all app data from Supabase and initialise local state
   const fetchAllState = async () => {
     try {
-      const [sbTasks, sbMembers, sbComments, sbEvents, sbPolls, sbAnnouncements, sbNotifications, sbIssueSheets, sbMemberLogins] = await Promise.all([
+      const [sbTasks, sbMembers, sbComments, sbEvents, sbPolls, sbAnnouncements, sbNotifications, sbIssueSheets, sbMemberLogins, sbProbiTracker] = await Promise.all([
         fetchTasks(),
         fetchMembers(),
         fetchComments(),
@@ -316,7 +317,8 @@ export default function App() {
         fetchAnnouncements(),
         fetchNotifications(),
         fetchIssueSheets(),
-        fetchMemberLogins()
+        fetchMemberLogins(),
+        fetchProbiTrackerState()
       ]);
 
       setTasks(tagTasksWithSourceRows(applyAssignmentLinkDefaults(sbTasks), (sbIssueSheets && sbIssueSheets.length > 0) ? sbIssueSheets : issueSheetsRef.current));
@@ -327,6 +329,7 @@ export default function App() {
       setPolls(sbPolls);
       setAnnouncements(sbAnnouncements);
       setNotifications(sbNotifications);
+      if (sbProbiTracker) setProbiTracker(sbProbiTracker);
 
       if (sbIssueSheets && sbIssueSheets.length > 0) {
         setIssueSheets(sbIssueSheets);
@@ -842,6 +845,57 @@ export default function App() {
       }
       createNotification(notif).catch(() => {});
     });
+  };
+
+  // Probi Tracker — opinion article submissions, approvals, congrats message
+  const commitProbiTracker = (next: ProbiTrackerState) => {
+    setProbiTracker(next);
+    saveProbiTrackerState(next);
+  };
+
+  const handleSubmitOpinionArticle = (docLink: string) => {
+    const trimmed = docLink.trim();
+    if (!trimmed || !isAuthenticated) return;
+    const article: OpinionArticle = {
+      id: `opinion-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      memberEmail: userEmail,
+      memberName: userName,
+      docLink: trimmed,
+      submittedAt: new Date().toISOString(),
+      status: "Submitted"
+    };
+    commitProbiTracker({ ...probiTracker, articles: [article, ...probiTracker.articles] });
+    handleAddNotification(
+      "Opinion Article Submitted",
+      `${userName} submitted an opinion article for review.`,
+      "info",
+      getEditorDeputyEmails()
+    );
+  };
+
+  const handleMarkOpinionArticleDone = (articleId: string) => {
+    const target = probiTracker.articles.find((a) => a.id === articleId);
+    if (!target || target.status === "Done") return;
+    commitProbiTracker({
+      ...probiTracker,
+      articles: probiTracker.articles.map((a) =>
+        a.id === articleId
+          ? { ...a, status: "Done" as const, doneBy: userName, doneAt: new Date().toISOString() }
+          : a
+      )
+    });
+    handleAddNotification(
+      "Opinion Article Completed",
+      `Your opinion article was marked done by ${userName}.`,
+      "info",
+      [target.memberEmail]
+    );
+  };
+
+  const handleUpdateProbiCongratsMessage = (message: string) => {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+    commitProbiTracker({ ...probiTracker, congratsMessage: trimmed });
   };
 
   // The bell feed only ever shows alerts addressed to the signed-in account.
@@ -2037,6 +2091,9 @@ export default function App() {
                 tasks={tasks}
                 memberLogins={memberLogins}
                 onUpdateMembers={handleUpdateMembers}
+                probiTracker={probiTracker}
+                onMarkOpinionArticleDone={handleMarkOpinionArticleDone}
+                onUpdateProbiCongratsMessage={handleUpdateProbiCongratsMessage}
               />
             )}
 
@@ -2047,6 +2104,8 @@ export default function App() {
                 currentUserEmail={userEmail}
                 members={members}
                 tasks={tasks}
+                probiTracker={probiTracker}
+                onSubmitOpinionArticle={handleSubmitOpinionArticle}
                 speechEnabled={speechEnabled}
                 setSpeechEnabled={setSpeechEnabled}
                 fontSizeMultiplier={fontSizeMultiplier}

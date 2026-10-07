@@ -11,7 +11,10 @@ import {
   TaskStatus, 
   TaskPriority, 
   UserRole,
-  normalizeEmail 
+  normalizeEmail,
+  OpinionArticle,
+  ProbiTrackerState,
+  DEFAULT_PROBI_CONGRATS_MESSAGE
 } from "../types";
 import { getOfficialDisplayName, resolveMemberEmail } from "./memberUtils";
 import { isOnlinePubmatTask, MEDIUM_CANVA_LINK } from "./canvaTemplates";
@@ -931,4 +934,37 @@ export function subscribeToLayoutRealtime(handlers: RealtimeHandlers): () => voi
   return () => {
     supabase.removeChannel(channel);
   };
+}
+
+/* ------------------- Probi Tracker state (app_state row) ------------------- */
+export async function fetchProbiTrackerState(): Promise<ProbiTrackerState | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from("app_state").select("data").eq("id", "probi_tracker").maybeSingle();
+  if (error && error.code !== "PGRST116") {
+    console.warn("Probi tracker fetch failed:", error.message);
+    return null;
+  }
+  if (!data?.data || typeof data.data !== "object") return null;
+  const d = data.data as any;
+  return {
+    congratsMessage:
+      typeof d.congratsMessage === "string" && d.congratsMessage.trim()
+        ? d.congratsMessage
+        : DEFAULT_PROBI_CONGRATS_MESSAGE,
+    articles: Array.isArray(d.articles) ? (d.articles as OpinionArticle[]) : []
+  };
+}
+
+export async function saveProbiTrackerState(state: ProbiTrackerState): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.from("app_state").upsert({
+    id: "probi_tracker",
+    data: state,
+    updated_at: new Date().toISOString()
+  });
+  if (error) {
+    console.error("Error saving probi tracker to app_state:", error.message);
+    return false;
+  }
+  return true;
 }
