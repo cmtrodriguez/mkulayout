@@ -826,7 +826,7 @@ export default function ProfileSettings({
                     <div className="flex items-center justify-between gap-2 text-[11px]">
                       <span className="font-semibold text-gray-700 dark:text-neutral-200 flex items-center gap-1.5">
                         <CheckCircle className={`w-3.5 h-3.5 ${probiTaskDoneCount >= 8 ? "text-emerald-600" : "text-gray-300 dark:text-neutral-600"}`} />
-                        Mkule issue / online tasks completed
+                        Issue or Online Tasks Completed
                       </span>
                       <span className="font-bold text-gray-900 dark:text-neutral-100">{Math.min(probiTaskDoneCount, 8)} / 8</span>
                     </div>
@@ -846,30 +846,6 @@ export default function ProfileSettings({
                   </div>
 
                   <div className="space-y-2">
-                    <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">My opinion articles</span>
-                    {myOpinionArticles.length === 0 && (
-                      <p className="text-[11px] text-gray-500 dark:text-neutral-400">No opinion article submitted yet.</p>
-                    )}
-                    {myOpinionArticles.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between gap-2 bg-white/70 dark:bg-neutral-900/70 border border-gray-200 dark:border-neutral-700 rounded-lg px-2.5 py-2">
-                        <a
-                          href={a.docLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[11px] font-semibold text-brand-maroon dark:text-brand-maroon-light hover:underline flex items-center gap-1.5 truncate"
-                        >
-                          <ExternalLink className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{a.docLink}</span>
-                        </a>
-                        {a.status === "Done" ? (
-                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0">
-                            Done{a.doneBy ? ` • ${a.doneBy}` : ""}
-                          </span>
-                        ) : (
-                          <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shrink-0">Submitted</span>
-                        )}
-                      </div>
-                    ))}
                     <div className="flex items-center gap-2 pt-1">
                       <input
                         type="url"
