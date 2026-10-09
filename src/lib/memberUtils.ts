@@ -1,0 +1,287 @@
+import { UserRole } from "../types";
+
+export interface MemberOfficialInfo {
+  email: string;
+  officialName: string;
+  displayName: string;
+  preferredFirstName: string;
+  role: UserRole;
+  college: string;
+  contact: string;
+}
+
+export const OFFICIAL_MEMBERS_MAP: Record<string, MemberOfficialInfo> = {
+  "ctrodriguez2@up.edu.ph": {
+    email: "ctrodriguez2@up.edu.ph",
+    officialName: "Rodriguez, Christian Matthew T.",
+    displayName: "Xtian Rodriguez",
+    preferredFirstName: "Xtian",
+    role: "Layout Editor",
+    college: "CAS",
+    contact: "9812918708"
+  },
+  "rcabad1@up.edu.ph": {
+    email: "rcabad1@up.edu.ph",
+    officialName: "Abad, Ryaen Vincent C.",
+    displayName: "Ronz Abad",
+    preferredFirstName: "Ronz",
+    role: "Layout Deputy",
+    college: "CAMP",
+    contact: "9270675190"
+  },
+  "lfroldan@up.edu.ph": {
+    email: "lfroldan@up.edu.ph",
+    officialName: "Roldan, Lady Jamaica F.",
+    displayName: "Jam Roldan",
+    preferredFirstName: "Jam",
+    role: "Layout Staffer",
+    college: "CAMP",
+    contact: "9629022674"
+  },
+  "cndonor@up.edu.ph": {
+    email: "cndonor@up.edu.ph",
+    officialName: "Donor, Carl Dexter N.",
+    displayName: "Carl Donor",
+    preferredFirstName: "Carl",
+    role: "Layout Staffer",
+    college: "CP",
+    contact: "9054353693"
+  },
+  "jaumali2@up.edu.ph": {
+    email: "jaumali2@up.edu.ph",
+    officialName: "Umali, Jherica A.",
+    displayName: "Jhe Umali",
+    preferredFirstName: "Jhe",
+    role: "Layout Probi",
+    college: "CPH",
+    contact: "9294904845"
+  },
+  "ctmusni@up.edu.ph": {
+    email: "ctmusni@up.edu.ph",
+    officialName: "Musni, Clarisse Joy T.",
+    displayName: "Aris Musni",
+    preferredFirstName: "Aris",
+    role: "Layout Probi",
+    college: "CP",
+    contact: "9305260606"
+  },
+  "casorio@up.edu.ph": {
+    email: "casorio@up.edu.ph",
+    officialName: "Sorio, Clarissa Joyce A.",
+    displayName: "Issa Sorio",
+    preferredFirstName: "Issa",
+    role: "Layout Probi",
+    college: "CP",
+    contact: "9662691102"
+  },
+  "ztatienza@up.edu.ph": {
+    email: "ztatienza@up.edu.ph",
+    officialName: "Atienza, Zoe Marceux T.",
+    displayName: "Zoe Atienza",
+    preferredFirstName: "Zoe",
+    role: "Layout Probi",
+    college: "CAS",
+    contact: "9989500413"
+  },
+  "jcmagno1@up.edu.ph": {
+    email: "jcmagno1@up.edu.ph",
+    officialName: "Magno, Joanna Eve C.",
+    displayName: "Eve Magno",
+    preferredFirstName: "Eve",
+    role: "Layout Probi",
+    college: "CAS",
+    contact: "9667320169"
+  },
+  "ibdizon@up.edu.ph": {
+    email: "ibdizon@up.edu.ph",
+    officialName: "Dizon, Iris B.",
+    displayName: "Iris Dizon",
+    preferredFirstName: "Iris",
+    role: "Layout Probi",
+    college: "CAMP",
+    contact: "9955338010"
+  }
+};
+
+/**
+ * Returns the requested preferred First Name for the user
+ * (e.g. Christian, Ronz, Jam, Carl, Jhe, Aris, Issa, Zoe, Eve, Iris)
+ */
+export function getPreferredFirstName(name?: string | null, email?: string | null): string {
+  if (email) {
+    const lowEmail = email.trim().toLowerCase();
+    for (const [key, val] of Object.entries(OFFICIAL_MEMBERS_MAP)) {
+      if (key.toLowerCase() === lowEmail) {
+        return val.preferredFirstName;
+      }
+    }
+  }
+
+  if (!name) return "Staff";
+
+  const lower = name.toLowerCase();
+  if (lower.includes("rodriguez") || lower.includes("christian")) return "Christian";
+  if (lower.includes("abad") || lower.includes("ronz") || lower.includes("ryaen")) return "Ronz";
+  if (lower.includes("roldan") || lower.includes("jam") || lower.includes("lady")) return "Jam";
+  if (lower.includes("donor") || lower.includes("carl")) return "Carl";
+  if (lower.includes("umali") || lower.includes("jhe") || lower.includes("jherica")) return "Jhe";
+  if (lower.includes("musni") || lower.includes("aris") || lower.includes("clarisse")) return "Aris";
+  if (lower.includes("sorio") || lower.includes("issa") || lower.includes("clarissa")) return "Issa";
+  if (lower.includes("atienza") || lower.includes("zoe")) return "Zoe";
+  if (lower.includes("magno") || lower.includes("eve") || lower.includes("joanna")) return "Eve";
+  if (lower.includes("dizon") || lower.includes("iris")) return "Iris";
+
+  if (name.includes(",")) {
+    const parts = name.split(",");
+    if (parts[1]) {
+      const first = parts[1].trim().split(" ")[0];
+      if (first) return first;
+    }
+  }
+
+  return name.trim().split(" ")[0] || "Staff";
+}
+
+/**
+ * Get official display name (e.g. "Ronz Abad")
+ */
+export function getOfficialDisplayName(email?: string, name?: string): string {
+  if (email) {
+    const info = OFFICIAL_MEMBERS_MAP[email.trim().toLowerCase()];
+    if (info) return info.displayName;
+  }
+  if (name) {
+    const lower = name.toLowerCase();
+    for (const val of Object.values(OFFICIAL_MEMBERS_MAP)) {
+      if (
+        lower.includes(val.preferredFirstName.toLowerCase()) || 
+        lower.includes(val.officialName.toLowerCase().split(",")[0])
+      ) {
+        return val.displayName;
+      }
+    }
+  }
+  return name || "Layout Artist";
+}
+
+export function getOfficialFullName(name?: string | null, email?: string | null): string {
+  if (email) {
+    const info = OFFICIAL_MEMBERS_MAP[email.trim().toLowerCase()];
+    if (info) return info.officialName;
+  }
+
+  if (!name) return "Layout Artist";
+
+  const lower = name.toLowerCase();
+  for (const val of Object.values(OFFICIAL_MEMBERS_MAP)) {
+    if (
+      lower.includes(val.preferredFirstName.toLowerCase()) ||
+      lower.includes(val.officialName.toLowerCase().split(",")[0]) ||
+      lower.includes(val.displayName.toLowerCase())
+    ) {
+      return val.officialName;
+    }
+  }
+
+  const trimmed = name.trim();
+  if (!trimmed) return "Layout Artist";
+  if (trimmed.includes(",")) return trimmed;
+  const parts = trimmed.split(/\s+/);
+  if (parts.length <= 1) return trimmed;
+  return `${parts[parts.length - 1]}, ${parts.slice(0, -1).join(" ")}`;
+}
+
+export function resolveLayoutAssignee(
+  name: string,
+  members: Array<{ name?: string; email?: string; displayName?: string }>
+): { name: string; email: string } {
+  const needle = (name || "").trim();
+  if (!needle || needle.toLowerCase() === "unassigned") {
+    return { name: needle || "Unassigned", email: "" };
+  }
+
+  const lower = needle.toLowerCase();
+  const fromRoster = members.find((member) => {
+    const first = getPreferredFirstName(member.name || "", member.email || "").toLowerCase();
+    return (
+      first === lower ||
+      (member.name || "").toLowerCase().includes(lower) ||
+      (member.displayName || "").toLowerCase().includes(lower)
+    );
+  });
+  if (fromRoster?.email) {
+    return { name: getPreferredFirstName(fromRoster.name || needle, fromRoster.email), email: fromRoster.email };
+  }
+
+  const official = Object.values(OFFICIAL_MEMBERS_MAP).find((info) =>
+    info.preferredFirstName.toLowerCase() === lower ||
+    info.officialName.toLowerCase().includes(lower) ||
+    info.displayName.toLowerCase().includes(lower)
+  );
+  if (official) {
+    return { name: official.preferredFirstName, email: official.email };
+  }
+
+  return { name: needle, email: "" };
+}
+
+/**
+ * Checks if a task is assigned to a specific staff member
+ */
+export function isUserAssignedToTask(task: { illusLayout?: string; graphics?: string; writer?: string; assigneeEmail?: string; assigneeName?: string; onlineHandler?: string }, userName: string, userEmail: string): boolean {
+  const normalizedUserEmail = userEmail?.trim().toLowerCase();
+  const normalizedTaskEmail = task.assigneeEmail?.trim().toLowerCase();
+
+  if (normalizedUserEmail && normalizedTaskEmail && normalizedUserEmail === normalizedTaskEmail) {
+    return true;
+  }
+
+  const preferred = getPreferredFirstName(userName, userEmail).toLowerCase();
+  const rawTarget = `${task.illusLayout || ""} ${task.assigneeName || ""} ${task.graphics || ""} ${task.onlineHandler || ""}`.toLowerCase();
+
+  if (rawTarget.includes(preferred)) return true;
+
+  if (normalizedUserEmail) {
+    const info = OFFICIAL_MEMBERS_MAP[normalizedUserEmail];
+    if (info) {
+      const lastName = info.officialName.split(",")[0].toLowerCase();
+      if (rawTarget.includes(lastName)) return true;
+    }
+  }
+
+  if (userName) {
+    const parts = userName.toLowerCase().split(/[\s,]+/);
+    for (const p of parts) {
+      if (p.length > 2 && rawTarget.includes(p)) return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Resolve any name label (preferred first name, official name, display name) or email
+ * to the canonical official account email. Empty string when unknown.
+ */
+export function resolveMemberEmail(nameOrEmail?: string | null): string {
+  const needle = (nameOrEmail || "").trim().toLowerCase();
+  if (!needle || needle === "unassigned") return "";
+  const all = Object.values(OFFICIAL_MEMBERS_MAP);
+  if (needle.includes("@")) {
+    return all.find(m => m.email.toLowerCase() === needle)?.email || needle;
+  }
+  return (
+    all.find(m =>
+      m.preferredFirstName.toLowerCase() === needle ||
+      m.officialName.toLowerCase().includes(needle) ||
+      m.displayName.toLowerCase().includes(needle)
+    )?.email || ""
+  );
+}
+
+/** Emails of the Layout Editor and Layout Deputy accounts (review/approval alerts). */
+export function getEditorDeputyEmails(): string[] {
+  return Object.values(OFFICIAL_MEMBERS_MAP)
+    .filter(m => m.role === "Layout Editor" || m.role === "Layout Deputy")
+    .map(m => m.email);
+}
