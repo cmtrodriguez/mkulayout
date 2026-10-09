@@ -138,7 +138,7 @@ export default function MeetingPolls({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       
       {/* Active Polls List */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className={`space-y-6 ${showCreate ? "lg:col-span-2 lg:order-2" : "lg:col-span-3"}`}>
         
         <div className="flex items-center justify-between">
           <div>
@@ -163,9 +163,9 @@ export default function MeetingPolls({
           )}
         </div>
 
-        <div className="space-y-6">
+        <div className={showCreate ? "space-y-6" : "space-y-6 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0"}>
           {polls.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-500 text-xs space-y-1">
+            <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-500 text-xs space-y-1 lg:col-span-2">
               <Vote className="w-8 h-8 text-gray-300 mx-auto mb-2" />
               <p className="font-bold text-gray-700 text-sm">No layout polls active</p>
               <p>Click "Propose Poll" to create a new team consensus vote on design decisions or schedules.</p>
@@ -282,8 +282,8 @@ export default function MeetingPolls({
       </div>
 
       {/* Poll Proposal Sidebar Form */}
-      <div className="space-y-6">
-        {showCreate && (
+      {showCreate && (
+      <div className="space-y-6 lg:order-1">
           <div className="glass-card rounded-2xl p-5 space-y-4 animate-fade-in">
             <div className="border-b pb-2 flex items-center justify-between">
               <h3 className="font-display font-bold text-gray-900 text-sm flex items-center gap-1.5">
@@ -379,9 +379,8 @@ export default function MeetingPolls({
               </button>
             </div>
           </div>
-        )}
-
       </div>
+      )}
 
     </div>
   );
