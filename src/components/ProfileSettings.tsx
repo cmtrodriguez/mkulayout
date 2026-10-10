@@ -10,6 +10,27 @@ import { TeamMember, UserRole, normalizeEmail, ProbiTrackerState, DEFAULT_PROBI_
 import { OFFICIAL_ACCOUNTS } from "./LoginPage";
 import { OFFICIAL_MEMBERS_MAP, getOfficialFullName, getPreferredFirstName } from "../lib/memberUtils";
 import { AccentTheme, ACCENT_OPTIONS } from "../lib/accentTheme";
+import { toISOFormatDate } from "./AssignmentsList";
+
+// Sortable timestamp for a Task Archive row, derived from the releaseDate label
+// the card actually displays. Labels arrive as "OCTOBER 3, 2026", "2026-10-03"
+// or a bare "OCTOBER 3"; issue-sheet rows instead hold a page number or
+// "Issue Board", which have no date and return NaN so they sink to the bottom.
+function archivedTaskDate(task: any): number {
+  const raw = String(task.releaseDate || "").trim();
+  if (!raw) return NaN;
+
+  // A bare "OCTOBER 3" carries no year. Borrow it from lastUpdated rather than
+  // assuming the current year, so a December task still outranks a January one
+  // across a year boundary.
+  const updated = new Date(String(task.lastUpdated || ""));
+  const source = /\d{4}/.test(raw) || isNaN(updated.getTime())
+    ? raw
+    : `${raw} ${updated.getUTCFullYear()}`;
+
+  const iso = toISOFormatDate(source);
+  return iso ? Date.parse(iso) : NaN;
+}
 
 interface ProfileSettingsProps {
   currentUserRole: UserRole;
@@ -402,7 +423,14 @@ export default function ProfileSettings({
   const activeWork = memberTasks.filter((task: any) => task.progress !== "Completed" && task.progress !== "Approved" && task.progress !== "Archived" && task.progress !== "Shelved").length;
   const archivedTasks = memberTasks
     .filter((task: any) => task.progress === "Completed" || task.progress === "Approved")
-    .sort((a: any, b: any) => String(b.lastUpdated || "").localeCompare(String(a.lastUpdated || "")));
+    .sort((a: any, b: any) => {
+      const dateA = archivedTaskDate(a);
+      const dateB = archivedTaskDate(b);
+      if (isNaN(dateA) || isNaN(dateB)) {
+        return isNaN(dateA) === isNaN(dateB) ? 0 : isNaN(dateA) ? 1 : -1;
+      }
+      return dateB - dateA;
+    });
 
   const monthCounts = monthOrder.map((month) => {
     const count = memberTasks.filter((task: any) => {

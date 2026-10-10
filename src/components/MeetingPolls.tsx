@@ -138,7 +138,7 @@ export default function MeetingPolls({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       
       {/* Active Polls List */}
-      <div className={`space-y-6 ${showCreate ? "lg:col-span-2 lg:order-2" : "lg:col-span-3"}`}>
+      <div className={`space-y-6 ${showCreate ? "lg:col-span-2 lg:order-1" : "lg:col-span-3"}`}>
         
         <div className="flex items-center justify-between">
           <div>
@@ -283,7 +283,7 @@ export default function MeetingPolls({
 
       {/* Poll Proposal Sidebar Form */}
       {showCreate && (
-      <div className="space-y-6 lg:order-1">
+      <div className="space-y-6 lg:order-2">
           <div className="glass-card rounded-2xl p-5 space-y-4 animate-fade-in">
             <div className="border-b pb-2 flex items-center justify-between">
               <h3 className="font-display font-bold text-gray-900 text-sm flex items-center gap-1.5">
