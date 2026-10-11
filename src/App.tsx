@@ -9,7 +9,7 @@ import {
 
 // Sub Components
 import DashboardOverview from "./components/DashboardOverview";
-import AssignmentsList, { toISOFormatDate } from "./components/AssignmentsList";
+import AssignmentsList from "./components/AssignmentsList";
 import MeetingPolls from "./components/MeetingPolls";
 import TeamDirectory from "./components/TeamDirectory";
 import CalendarView from "./components/CalendarView";
@@ -22,6 +22,7 @@ import { CanvaDirectory } from "./components/CanvaDirectory";
 import { OFFICIAL_MEMBERS_MAP, getPreferredFirstName, resolveLayoutAssignee, resolveMemberEmail, getEditorDeputyEmails } from "./lib/memberUtils";
 import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
+import { toISOFormatDate } from "./lib/taskDate";
 import { getCanvaLinkForContent, getPubmatCanvaTemplates, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
 import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, upsertCalendarEvent, deleteCalendarEvent, createPoll, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, clearNotifications, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, type MemberLoginMap } from "./lib/supabase";
 import mkuleImg from "./mkule.png";

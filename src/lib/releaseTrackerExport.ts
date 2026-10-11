@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import type { Task } from "../types";
 import { extractHyperlinkDetails } from "./canvaTemplates";
+import { byReleaseDateDesc } from "./taskDate";
 
 const RELEASE_TRACKER_COLUMNS = [
   "SECTION",
@@ -29,7 +30,11 @@ export function buildReleaseTrackerRows(tasks: Task[]): string[][] {
   const onlineTasks = tasks.filter(isOnlineRelease);
   const matchedOnlineIds = new Set<string>();
 
-  const releaseRows: string[][] = printTasks.map((printTask) => {
+  // Each row keeps the task whose releaseDate lands in the POSTING DATE cell, so
+  // the sort reads exactly the value the sheet displays.
+  const datedRows: { values: string[]; dateSource: Task }[] = [];
+
+  printTasks.forEach((printTask) => {
     const baseTitle = getBaseTitle(printTask.title);
     const onlineTask = onlineTasks.find((candidate) => {
       if (matchedOnlineIds.has(candidate.id)) return false;
@@ -46,36 +51,46 @@ export function buildReleaseTrackerRows(tasks: Task[]): string[][] {
       onlineTask?.graphicsIllus || onlineTask?.graphics || "",
     ].map((name) => name.trim()).filter(Boolean))).join(", ");
 
-    return [
-      sourceTask.typeOfContent,
-      baseTitle,
-      printTask.illusLayout,
-      onlineTask?.illusLayout || "",
-      illustrators,
-      onlineTask?.releaseDate || printTask.releaseDate,
-      onlineTask?.writeup || printTask.writeup,
-      getLinkValue(onlineTask?.draftLink || printTask.draftLink || onlineTask?.addedToLayout || printTask.addedToLayout),
-      getLinkValue(onlineTask?.pubmatLink || printTask.pubmatLink),
-      onlineTask?.progress || printTask.progress,
-    ];
+    datedRows.push({
+      dateSource: onlineTask?.releaseDate ? onlineTask : printTask,
+      values: [
+        sourceTask.typeOfContent,
+        baseTitle,
+        printTask.illusLayout,
+        onlineTask?.illusLayout || "",
+        illustrators,
+        onlineTask?.releaseDate || printTask.releaseDate,
+        onlineTask?.writeup || printTask.writeup,
+        getLinkValue(onlineTask?.draftLink || printTask.draftLink || onlineTask?.addedToLayout || printTask.addedToLayout),
+        getLinkValue(onlineTask?.pubmatLink || printTask.pubmatLink),
+        onlineTask?.progress || printTask.progress,
+      ],
+    });
   });
 
   onlineTasks.filter((task) => !matchedOnlineIds.has(task.id)).forEach((task) => {
-    releaseRows.push([
-      task.typeOfContent,
-      getBaseTitle(task.title),
-      "",
-      task.illusLayout,
-      task.graphicsIllus || task.graphics || "",
-      task.releaseDate,
-      task.writeup,
-      getLinkValue(task.draftLink || task.addedToLayout),
-      getLinkValue(task.pubmatLink),
-      task.progress,
-    ]);
+    datedRows.push({
+      dateSource: task,
+      values: [
+        task.typeOfContent,
+        getBaseTitle(task.title),
+        "",
+        task.illusLayout,
+        task.graphicsIllus || task.graphics || "",
+        task.releaseDate,
+        task.writeup,
+        getLinkValue(task.draftLink || task.addedToLayout),
+        getLinkValue(task.pubmatLink),
+        task.progress,
+      ],
+    });
   });
 
-  return releaseRows;
+  // Latest posting date on top, oldest at the bottom. Rows whose POSTING DATE
+  // holds no real date (an issue-sheet page number, "Issue Board") fall last.
+  datedRows.sort((a, b) => byReleaseDateDesc(a.dateSource, b.dateSource));
+
+  return datedRows.map((row) => row.values);
 }
 
 export async function buildReleaseTrackerWorkbook(tasks: Task[]): Promise<ArrayBuffer> {

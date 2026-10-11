@@ -14,6 +14,7 @@ import { fetchGoogleDocTitle, extractDocInputDetails } from "../lib/googleDocTit
 
 import { OFFICIAL_MEMBERS_MAP, getOfficialDisplayName, getPreferredFirstName, resolveLayoutAssignee } from "../lib/memberUtils";
 import { seededUuid } from "../lib/seededUuid";
+import { toISOFormatDate } from "../lib/taskDate";
 
 interface AssignmentsListProps {
   tasks: Task[];
@@ -23,33 +24,6 @@ interface AssignmentsListProps {
   onUpdateTasks: (tasks: Task[]) => void;
   onAddTask: () => void;
   onOpenTaskDetails: (task: Task) => void;
-}
-
-export function toISOFormatDate(dateStr: string): string {
-  if (!dateStr) return "";
-  const trimmed = dateStr.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
-  }
-  const monthDayYear = trimmed.match(/^([a-z]+)\s+(\d{1,2}),?\s+(\d{4})$/i);
-  if (monthDayYear) {
-    const months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
-    const month = months.findIndex((name) => name === monthDayYear[1].toLowerCase() || name.slice(0, 3) === monthDayYear[1].toLowerCase());
-    const year = Number(monthDayYear[3]);
-    const day = Number(monthDayYear[2]);
-    if (month !== -1 && day >= 1 && day <= new Date(year, month + 1, 0).getDate()) {
-      return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    }
-  }
-  const currentYear = new Date().getFullYear();
-  const parsed = new Date(`${trimmed} ${currentYear}`);
-  if (!isNaN(parsed.getTime())) {
-    const y = parsed.getFullYear();
-    const m = String(parsed.getMonth() + 1).padStart(2, "0");
-    const d = String(parsed.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }
-  return "";
 }
 
 export function formatISOToDisplayDate(isoStr: string): string {
