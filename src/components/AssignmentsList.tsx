@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { 
-  ClipboardList, Search, Filter, Plus, ArrowUpDown, Clock, CheckCircle, 
+import {
+  ClipboardList, Search, Filter, Plus, ArrowUpDown, Clock, CheckCircle,
   AlertCircle, Edit2, Check, ArrowRight, BookOpen, User, ExternalLink,
   Trash2, FileSpreadsheet, ListPlus, X, Link as LinkIcon, FolderPlus,
-  FileText, CheckCircle2, Loader2, RefreshCw
+  FileText, CheckCircle2, Loader2, RefreshCw, Undo2
 } from "lucide-react";
 import { Task, TeamMember } from "../types";
 import { getAllCanvaTemplates, extractHyperlinkDetails, getCanvaLinkForContent, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "../lib/canvaTemplates";
@@ -24,6 +24,7 @@ interface AssignmentsListProps {
   onUpdateTasks: (tasks: Task[]) => void;
   onAddTask: () => void;
   onOpenTaskDetails: (task: Task) => void;
+  onAddNotification?: (title: string, message: string, type: 'info' | 'assignment' | 'deadline' | 'revision' | 'poll' | 'birthday', targetEmails?: string[]) => void;
 }
 
 export function formatISOToDisplayDate(isoStr: string): string {
@@ -47,6 +48,7 @@ export default function AssignmentsList({
   onUpdateTasks,
   onAddTask,
   onOpenTaskDetails,
+  onAddNotification,
 }: AssignmentsListProps) {
   const [search, setSearch] = useState("");
   const [formatFilter, setFormatFilter] = useState("All");
@@ -78,6 +80,29 @@ export default function AssignmentsList({
     });
     onUpdateTasks(updated);
     speakText(`Assignment progress updated to ${newStatus}`);
+  };
+
+  // Reopens a finished task — for accidental approvals or last-minute revisions.
+  const handleReactivateTask = (task: Task) => {
+    const updated = tasks.map(t =>
+      t.id === task.id
+        ? { ...t, progress: "For Review" as const, lastUpdated: new Date().toISOString() }
+        : t
+    );
+    onUpdateTasks(updated);
+    if (onAddNotification) {
+      const assigneeEmail = task.assigneeEmail ||
+        members.find(m => m.name === task.illusLayout || m.name.includes(task.illusLayout))?.email;
+      if (assigneeEmail) {
+        onAddNotification(
+          "Task Reactivated",
+          `'${task.title}' was reopened for review after being marked done. Kindly check 'My Assignments'.`,
+          "revision",
+          [assigneeEmail]
+        );
+      }
+    }
+    speakText(`Task ${task.title} reactivated and back under review.`);
   };
 
   // State for Google Doc access confirmation modal
@@ -1054,15 +1079,27 @@ export default function AssignmentsList({
                   </select>
                 </div>
 
-                <button
-                  onClick={() => {
-                    onOpenTaskDetails(task);
-                    speakText("Opening full workspace dialogue for layout assignment card.");
-                  }}
-                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-brand-cream dark:bg-neutral-800 hover:bg-brand-maroon dark:hover:bg-brand-maroon text-brand-maroon dark:text-brand-maroon-light hover:text-white dark:hover:text-white border border-brand-maroon/20 dark:border-neutral-700 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
-                >
-                  Workspace <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                </button>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  {isDone && isAdmin && (
+                    <button
+                      onClick={() => handleReactivateTask(task)}
+                      className="px-2 sm:px-2.5 py-1 sm:py-1.5 bg-white dark:bg-neutral-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-gray-200 dark:border-neutral-700 hover:border-amber-300 dark:hover:border-amber-700 text-gray-600 dark:text-neutral-300 hover:text-amber-700 dark:hover:text-amber-300 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                      title="Reactivate: undo the finished status and put this task back under review"
+                      aria-label={`Reactivate finished task ${task.title}`}
+                    >
+                      <Undo2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Undo
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      onOpenTaskDetails(task);
+                      speakText("Opening full workspace dialogue for layout assignment card.");
+                    }}
+                    className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-brand-cream dark:bg-neutral-800 hover:bg-brand-maroon dark:hover:bg-brand-maroon text-brand-maroon dark:text-brand-maroon-light hover:text-white dark:hover:text-white border border-brand-maroon/20 dark:border-neutral-700 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                  >
+                    Workspace <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  </button>
+                </div>
               </div>
 
             </div>

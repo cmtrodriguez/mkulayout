@@ -410,6 +410,23 @@ export async function deleteComment(commentId: string): Promise<boolean> {
   return !error;
 }
 
+// Re-key every message of a replaced task onto its successor task so workspace
+// chats (issue and online) keep their history when a task is re-dispatched,
+// re-imported, or regenerated with a new id. Only explicit message deletion
+// (removedAt) ever takes a message out of a chat.
+export async function retargetComments(fromTaskId: string, toTaskId: string): Promise<boolean> {
+  if (!supabase || !fromTaskId || !toTaskId || fromTaskId === toTaskId) return false;
+  const { error } = await supabase
+    .from("task_comments")
+    .update({ task_id: toTaskId })
+    .eq("task_id", fromTaskId);
+  if (error) {
+    console.error("Error retargeting comments:", error.message);
+    return false;
+  }
+  return true;
+}
+
 // ============================================================================
 // CALENDAR EVENTS (Desk/Team Calendar)
 // ============================================================================

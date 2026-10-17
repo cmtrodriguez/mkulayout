@@ -24,7 +24,7 @@ import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
 import { toISOFormatDate } from "./lib/taskDate";
 import { getCanvaLinkForContent, getPubmatCanvaTemplates, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
-import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, upsertCalendarEvent, deleteCalendarEvent, createPoll, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, clearNotifications, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, type MemberLoginMap } from "./lib/supabase";
+import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, clearNotifications, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, type MemberLoginMap } from "./lib/supabase";
 import mkuleImg from "./mkule.png";
 
 // Domain Models
@@ -444,6 +444,38 @@ export default function App() {
   const persistTaskDiff = (prevTasks: Task[], nextTasks: Task[]) => {
     const prevById = new Map(prevTasks.filter((t) => isDbId(t.id)).map((t) => [t.id, t]));
     const newById = new Map(nextTasks.filter((t) => isDbId(t.id)).map((t) => [t.id, t]));
+
+    // Chat history follows the work: when a task row is replaced by a successor
+    // (issue-row re-dispatch, sheet re-import, row edit regenerating ids), move its
+    // messages onto the successor so workspace chats keep every comment unless the
+    // message itself was deleted.
+    const normalizeTaskTitle = (title: string) =>
+      title.replace(/\s*\(Online Pubmat\)$/i, "").trim().toLowerCase();
+    const findSuccessorTask = (prev: Task): Task | undefined => {
+      if (prev.sourceIssueRowId) {
+        const sameRow = nextTasks.filter(t => t.id !== prev.id && t.sourceIssueRowId === prev.sourceIssueRowId);
+        if (sameRow.length) {
+          return sameRow.find(t => t.typeOfRelease === prev.typeOfRelease && !t.isPendingConfirmation)
+            || sameRow.find(t => !t.isPendingConfirmation)
+            || sameRow[0];
+        }
+      }
+      const baseTitle = normalizeTaskTitle(prev.title);
+      return nextTasks.find(t =>
+        t.id !== prev.id &&
+        !prevById.has(t.id) &&
+        t.typeOfRelease === prev.typeOfRelease &&
+        normalizeTaskTitle(t.title) === baseTitle
+      );
+    };
+
+    prevTasks.forEach((prevTask) => {
+      if (nextTasks.some(t => t.id === prevTask.id)) return;
+      const successor = findSuccessorTask(prevTask);
+      if (!successor || successor.id === prevTask.id) return;
+      setComments((current) => current.map(c => c.taskId === prevTask.id ? { ...c, taskId: successor.id } : c));
+      retargetComments(prevTask.id, successor.id).catch(() => {});
+    });
 
     prevById.forEach((_, id) => {
       if (!newById.has(id)) void deleteTask(id);
@@ -2046,6 +2078,7 @@ export default function App() {
                 currentUserRole={userRole}
                 onUpdateTasks={handleUpdateTasks}
                 onOpenTaskDetails={setSelectedTask}
+                onAddNotification={handleAddNotification}
                 onAddTask={() => {
                   setFormReleaseType("Online Article");
                   setTaskFormOrigin("online-pubmat");

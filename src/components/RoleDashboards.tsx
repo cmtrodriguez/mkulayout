@@ -1,9 +1,9 @@
 import React, { useRef, useState } from "react";
-import { 
-  CheckSquare, Link, Clock, Plus, Award, ClipboardList, ShieldCheck, 
+import {
+  CheckSquare, Link, Clock, Plus, Award, ClipboardList, ShieldCheck,
   XCircle, Sparkles, AlertCircle, MessageCircle, FileDown, ExternalLink,
   ChevronRight, Calendar, User, Eye, Play, BookOpen, Search, Folder, LayoutGrid, CheckCircle, Send,
-  Lock, ShieldAlert, ImagePlus, X, Pencil, Trash2
+  Lock, ShieldAlert, ImagePlus, X, Pencil, Trash2, Undo2
 } from "lucide-react";
 import { Task, TeamMember, TaskComment, UserRole } from "../types";
 import { extractHyperlinkDetails, isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK, PRINT_ISSUE_DRIVE_LINK } from "../lib/canvaTemplates";
@@ -256,7 +256,7 @@ export function LayoutStaffDashboard({
                       <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1.5">
                           <span className="font-bold text-red-800 text-[10px] sm:text-[11px] uppercase tracking-wider flex items-center gap-1">
-                            Revision Requested by Layout Editor / EIC
+                            Revision Requested
                           </span>
                           <span className="text-[9px] sm:text-[10px] font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded-full border border-red-200 shrink-0">
                             Action Needed
@@ -430,7 +430,7 @@ export function LayoutStaffDashboard({
 
                     {taskComments.length === 0 ? (
                       <p className="text-[11px] sm:text-xs text-gray-400 italic bg-gray-50/50 p-2 sm:p-2.5 rounded-lg sm:rounded-xl border border-gray-100">
-                        No comments recorded yet. When the Layout Editor or EIC reviews your layout, their feedback will appear here.
+                        No comments yet.
                       </p>
                     ) : (
                       <div className="space-y-1.5 sm:space-y-2.5 max-h-52 sm:max-h-60 overflow-y-auto pr-1">
@@ -741,6 +741,26 @@ export function EicDashboard({
     speakText(`Revision request submitted for ${task.title}. Assigned artist notified.`);
   };
 
+  // Reopens a finished task — for accidental approvals or last-minute revisions.
+  const handleReactivateTask = (task: Task) => {
+    const updated: Task = {
+      ...task,
+      progress: "For Review",
+      lastUpdated: new Date().toISOString()
+    };
+    onUpdateTask(updated);
+    if (onAddNotification) {
+      const assigneeEmail = task.assigneeEmail || resolveMemberEmail(task.illusLayout);
+      onAddNotification(
+        "Task Reactivated",
+        `'${task.title}' was reopened for review after being marked done. Kindly check 'My Assignments'.`,
+        "revision",
+        assigneeEmail ? [assigneeEmail] : undefined
+      );
+    }
+    speakText(`Task ${task.title} reactivated and back under review.`);
+  };
+
   // Filter all tasks for the Oversight pipeline tab
   const filteredPipelineTasks = tasks.filter(t =>
     t.title.toLowerCase().includes(pipelineSearch.toLowerCase()) ||
@@ -1026,6 +1046,16 @@ export function EicDashboard({
                     </div>
 
                     <div className="flex items-center gap-3 self-start md:self-center">
+                      {isDoneTask && (
+                        <button
+                          onClick={() => handleReactivateTask(task)}
+                          className="px-2.5 py-1.5 bg-white dark:bg-neutral-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-gray-200 dark:border-neutral-700 hover:border-amber-300 dark:hover:border-amber-700 text-gray-600 dark:text-neutral-300 hover:text-amber-700 dark:hover:text-amber-300 rounded-xl text-[11px] font-bold flex items-center gap-1 shadow-xs cursor-pointer transition-all"
+                          title="Reactivate: undo the finished status and put this task back under review"
+                          aria-label={`Reactivate finished task ${task.title}`}
+                        >
+                          <Undo2 className="w-3.5 h-3.5" /> Undo
+                        </button>
+                      )}
                       {isOnlinePubmatTask(task.typeOfRelease, task.title) && task.canvaLink ? (
                         <a
                           href={task.canvaLink}

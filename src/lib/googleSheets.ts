@@ -2,6 +2,7 @@ import { initializeApp, getApp, getApps } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, Auth } from "firebase/auth";
 import defaultFirebaseConfig from "../../firebase-applet-config.json";
 import { Task, TeamMember, SheetMerge } from "../types";
+import { seededUuid } from "./seededUuid";
 
 export function getFirebaseConfig() {
   const saved = localStorage.getItem("custom_firebase_config");
@@ -583,7 +584,9 @@ export function parseScheduleRows(rows: string[][], currentTasks: Task[]): Task[
     const existing = currentTasks.find(t => t.title.toLowerCase() === title.toLowerCase());
 
     return {
-      id: existing?.id || `sheet-t-${i}-${Date.now()}`,
+      // Deterministic id per article title so re-imports keep the same task row
+      // and its workspace chat intact instead of minting a new id every sync.
+      id: existing?.id || seededUuid(`sheet-import-${title.toLowerCase().trim()}`),
       title,
       typeOfRelease: "Issue Article",
       typeOfContent,

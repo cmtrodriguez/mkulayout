@@ -366,13 +366,36 @@ html.dark .bg-stone-100\/60 {
 }
 
 /* Pastel status surfaces adapt to tinted dark panels */
-html.dark .bg-red-50, html.dark .bg-red-50\/80, html.dark .bg-red-50\/60, html.dark .bg-red-100 { background-color: #3a1512 !important; }
-html.dark .bg-blue-50, html.dark .bg-blue-100 { background-color: #12203a !important; }
-html.dark .bg-green-50, html.dark .bg-green-100, html.dark .bg-emerald-50, html.dark .bg-emerald-50\/80, html.dark .bg-emerald-100 { background-color: #10281e !important; }
-html.dark .bg-cyan-50, html.dark .bg-cyan-100 { background-color: #0e2a30 !important; }
-html.dark .bg-amber-50, html.dark .bg-amber-100 { background-color: #33240e !important; }
-html.dark .bg-purple-50, html.dark .bg-purple-100 { background-color: #251238 !important; }
+html.dark .bg-red-50, html.dark .bg-red-50\/80, html.dark .bg-red-50\/60, html.dark .bg-red-50\/20, html.dark .bg-red-50\/10, html.dark .bg-red-100 { background-color: #3a1512 !important; }
+html.dark .bg-blue-50, html.dark .bg-blue-50\/80, html.dark .bg-blue-100 { background-color: #12203a !important; }
+html.dark .bg-green-50, html.dark .bg-green-100, html.dark .bg-emerald-50, html.dark .bg-emerald-50\/80, html.dark .bg-emerald-50\/10, html.dark .bg-emerald-100 { background-color: #10281e !important; }
+html.dark .bg-cyan-50, html.dark .bg-cyan-50\/80, html.dark .bg-cyan-100 { background-color: #0e2a30 !important; }
+html.dark .bg-amber-50, html.dark .bg-amber-50\/80, html.dark .bg-amber-100 { background-color: #33240e !important; }
+html.dark .bg-purple-50, html.dark .bg-purple-50\/10, html.dark .bg-purple-100 { background-color: #251238 !important; }
 html.dark .bg-rose-50, html.dark .bg-rose-100 { background-color: #38121f !important; }
+
+/* Gradient color stops adapt to the same tinted dark panels */
+html.dark .from-red-50 { --tw-gradient-from: #3a1512 var(--tw-gradient-from-position) !important; }
+html.dark .to-amber-50 { --tw-gradient-to: #33240e var(--tw-gradient-to-position) !important; }
+
+/* Hover-state pastel surfaces (link cards etc.) */
+html.dark .hover\:bg-red-100:hover { background-color: #4a1a15 !important; }
+html.dark .hover\:bg-blue-100:hover { background-color: #1a2c4d !important; }
+html.dark .hover\:bg-green-100:hover, html.dark .hover\:bg-emerald-100:hover { background-color: #14352a !important; }
+html.dark .hover\:bg-cyan-100:hover { background-color: #123a43 !important; }
+html.dark .hover\:bg-amber-100:hover { background-color: #453012 !important; }
+html.dark .hover\:bg-purple-100:hover { background-color: #31184a !important; }
+html.dark .hover\:bg-rose-100:hover { background-color: #4a1828 !important; }
+
+/* Stronger pastel text shades used on tinted link cards */
+html.dark .text-red-900, html.dark .text-rose-800 { color: #fca5a5 !important; }
+html.dark .text-blue-800 { color: #93c5fd !important; }
+html.dark .text-green-800 { color: #86efac !important; }
+html.dark .text-emerald-800 { color: #6ee7b7 !important; }
+html.dark .text-cyan-600, html.dark .text-cyan-800 { color: #67e8f9 !important; }
+html.dark .text-amber-800, html.dark .text-amber-900 { color: #fcd34d !important; }
+html.dark .text-purple-800 { color: #d8b4fe !important; }
+html.dark .border-red-300 { border-color: #7f2a22 !important; }
 
 /* Pastel text on those surfaces becomes light tinted text */
 html.dark .text-red-600, html.dark .text-red-700, html.dark .text-red-800 { color: #fca5a5 !important; }

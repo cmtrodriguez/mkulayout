@@ -29,6 +29,7 @@ import {
   detectMergedSectionRows
 } from "../lib/googleSheets";
 import { extractHyperlinkDetails } from "../lib/canvaTemplates";
+import { seededUuid } from "../lib/seededUuid";
 
 const getFirstName = (fullName: string): string => {
   if (!fullName) return "";
@@ -651,7 +652,9 @@ export default function SheetsSync({
     } else {
       // Completely NEW row added: Trigger pending Online Pubmat Entry
       const newTask: Task = {
-        id: `sheet-t-${Date.now()}`,
+        // Deterministic id per source row so re-importing the same sheet row
+        // updates this pending task (and keeps its chat) instead of duplicating it.
+        id: seededUuid(`sheet-pending-${sourceIssueRowId}`),
         title,
         typeOfRelease: "Issue Article",
         typeOfContent,
