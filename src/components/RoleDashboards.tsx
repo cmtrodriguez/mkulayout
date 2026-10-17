@@ -781,14 +781,17 @@ export function EicDashboard({
     speakText(`Task ${task.title} reactivated and back under review.`);
   };
 
-  // Filter all tasks for the Oversight pipeline tab
-  const filteredPipelineTasks = tasks.filter(t =>
-    t.title.toLowerCase().includes(pipelineSearch.toLowerCase()) ||
-    t.illusLayout.toLowerCase().includes(pipelineSearch.toLowerCase()) ||
-    t.writer.toLowerCase().includes(pipelineSearch.toLowerCase())
-  );
+  // Filter the Oversight pipeline tab — done tasks are excluded entirely so the
+  // hub only tracks work still in motion.
   const isPipelineDoneTask = (t: Task) => t.progress === "Completed" || t.progress === "Approved" || t.progress === "Archived";
-  const activePipelineTasks = filteredPipelineTasks.filter(t => !isPipelineDoneTask(t));
+  const filteredPipelineTasks = tasks.filter(t =>
+    !isPipelineDoneTask(t) && (
+      t.title.toLowerCase().includes(pipelineSearch.toLowerCase()) ||
+      t.illusLayout.toLowerCase().includes(pipelineSearch.toLowerCase()) ||
+      t.writer.toLowerCase().includes(pipelineSearch.toLowerCase())
+    )
+  );
+  const activePipelineTasks = filteredPipelineTasks;
 
   return (
     <div className="space-y-3 sm:space-y-6">

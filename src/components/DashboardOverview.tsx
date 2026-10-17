@@ -16,6 +16,34 @@ import AvailableTodayCard from "./AvailableTodayCard";
 const CURRENT_MONTH = new Date().toLocaleString("en-US", { month: "long" });
 const STAFF_STATS_MONTHS = ["July", "August", "September", "October", "November", "December", "January"];
 
+const CATEGORIES = [
+  "News", "Features", "Opinion", "Culture", "Editorial", "Front", "MM", "Graphics"
+];
+
+// A task counts only toward the editorial section it actually belongs to.
+// Anything that names no listed section (logo, cover photo, misc art, etc.)
+// falls into Graphics — the catch-all for non-section artwork.
+const CATEGORY_TOKENS: Record<string, string[]> = {
+  News: ["news"],
+  Features: ["feat", "feats", "feature", "features"],
+  Opinion: ["opinion"],
+  Culture: ["cult", "culture"],
+  Editorial: ["editorial"],
+  Front: ["front"],
+  MM: ["mm"],
+  Graphics: ["graphics", "graphic"],
+};
+
+function resolveEditorialCategory(typeOfContent?: string): string {
+  const tokens = (typeOfContent || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  for (const token of tokens) {
+    for (const [category, aliases] of Object.entries(CATEGORY_TOKENS)) {
+      if (aliases.includes(token)) return category;
+    }
+  }
+  return "Graphics";
+}
+
 interface DashboardOverviewProps {
   tasks: Task[];
   members: TeamMember[];
@@ -61,6 +89,9 @@ export default function DashboardOverview({
   // Staffer & Probi Personal Task Stats & Category period
   const [staffStatsPeriod, setStaffStatsPeriod] = useState<"semester" | "month">("semester");
   const [staffStatsMonth, setStaffStatsMonth] = useState<string>(CURRENT_MONTH);
+
+  // Completed/Published metric drill-down
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
 
   // Announcement state
   const [showAddAnnouncement, setShowAddAnnouncement] = useState(false);
@@ -134,10 +165,14 @@ export default function DashboardOverview({
   // "Completed / Published items" must count every finished state — approve &
   // lock moves tasks to "Approved", and online tasks end at "for posting", so
   // counting only "Completed" made the total drop (e.g. 49 → 48) whenever a
-  // task passed through that flow.
-  const completedTasks = (isStaffOrProbi
+  // task passed through that flow. The same list (most recently finished
+  // first) feeds the metric's drill-down modal.
+  const completedList = (isStaffOrProbi
     ? staffAssignedTasks.filter(isPublished)
-    : tasks.filter(isPublished)).length;
+    : tasks.filter(isPublished))
+    .slice()
+    .sort((a, b) => new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime());
+  const completedTasks = completedList.length;
 
   const lateSubmissions = isStaffOrProbi
     ? staffAssignedTasks.filter(t => t.progress === "For Review" || t.progress === "Revision Needed").length
@@ -267,26 +302,12 @@ export default function DashboardOverview({
 
   const effectiveCompletedTasks = staffStatsPeriod === "semester" ? myCompletedTasks : myMonthCompletedTasks;
 
-  const CATEGORIES = [
-    "News", "Features", "Opinion", "Culture", "Editorial", "Front", "MM", "Graphics"
-  ];
-
   const categoryCounts: Record<string, number> = {};
   CATEGORIES.forEach(cat => { categoryCounts[cat] = 0; });
 
   effectiveCompletedTasks.forEach(t => {
-    const content = (t.typeOfContent || "").toLowerCase();
-    let matched = false;
-    for (const cat of CATEGORIES) {
-      if (content.includes(cat.toLowerCase())) {
-        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-        matched = true;
-        break;
-      }
-    }
-    if (!matched) {
-      categoryCounts["Features"] = (categoryCounts["Features"] || 0) + 1;
-    }
+    const category = resolveEditorialCategory(t.typeOfContent);
+    categoryCounts[category] = (categoryCounts[category] || 0) + 1;
   });
 
   return (
@@ -425,8 +446,8 @@ export default function DashboardOverview({
               {/* Metric 2 */}
               <div 
                 className="bg-white dark:bg-neutral-900 rounded-xl sm:rounded-3xl p-2.5 sm:p-4 md:p-5 border border-neutral-200/60 dark:border-neutral-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group"
-                onClick={() => onNavigate("newspaper-issue")}
-                onMouseEnter={() => speakText(`Completed publication tasks: ${completedTasks}`)}
+                onClick={() => setShowCompletedModal(true)}
+                onMouseEnter={() => speakText(`Completed publication tasks: ${completedTasks}. Click to view the list.`)}
               >
                 <div className="flex justify-between items-start mb-1 sm:mb-2">
                   <span className="text-lg sm:text-2xl font-black text-neutral-900 dark:text-neutral-100 font-sans tracking-tight">
@@ -1062,6 +1083,88 @@ export default function DashboardOverview({
             currentUserRole={currentUserRole}
             onUpdatePolls={onUpdatePolls}
           />
+        </div>
+      )}
+
+      {/* Completed / Published drill-down — 2-column list of finished tasks */}
+      {showCompletedModal && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-6"
+          onClick={() => setShowCompletedModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl border border-neutral-200/60 dark:border-neutral-800 shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-5 border-b border-neutral-200/60 dark:border-neutral-800">
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <span className="p-1.5 sm:p-2 bg-emerald-50 dark:bg-emerald-950/60 rounded-lg sm:rounded-xl text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-sans font-black text-sm sm:text-base text-neutral-900 dark:text-neutral-100 tracking-tight">
+                    Completed Publications
+                  </h3>
+                  <p className="text-[9px] sm:text-[10px] text-neutral-400 dark:text-neutral-500">
+                    {completedList.length} {completedList.length === 1 ? "task" : "tasks"} · most recently finished first
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCompletedModal(false)}
+                className="p-1.5 sm:p-2 text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-all cursor-pointer shrink-0"
+                aria-label="Close completed publications list"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-3 sm:p-5">
+              {completedList.length === 0 ? (
+                <div className="border border-neutral-200/60 dark:border-neutral-800 rounded-xl sm:rounded-2xl p-6 sm:p-10 text-center text-neutral-500 dark:text-neutral-400 text-xs">
+                  <p className="font-bold text-neutral-700 dark:text-neutral-200">No completed publications yet.</p>
+                  <p className="mt-1">Approved and finished layouts will show up here.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
+                  {completedList.map(task => {
+                    const finishedDate = task.lastUpdated
+                      ? new Date(task.lastUpdated).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                      : "—";
+                    return (
+                      <div
+                        key={task.id}
+                        className="p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-neutral-200/60 dark:border-neutral-800 bg-neutral-50/40 dark:bg-neutral-800/30 space-y-1.5 sm:space-y-2 text-left"
+                      >
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[8px] sm:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon dark:bg-brand-maroon/15 dark:text-brand-maroon-light">
+                            {task.typeOfRelease}
+                          </span>
+                          <span className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            task.progress === "Approved"
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
+                              : "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
+                          }`}>
+                            {task.progress === "for posting" ? "For Posting" : task.progress}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-neutral-900 dark:text-neutral-100 text-[11px] sm:text-xs leading-snug">
+                          {task.title}
+                        </h4>
+                        <div className="space-y-0.5 text-[9px] sm:text-[10px] text-neutral-500 dark:text-neutral-400">
+                          <p>Artist: <span className="font-bold text-neutral-700 dark:text-neutral-200">{task.illusLayout || "Unassigned"}</span></p>
+                          <p>Category: <span className="font-bold text-neutral-700 dark:text-neutral-200">{resolveEditorialCategory(task.typeOfContent)}</span></p>
+                          <p>Date completed: <span className="font-bold text-neutral-700 dark:text-neutral-200">{finishedDate}</span></p>
+                          {task.releaseDate && <p>Target date: <span className="font-medium text-neutral-600 dark:text-neutral-300">{task.releaseDate}</span></p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

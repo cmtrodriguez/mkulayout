@@ -256,6 +256,26 @@ export default function App() {
   const [formArtist, setFormArtist] = useState("Unassigned");
   const [formPriority, setFormPriority] = useState<"Low" | "Medium" | "High" | "Urgent">("Medium");
   const [formReleaseDate, setFormReleaseDate] = useState("");
+
+  const todayISO = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+
+  // Deadline-driven priority (locked to the Release Target Date): same day =
+  // Urgent, 1-2 days = High, 3-5 days = Medium, beyond 5 days = Low.
+  const computePriorityFromDate = (isoDate: string): "Low" | "Medium" | "High" | "Urgent" => {
+    const parts = isoDate.split("-");
+    if (parts.length !== 3) return "Medium";
+    const target = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
+    if (diffDays <= 0) return "Urgent";
+    if (diffDays <= 2) return "High";
+    if (diffDays <= 5) return "Medium";
+    return "Low";
+  };
   const [formWriteup, setFormWriteup] = useState("");
   const [formPubmatLink, setFormPubmatLink] = useState("");
 
@@ -2369,20 +2389,6 @@ export default function App() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-neutral-600 font-semibold block mb-1">Priority</label>
-                <select
-                  value={formPriority}
-                  onChange={(e) => setFormPriority(e.target.value as any)}
-                  className="w-full px-2.5 py-2 border border-neutral-200 rounded-xl bg-neutral-50 outline-none cursor-pointer"
-                >
-                  <option value="Low">Low (&gt;5 days)</option>
-                  <option value="Medium">Medium (3-5 days)</option>
-                  <option value="High">High (1-2 days)</option>
-                  <option value="Urgent">Urgent (Same-day)</option>
-                </select>
-              </div>
-
-              <div>
                 <label className="text-neutral-600 dark:text-neutral-300 font-semibold block mb-1 flex items-center justify-between">
                   <span>Release Target Date</span>
                   {formReleaseDate && (
@@ -2393,22 +2399,44 @@ export default function App() {
                 </label>
                 <input
                   type="date"
+                  min={todayISO}
                   value={toISOFormatDate(formReleaseDate)}
                   onChange={(e) => {
                     const val = e.target.value;
+                    if (val && val < todayISO) return;
                     if (val) {
                       const parts = val.split("-");
                       if (parts.length === 3) {
                         const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
                         const formatted = dateObj.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase();
                         setFormReleaseDate(formatted);
+                        setFormPriority(computePriorityFromDate(val));
                       }
                     } else {
                       setFormReleaseDate("");
+                      setFormPriority("Medium");
                     }
                   }}
                   className="w-full px-3 py-2 border border-neutral-200 rounded-xl focus:ring-1 focus:ring-red-600 outline-none font-sans text-xs bg-neutral-50 cursor-pointer"
                 />
+              </div>
+
+              <div>
+                <label className="text-neutral-600 font-semibold block mb-1 flex items-center justify-between">
+                  <span>Priority</span>
+                  <span className="text-[9px] font-bold text-brand-maroon dark:text-brand-maroon-light">Auto from target date</span>
+                </label>
+                <select
+                  value={formPriority}
+                  disabled
+                  title="Priority is set automatically from the Release Target Date"
+                  className="w-full px-2.5 py-2 border border-neutral-200 rounded-xl bg-neutral-100 dark:bg-neutral-800 outline-none cursor-not-allowed opacity-80"
+                >
+                  <option value="Low">Low (&gt;5 days)</option>
+                  <option value="Medium">Medium (3-5 days)</option>
+                  <option value="High">High (1-2 days)</option>
+                  <option value="Urgent">Urgent (Same-day)</option>
+                </select>
               </div>
             </div>
 
