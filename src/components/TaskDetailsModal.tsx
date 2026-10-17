@@ -77,6 +77,11 @@ export default function TaskDetailsModal({
   // else's task should not see the submit button.
   const isThisTaskAssignee = isUserAssignedToTask(task, currentUserName, currentUserEmail);
 
+  // An approved/finished task has an ended workspace chat: the composer is
+  // replaced by an indicator and nothing new can be posted until the task is
+  // reactivated. This is display-only, so approval cycles never add entries.
+  const isChatEnded = task.progress === "Approved" || task.progress === "Completed" || task.progress === "Archived";
+
   const speakText = (text: string) => {
     if (!speechEnabled) return;
     window.speechSynthesis.cancel();
@@ -671,8 +676,18 @@ export default function TaskDetailsModal({
             )}
           </div>
 
-          {/* Post Comment Input */}
-          {canViewThisTaskComments && (
+          {/* Post Comment Input — replaced by the ended indicator once the task is approved */}
+          {canViewThisTaskComments && (isChatEnded ? (
+            <div className="pt-3 border-t border-gray-100/80 dark:border-neutral-700 mt-auto shrink-0 text-center space-y-1.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold uppercase tracking-wide">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {task.progress === "Approved" ? "Task approved for posting — chat ended" : "Task finished — chat ended"}
+              </span>
+              <p className="text-[9px] text-gray-400 dark:text-neutral-500 font-medium">
+                Messaging is closed while the task is approved. Reactivate the task to reopen this chat.
+              </p>
+            </div>
+          ) : (
             <div className="pt-3 border-t border-gray-100/80 dark:border-neutral-700 mt-auto shrink-0 space-y-1.5 text-left">
               <input
                 ref={imageInput}
@@ -742,7 +757,7 @@ export default function TaskDetailsModal({
                 Press <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-neutral-800 border dark:border-neutral-700 rounded text-[9px]">Enter</kbd> for new line, <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-neutral-800 border dark:border-neutral-700 rounded text-[9px]">- </kbd> for bullets, or <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-neutral-800 border dark:border-neutral-700 rounded text-[9px]">Ctrl+Enter</kbd> to submit.
               </p>
             </div>
-          )}
+          ))}
 
         </div>
 

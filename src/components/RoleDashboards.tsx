@@ -640,7 +640,7 @@ interface EicDashboardProps {
   tasks: Task[];
   speechEnabled: boolean;
   onUpdateTask: (task: Task) => void;
-  onAddComment: (commentText: string, taskId: string, images?: string[], options?: { system?: boolean }) => void;
+  onAddComment: (commentText: string, taskId: string) => void;
   comments: TaskComment[];
   onAddNotification?: (title: string, message: string, type: 'info' | 'assignment' | 'deadline' | 'revision' | 'poll' | 'birthday', targetEmails?: string[]) => void;
   currentUserRole?: UserRole;
@@ -708,13 +708,13 @@ export function EicDashboard({
     };
     onUpdateTask(updated);
 
-    // Optional typed note goes to the workspace chat as the editor/deputy's own
-    // message; the approval itself is recorded as a system indicator only.
+    // Approval posts nothing to the chat itself: the workspace shows an
+    // "ended" indicator automatically while the task is approved. Only a
+    // deliberately typed note is sent, as the editor/deputy's own message.
     const typedNote = revisionFeedback.trim();
     if (typedNote) {
       onAddComment(typedNote, task.id);
     }
-    onAddComment("Task approved for posting", task.id, [], { system: true });
 
     if (onAddNotification) {
       const assigneeEmail = task.assigneeEmail || resolveMemberEmail(task.illusLayout);
