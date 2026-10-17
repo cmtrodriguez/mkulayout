@@ -287,6 +287,26 @@ export default function AssignmentsList({
     setEditForm(prev => prev ? { ...prev, ...updates } : null);
   };
 
+  const editFormTodayISO = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+
+  // Deadline-driven priority, same rule as the creation form: same day = Urgent,
+  // 1-2 days = High, 3-5 days = Medium, beyond 5 days = Low.
+  const computePriorityFromISO = (isoDate: string): Task["priority"] => {
+    const parts = isoDate.split("-");
+    if (parts.length !== 3) return "Medium";
+    const target = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
+    if (diffDays <= 0) return "Urgent";
+    if (diffDays <= 2) return "High";
+    if (diffDays <= 5) return "Medium";
+    return "Low";
+  };
+
   const handleArtxDocLinkChange = async (urlVal: string) => {
     const details = extractDocInputDetails(urlVal);
     const cleanUrl = details.url || urlVal;
@@ -635,13 +655,39 @@ export default function AssignmentsList({
                         {/* Online Pubmat */}
                         <div className="space-y-1">
                           <label className="font-bold text-gray-700 dark:text-neutral-300 block">Online Pubmat</label>
-                          <input
-                            type="text"
-                            value={editForm.onlineHandler || (editForm.illusLayout && editForm.illusLayout !== "Unassigned" ? editForm.illusLayout : "")}
-                            placeholder="e.g. Layout artist / pubmat handler"
-                            onChange={(e) => handleFieldChange("onlineHandler", e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-250 dark:border-neutral-700 rounded-lg outline-none focus:ring-1 focus:ring-brand-maroon bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-100"
-                          />
+                          {(() => {
+                            const currentVal = editForm.onlineHandler || (editForm.illusLayout && editForm.illusLayout !== "Unassigned" ? editForm.illusLayout : "") || "Unassigned";
+                            const getFirstName = (name: string) => name.split(" ")[0].trim();
+
+                            const exactMatch = staffMembers.find(m => m.name === currentVal);
+                            const fuzzyMatch = !exactMatch ? staffMembers.find(m =>
+                              m.name.toLowerCase() === currentVal.toLowerCase() ||
+                              getFirstName(m.name).toLowerCase() === currentVal.toLowerCase() ||
+                              m.name.toLowerCase().includes(currentVal.toLowerCase()) ||
+                              currentVal.toLowerCase().includes(getFirstName(m.name).toLowerCase())
+                            ) : null;
+
+                            const selectVal = exactMatch ? exactMatch.name : (fuzzyMatch ? fuzzyMatch.name : currentVal);
+                            const hasMatchInStaff = Boolean(exactMatch || fuzzyMatch || selectVal === "Unassigned");
+
+                            return (
+                              <select
+                                value={selectVal}
+                                onChange={(e) => handleFieldChange("onlineHandler", e.target.value === "Unassigned" ? "" : e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-250 dark:border-neutral-700 rounded-lg outline-none focus:ring-1 focus:ring-brand-maroon bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-100 cursor-pointer"
+                              >
+                                <option value="Unassigned">Unassigned</option>
+                                {!hasMatchInStaff && currentVal && currentVal !== "Unassigned" && (
+                                  <option value={currentVal}>{currentVal}</option>
+                                )}
+                                {staffMembers.map(m => (
+                                  <option key={m.id} value={m.name}>
+                                    {m.displayName || getOfficialDisplayName(m.email, m.name)} ({m.role})
+                                  </option>
+                                ))}
+                              </select>
+                            );
+                          })()}
                         </div>
 
                         {/* Row 3: Artx Document Title | ArtX Document Link | Google Drive Link (Optional) */}
@@ -707,11 +753,15 @@ export default function AssignmentsList({
                         </div>
 
                         <div className="space-y-1">
-                          <label className="font-bold text-gray-700 dark:text-neutral-300 block">Assignment Priority</label>
+                          <label className="font-bold text-gray-700 dark:text-neutral-300 block flex items-center justify-between">
+                            <span>Assignment Priority</span>
+                            <span className="text-[9px] font-bold text-brand-maroon dark:text-brand-maroon-light">Auto from target date</span>
+                          </label>
                           <select
                             value={editForm.priority || "Medium"}
-                            onChange={(e) => handleFieldChange("priority", e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-250 dark:border-neutral-700 rounded-lg outline-none focus:ring-1 focus:ring-brand-maroon bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-100 cursor-pointer"
+                            disabled
+                            title="Priority is set automatically from the Release Target Date"
+                            className="w-full px-3 py-2 border border-gray-250 dark:border-neutral-700 rounded-lg outline-none bg-neutral-100 dark:bg-neutral-800 text-gray-800 dark:text-neutral-100 cursor-not-allowed opacity-80"
                           >
                             <option value="Low">Low (&gt;5 days)</option>
                             <option value="Medium">Medium (3-5 days)</option>
@@ -722,29 +772,24 @@ export default function AssignmentsList({
 
                         <div className="space-y-1">
                           <label className="font-bold text-gray-700 dark:text-neutral-300 block">Release Target/Date</label>
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="date"
-                              value={toISOFormatDate(editForm.releaseDate || "")}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val) {
-                                  handleFieldChange("releaseDate", formatISOToDisplayDate(val));
-                                } else {
-                                  handleFieldChange("releaseDate", "");
-                                }
-                              }}
-                              className="px-2.5 py-2 border border-gray-250 dark:border-neutral-700 rounded-lg outline-none focus:ring-1 focus:ring-brand-maroon bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-100 text-xs font-medium cursor-pointer flex-1 min-w-0"
-                            />
-                            <input
-                              type="text"
-                              value={editForm.releaseDate || ""}
-                              placeholder="e.g. JULY 15"
-                              onChange={(e) => handleFieldChange("releaseDate", e.target.value)}
-                              className="w-24 sm:w-28 px-2 py-2 border border-gray-250 dark:border-neutral-700 rounded-lg outline-none focus:ring-1 focus:ring-brand-maroon bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-100 text-xs font-semibold text-center uppercase shrink-0"
-                              title="Formatted date label"
-                            />
-                          </div>
+                          <input
+                            type="date"
+                            min={editFormTodayISO}
+                            value={toISOFormatDate(editForm.releaseDate || "")}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val && val < editFormTodayISO) return;
+                              if (val) {
+                                handleFieldsChange({
+                                  releaseDate: formatISOToDisplayDate(val),
+                                  priority: computePriorityFromISO(val)
+                                });
+                              } else {
+                                handleFieldsChange({ releaseDate: "", priority: "Medium" });
+                              }
+                            }}
+                            className="w-full px-2.5 py-2 border border-gray-250 dark:border-neutral-700 rounded-lg outline-none focus:ring-1 focus:ring-brand-maroon bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-100 text-xs font-medium cursor-pointer"
+                          />
                         </div>
                       </div>
 
