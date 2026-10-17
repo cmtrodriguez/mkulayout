@@ -1069,7 +1069,7 @@ export default function App() {
       revisionCount: 0,
       lastUpdated: new Date().toISOString(),
       canvaLink: getCanvaLinkForContent(issueRowDraft.section || "News"),
-      mediumCanvaLink: undefined,
+      mediumCanvaLink: MEDIUM_CANVA_LINK,
       pubmatLink: "",
       draftLink: issueRowDraft.draftLink || "",
       addedToLayout: "",
@@ -2536,12 +2536,15 @@ export default function App() {
                 lastUpdated: new Date().toISOString()
               };
             } else if (updatedTask.typeOfRelease === "Issue Article" && updatedTask.illusLayout && updatedTask.illusLayout !== "Unassigned") {
-              // Create online companion if missing
+              // Create online companion if missing — every online task must
+              // carry the medium Canva link, so never inherit the issue
+              // task's (intentionally empty) one.
               const onlineTask: Task = {
                 ...updatedTask,
                 id: crypto.randomUUID(),
                 title: `${updatedBase} (Online Pubmat)`,
                 typeOfRelease: "Online Article",
+                mediumCanvaLink: updatedTask.mediumCanvaLink || MEDIUM_CANVA_LINK,
                 isPendingConfirmation: false
               };
               updatedList = [onlineTask, ...updatedList];
