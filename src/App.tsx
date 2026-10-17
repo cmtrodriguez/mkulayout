@@ -812,20 +812,24 @@ export default function App() {
     };
   }, []);
 
-  const handleAddCommentSimple = (commentText: string, taskId: string, images: string[] = []) => {
+  const handleAddCommentSimple = (commentText: string, taskId: string, images: string[] = [], options?: { system?: boolean }) => {
+    const isSystem = options?.system === true;
     const newComment: TaskComment = {
       id: crypto.randomUUID(),
       taskId,
-      authorName: userName,
-      authorEmail: userEmail,
+      authorName: isSystem ? "System" : userName,
+      authorEmail: isSystem ? "" : userEmail,
       text: commentText,
       timestamp: new Date().toISOString(),
-      ...(images.length ? { images } : {})
+      ...(images.length ? { images } : {}),
+      ...(isSystem ? { isSystem: true } : {})
     };
     setComments((prev) => [...prev, newComment]);
     createComment(newComment).then((saved) => {
       if (saved) setComments((prev) => prev.map((comment) => comment.id === newComment.id ? saved : comment));
     }).catch(() => {});
+
+    if (isSystem) return;
 
     // Alert only the people this comment concerns: the assigned artist when a
     // leader reviews, or the editor/deputy desk when a staffer replies.

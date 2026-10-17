@@ -165,6 +165,9 @@ export interface TaskComment {
   images?: string[];
   editedAt?: string;
   removedAt?: string;
+  // System indicators are posted by the app itself (e.g. approval status) and
+  // are never attributed to — or editable by — any member.
+  isSystem?: boolean;
 }
 
 export interface LayoutCritiqueResponse {

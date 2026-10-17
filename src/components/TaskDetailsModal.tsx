@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
-import { 
-  X, MessageSquare, Link, ExternalLink, Sparkles, Clock, AlertTriangle, 
-  Trash2, User, FileText, Send, Calendar, RefreshCw, Lock, ImagePlus, Pencil
+import {
+  X, MessageSquare, Link, ExternalLink, Sparkles, Clock, AlertTriangle,
+  Trash2, User, FileText, Send, Calendar, RefreshCw, Lock, ImagePlus, Pencil, CheckCircle2
 } from "lucide-react";
 import { Task, TeamMember, TaskComment, TaskStatus, TaskPriority } from "../types";
 import { extractHyperlinkDetails } from "../lib/canvaTemplates";
@@ -192,14 +192,14 @@ export default function TaskDetailsModal({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
       <div 
-        className="bg-white dark:bg-neutral-900 rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col md:flex-row shadow-2xl border border-gray-100 dark:border-neutral-800 text-left animate-fade-in"
+        className="bg-white dark:bg-neutral-900 rounded-2xl w-full max-w-4xl h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl border border-gray-100 dark:border-neutral-800 text-left animate-fade-in"
         role="dialog"
         aria-modal="true"
         aria-label={`Details for task ${task.title}`}
       >
         
         {/* Left Side: Core Metadata & File Drawer */}
-        <div className="flex-1 p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 border-b md:border-b-0 md:border-r border-gray-100 dark:border-neutral-800">
+        <div className="flex-1 min-h-0 p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 border-b md:border-b-0 md:border-r border-gray-100 dark:border-neutral-800">
           
           {/* Header */}
           <div className="flex items-start justify-between gap-4">
@@ -543,9 +543,9 @@ export default function TaskDetailsModal({
         </div>
 
         {/* Right Side: Collaboration Feed & Comments */}
-        <div className="w-full md:w-[350px] bg-gray-50/50 dark:bg-neutral-850 p-3.5 sm:p-5 md:p-6 flex flex-col justify-between max-h-[90vh]">
-          
-          <div className="space-y-3 sm:space-y-4 flex-1 flex flex-col overflow-hidden">
+        <div className="w-full md:w-[350px] bg-gray-50/50 dark:bg-neutral-850 p-3.5 sm:p-5 md:p-6 flex flex-col justify-between min-h-0">
+
+          <div className="space-y-3 sm:space-y-4 flex-1 min-h-0 flex flex-col overflow-hidden">
             <h3 className="font-display font-bold text-gray-900 dark:text-neutral-100 text-sm flex items-center gap-1.5 border-b border-gray-200 dark:border-neutral-700 pb-2">
               <MessageSquare className="w-4 h-4 text-brand-maroon dark:text-brand-maroon-light" />
               Design-Desk Comments {canViewThisTaskComments ? `(${taskComments.length})` : "(Restricted)"}
@@ -567,13 +567,25 @@ export default function TaskDetailsModal({
               </div>
             ) : (
               /* Comments Feed list */
-              <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+              <div className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
                 {taskComments.length === 0 ? (
                   <div className="py-12 text-center text-gray-400 dark:text-neutral-500 text-xs italic">
                     No collaboration logs posted. Send directions to illustrator below.
                   </div>
                 ) : (
                   taskComments.map((com) => {
+                    if (com.isSystem) {
+                      return (
+                        <div key={com.id} className="flex items-center justify-center gap-1.5 py-0.5">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[9px] sm:text-[10px] font-bold uppercase tracking-wide">
+                            <CheckCircle2 className="w-3 h-3" /> {com.text}
+                          </span>
+                          <span className="text-[9px] text-gray-400 dark:text-neutral-500 font-mono shrink-0">
+                            {new Date(com.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      );
+                    }
                     const { cleanedText, roleLabel, badgeStyle, initials } = formatCommentDetails(com);
                     return (
                       <div key={com.id} className="space-y-1.5 bg-white dark:bg-neutral-800 p-3 sm:p-3.5 rounded-2xl border border-gray-100/80 dark:border-neutral-700 text-xs shadow-2xs text-left">
@@ -661,7 +673,7 @@ export default function TaskDetailsModal({
 
           {/* Post Comment Input */}
           {canViewThisTaskComments && (
-            <div className="pt-3 border-t border-gray-100/80 dark:border-neutral-700 mt-auto space-y-1.5 text-left">
+            <div className="pt-3 border-t border-gray-100/80 dark:border-neutral-700 mt-auto shrink-0 space-y-1.5 text-left">
               <input
                 ref={imageInput}
                 type="file"

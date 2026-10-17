@@ -319,6 +319,7 @@ export function commentFromDb(row: any): TaskComment {
   let images: string[] | undefined;
   let editedAt: string | undefined;
   let removedAt: string | undefined;
+  let isSystem = false;
   if (storedText.startsWith(COMMENT_IMAGE_ENVELOPE)) {
     try {
       const payload = JSON.parse(storedText.slice(COMMENT_IMAGE_ENVELOPE.length));
@@ -326,6 +327,7 @@ export function commentFromDb(row: any): TaskComment {
       images = Array.isArray(payload.images) ? payload.images.filter(isCommentImageDataUrl).slice(0, 5) : [];
       editedAt = typeof payload.editedAt === "string" ? payload.editedAt : undefined;
       removedAt = typeof payload.removedAt === "string" ? payload.removedAt : undefined;
+      isSystem = payload.isSystem === true;
     } catch {
       text = storedText;
     }
@@ -339,19 +341,21 @@ export function commentFromDb(row: any): TaskComment {
     timestamp: row.timestamp || row.created_at || new Date().toISOString(),
     ...(images?.length ? { images } : {}),
     ...(editedAt ? { editedAt } : {}),
-    ...(removedAt ? { removedAt } : {})
+    ...(removedAt ? { removedAt } : {}),
+    ...(isSystem ? { isSystem } : {})
   };
 }
 
 function commentTextForDb(comment: Partial<TaskComment>): string {
   const images = Array.isArray(comment.images) ? comment.images.filter(isCommentImageDataUrl).slice(0, 5) : [];
   const text = comment.text || "";
-  if (!images.length && !comment.editedAt && !comment.removedAt) return text;
+  if (!images.length && !comment.editedAt && !comment.removedAt && !comment.isSystem) return text;
   return `${COMMENT_IMAGE_ENVELOPE}${JSON.stringify({
     text,
     images,
     ...(comment.editedAt ? { editedAt: comment.editedAt } : {}),
-    ...(comment.removedAt ? { removedAt: comment.removedAt } : {})
+    ...(comment.removedAt ? { removedAt: comment.removedAt } : {}),
+    ...(comment.isSystem ? { isSystem: true } : {})
   })}`;
 }
 

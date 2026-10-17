@@ -435,6 +435,18 @@ export function LayoutStaffDashboard({
                     ) : (
                       <div className="space-y-1.5 sm:space-y-2.5 max-h-52 sm:max-h-60 overflow-y-auto pr-1">
                         {taskComments.map((c) => {
+                          if (c.isSystem) {
+                            return (
+                              <div key={c.id} className="flex items-center justify-center gap-1.5 py-0.5">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] sm:text-[10px] font-bold uppercase tracking-wide">
+                                  <CheckCircle className="w-3 h-3" /> {c.text}
+                                </span>
+                                <span className="text-[9px] text-gray-400 font-mono shrink-0">
+                                  {new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            );
+                          }
                           const { cleanedText, roleLabel, badgeStyle, initials } = formatCommentDetails(c);
                           const isEditorRole = roleLabel.includes("Editor") || roleLabel.includes("EIC") || roleLabel.includes("Head");
 
@@ -628,7 +640,7 @@ interface EicDashboardProps {
   tasks: Task[];
   speechEnabled: boolean;
   onUpdateTask: (task: Task) => void;
-  onAddComment: (commentText: string, taskId: string) => void;
+  onAddComment: (commentText: string, taskId: string, images?: string[], options?: { system?: boolean }) => void;
   comments: TaskComment[];
   onAddNotification?: (title: string, message: string, type: 'info' | 'assignment' | 'deadline' | 'revision' | 'poll' | 'birthday', targetEmails?: string[]) => void;
   currentUserRole?: UserRole;
@@ -649,6 +661,7 @@ export function EicDashboard({
 }: EicDashboardProps) {
   const [selectedReviewTaskId, setSelectedReviewTaskId] = useState<string | null>(null);
   const [revisionFeedback, setRevisionFeedback] = useState("");
+  const [approveConfirmTaskId, setApproveConfirmTaskId] = useState<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<"review" | "pipeline">("review");
   const [pipelineSearch, setPipelineSearch] = useState("");
 
@@ -694,10 +707,15 @@ export function EicDashboard({
       lastUpdated: new Date().toISOString()
     };
     onUpdateTask(updated);
-    
-    const approvalComment = "Approved layout design. Excellent proportions, colors, and font tracking. Locked for publication release.";
-    onAddComment(approvalComment, task.id);
-    
+
+    // Optional typed note goes to the workspace chat as the editor/deputy's own
+    // message; the approval itself is recorded as a system indicator only.
+    const typedNote = revisionFeedback.trim();
+    if (typedNote) {
+      onAddComment(typedNote, task.id);
+    }
+    onAddComment("Task approved for posting", task.id, [], { system: true });
+
     if (onAddNotification) {
       const assigneeEmail = task.assigneeEmail || resolveMemberEmail(task.illusLayout);
       onAddNotification(
@@ -707,6 +725,7 @@ export function EicDashboard({
         assigneeEmail ? [assigneeEmail] : undefined
       );
     }
+    setRevisionFeedback("");
     setSelectedReviewTaskId(null);
     speakText(`Layout ${task.title} approved for publication release!`);
   };
@@ -852,7 +871,11 @@ export function EicDashboard({
                           </div>
                           <h4 className="font-bold text-gray-900 text-xs sm:text-sm mt-1 sm:mt-1.5">{task.title}</h4>
                           <p className="text-[9px] sm:text-[10px] text-gray-400 font-mono">Artist: {task.illusLayout}</p>
-                          {task.canvaLink && (
+                          {isIssueArticleTask(task.typeOfRelease) ? (
+                            <p className="text-[9px] sm:text-[10px] text-amber-600 font-medium mt-0.5 sm:mt-1 max-w-full">
+                              Print Issue Drive: <a href={PRINT_ISSUE_DRIVE_LINK} target="_blank" rel="noopener noreferrer" className="underline font-bold hover:text-amber-800 break-all">{PRINT_ISSUE_DRIVE_LINK}</a>
+                            </p>
+                          ) : task.canvaLink && (
                             <p className="text-[9px] sm:text-[10px] text-cyan-600 font-medium mt-0.5 sm:mt-1 max-w-full">
                               Canva: <a href={task.canvaLink} target="_blank" rel="noopener noreferrer" className="underline font-bold hover:text-cyan-800 break-all">{task.canvaLink}</a>
                             </p>
@@ -873,11 +896,20 @@ export function EicDashboard({
                       {/* Links review section */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 bg-neutral-50 p-2 sm:p-3 rounded-lg sm:rounded-xl border border-gray-150">
                         <div>
-                          <span className="text-[8px] sm:text-[9px] uppercase font-bold text-gray-400 block mb-0.5 sm:mb-1">Canva Link</span>
-                          {task.canvaLink ? (
-                            <a 
-                              href={task.canvaLink} 
-                              target="_blank" 
+                          <span className="text-[8px] sm:text-[9px] uppercase font-bold text-gray-400 block mb-0.5 sm:mb-1">{isIssueArticleTask(task.typeOfRelease) ? "Print Issue Drive" : "Canva Link"}</span>
+                          {isIssueArticleTask(task.typeOfRelease) ? (
+                            <a
+                              href={PRINT_ISSUE_DRIVE_LINK}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 sm:py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 text-[11px] sm:text-xs font-bold rounded transition-all"
+                            >
+                              Open Print Issue Drive <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : task.canvaLink ? (
+                            <a
+                              href={task.canvaLink}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 px-2 py-0.5 sm:py-1 bg-cyan-100 hover:bg-cyan-200 text-cyan-800 text-[11px] sm:text-xs font-bold rounded transition-all"
                             >
@@ -909,7 +941,7 @@ export function EicDashboard({
                         <div className="pt-2 sm:pt-4 border-t border-gray-100 space-y-2 sm:space-y-4 text-xs">
                           <div>
                             <label className="block text-[11px] sm:text-xs font-semibold text-gray-600 mb-1">
-                              Constructive Revision Notes (Requested changes)
+                              Notes to Artist (revision request, or optional approval message)
                             </label>
                             <textarea
                               placeholder="Type constructive revision notes... (use '- ' for bullet points, press Enter for next line)"
@@ -933,7 +965,17 @@ export function EicDashboard({
                             </button>
                             
                             <div className="flex gap-1.5 sm:gap-2 flex-wrap">
-                              {task.canvaLink && (
+                              {isIssueArticleTask(task.typeOfRelease) ? (
+                                <a
+                                  href={PRINT_ISSUE_DRIVE_LINK}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 font-bold rounded-lg sm:rounded-xl transition-all flex items-center gap-1 text-[11px] sm:text-xs"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Print Issue Drive <ExternalLink className="w-3 h-3" />
+                                </a>
+                              ) : task.canvaLink && (
                                 <a
                                   href={task.canvaLink}
                                   target="_blank"
@@ -956,7 +998,7 @@ export function EicDashboard({
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleApprove(task);
+                                  setApproveConfirmTaskId(task.id);
                                 }}
                                 className="px-2.5 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg sm:rounded-xl transition-all flex items-center gap-1 shadow-sm cursor-pointer text-[11px] sm:text-xs"
                               >
@@ -1137,6 +1179,63 @@ export function EicDashboard({
           </div>
         </div>
       )}
+
+      {/* Approve & Lock confirmation */}
+      {approveConfirmTaskId && (() => {
+        const confirmTask = reviewTasks.find(t => t.id === approveConfirmTaskId);
+        if (!confirmTask) return null;
+        const typedNote = revisionFeedback.trim();
+        return (
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Confirm approve and lock for ${confirmTask.title}`}
+            onClick={() => setApproveConfirmTaskId(null)}
+          >
+            <div
+              className="bg-white dark:bg-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800 shadow-2xl max-w-sm w-full p-5 space-y-4 text-left animate-fade-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-display font-black text-gray-900 dark:text-neutral-100 text-sm">
+                    Approve & lock this submission?
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 leading-relaxed">
+                    '{confirmTask.title}' will be marked approved and locked for publication release.
+                    {typedNote
+                      ? " Your typed note will be sent to the assigned artist."
+                      : " No typed note will be sent — you can add one in the review box before confirming."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setApproveConfirmTaskId(null)}
+                  className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg cursor-pointer transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApproveConfirmTaskId(null);
+                    handleApprove(confirmTask);
+                  }}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-sm"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" /> Approve & Lock
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
