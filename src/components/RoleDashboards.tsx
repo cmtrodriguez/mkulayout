@@ -662,7 +662,7 @@ export function EicDashboard({
   const [selectedReviewTaskId, setSelectedReviewTaskId] = useState<string | null>(null);
   const [revisionFeedback, setRevisionFeedback] = useState("");
   const [approveConfirmTaskId, setApproveConfirmTaskId] = useState<string | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState<"review" | "pipeline">("review");
+  const [activeSubTab, setActiveSubTab] = useState<"review" | "revisions" | "pipeline">("review");
   const [pipelineSearch, setPipelineSearch] = useState("");
 
   const isEditorOrDeputy = currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy" || currentUserRole === "Online Layout Head";
@@ -698,6 +698,7 @@ export function EicDashboard({
 
   // Filter tasks requiring inspection review — only those actually submitted for review
   const reviewTasks = tasks.filter(t => t.progress === "For Review");
+  const revisionTasks = tasks.filter(t => t.progress === "Revision Needed");
 
   const handleApprove = (task: Task) => {
     const isLayoutEditor = currentUserRole === "Layout Editor";
@@ -806,6 +807,19 @@ export function EicDashboard({
           }`}
         >
           Pending Review ({reviewTasks.length})
+        </button>
+        <button
+          onClick={() => {
+            setActiveSubTab("revisions");
+            speakText(`Showing tasks sent back for revision: ${revisionTasks.length}`);
+          }}
+          className={`px-2.5 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-bold transition-all border-b-2 cursor-pointer ${
+            activeSubTab === "revisions" 
+              ? "border-brand-maroon text-brand-maroon font-black" 
+              : "border-transparent text-gray-500 hover:text-gray-900"
+          }`}
+        >
+          Sent Back for Revision ({revisionTasks.length})
         </button>
         <button
           onClick={() => {
@@ -1009,6 +1023,77 @@ export function EicDashboard({
                         </div>
                       )}
 
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+        </div>
+      ) : activeSubTab === "revisions" ? (
+        /* =======================================================
+           EIC SENT-BACK REVISIONS MONITOR
+           ======================================================= */
+        <div className="space-y-3 sm:space-y-4 text-left">
+
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex items-center gap-1.5 border-b pb-1 sm:pb-2 border-gray-100">
+              <AlertCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-rose-600" />
+              <h3 className="font-display font-bold text-gray-950 text-xs sm:text-sm">Sent Back for Revision</h3>
+            </div>
+
+            {revisionTasks.length === 0 ? (
+              <div className="bg-white/50 border border-gray-100 rounded-xl sm:rounded-2xl p-4 sm:p-8 text-center text-gray-500 text-xs">
+                <p className="font-bold text-gray-700">No revisions in play!</p>
+                <p className="mt-1">Nothing has been sent back to assignees right now.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-5 items-start">
+                {revisionTasks.map(task => {
+                  const taskNotes = comments.filter(c => c.taskId === task.id && !c.removedAt && !c.isSystem);
+                  const latestNote = taskNotes[taskNotes.length - 1];
+                  const daysBack = task.lastUpdated
+                    ? Math.max(0, Math.floor((Date.now() - new Date(task.lastUpdated).getTime()) / 86400000))
+                    : null;
+                  return (
+                    <div
+                      key={task.id}
+                      className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-100 hover:border-rose-200 transition-all space-y-3 sm:space-y-4 bg-white"
+                    >
+                      <div className="flex items-start justify-between gap-2 sm:gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                            <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon">
+                              {task.typeOfRelease}
+                            </span>
+                            {task.sourceSheetTitle && (
+                              <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200">
+                                {task.sourceSheetTitle}
+                              </span>
+                            )}
+                            <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">
+                              Revision Needed
+                            </span>
+                          </div>
+                          <h4 className="font-bold text-gray-900 text-xs sm:text-sm mt-1 sm:mt-1.5">{task.title}</h4>
+                          <p className="text-[9px] sm:text-[10px] text-gray-400 font-mono">Artist: {task.illusLayout}</p>
+                          {latestNote && (
+                            <div className="mt-2 sm:mt-2.5 bg-rose-50/70 border border-rose-100 rounded-lg p-2 sm:p-2.5">
+                              <p className="text-[9px] sm:text-[10px] font-bold text-rose-700">
+                                Latest note{latestNote.authorName ? ` (${latestNote.authorName})` : ""}:
+                              </p>
+                              <p className="text-[10px] sm:text-[11px] text-rose-900/80 whitespace-pre-wrap break-words mt-0.5">{latestNote.text}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 text-[9px] sm:text-[10px] text-gray-400 font-medium">
+                        <span>
+                          Sent back {daysBack === null ? "—" : daysBack === 0 ? "today" : `${daysBack}d ago`}
+                        </span>
+                        {task.releaseDate && <span>Deadline {task.releaseDate}</span>}
+                      </div>
                     </div>
                   );
                 })}

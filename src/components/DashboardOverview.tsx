@@ -124,13 +124,20 @@ export default function DashboardOverview({
   );
 
   // Compute metrics
-  const activeTasks = isStaffOrProbi 
-    ? staffAssignedTasks.filter(t => t.progress !== "Completed" && t.progress !== "Shelved" && t.progress !== "Archived")
-    : tasks.filter(t => t.progress !== "Completed" && t.progress !== "Shelved" && t.progress !== "Archived");
+  const isPublished = (t: Task) => t.progress === "Completed" || t.progress === "Approved" || t.progress === "for posting";
+  const isActive = (t: Task) => !isPublished(t) && t.progress !== "Shelved" && t.progress !== "Archived";
 
-  const completedTasks = isStaffOrProbi
-    ? staffAssignedTasks.filter(t => t.progress === "Completed").length
-    : tasks.filter(t => t.progress === "Completed").length;
+  const activeTasks = isStaffOrProbi 
+    ? staffAssignedTasks.filter(isActive)
+    : tasks.filter(isActive);
+
+  // "Completed / Published items" must count every finished state — approve &
+  // lock moves tasks to "Approved", and online tasks end at "for posting", so
+  // counting only "Completed" made the total drop (e.g. 49 → 48) whenever a
+  // task passed through that flow.
+  const completedTasks = (isStaffOrProbi
+    ? staffAssignedTasks.filter(isPublished)
+    : tasks.filter(isPublished)).length;
 
   const lateSubmissions = isStaffOrProbi
     ? staffAssignedTasks.filter(t => t.progress === "For Review" || t.progress === "Revision Needed").length
@@ -138,13 +145,13 @@ export default function DashboardOverview({
 
   const activeArtistsCount = members.filter(m => m.statusSem1 === "Active" || m.statusSem2 === "Active").length;
   
-  // "My Layout Assignments" must list only tasks assigned to the signed-in
-  // account — staff, probi, editor, and deputy alike. The editor/deputy used
-  // to get a raw slice of every task, leaking other members' assignments here.
-  // Fully completed/approved work is hidden here and lives only in the Task Archive.
+  // "My Layout Assignments" lists only tasks assigned to the signed-in
+  // account — staff, probi, editor, and deputy alike — and hides finished
+  // work, which lives in the Task Archive.
+  // No slice cap: when the editor/deputy dispatch work to themselves or each
+  // other, those tasks must all show up here like they do for staff/probi.
   const isDone = (t: Task) => t.progress === "Completed" || t.progress === "Approved" || t.progress === "Archived";
-  const displayTasks = (isStaffOrProbi ? staffAssignedTasks : staffAssignedTasks.slice(0, 4))
-    .filter(t => !isDone(t));
+  const displayTasks = staffAssignedTasks.filter(t => !isDone(t));
 
   const getTaskProgress = (task: Task) => {
     switch (task.progress) {
