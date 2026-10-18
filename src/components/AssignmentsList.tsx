@@ -222,8 +222,9 @@ export default function AssignmentsList({
   };
 
   const handleRejectTask = (taskId: string) => {
-    const rejectedTask = tasks.find((task) => task.id === taskId);
-    const updated = tasks.filter((task) => task.id !== taskId && !(task.isPendingConfirmation && rejectedTask?.sourceIssueRowId && task.sourceIssueRowId === rejectedTask.sourceIssueRowId && task.id === taskId));
+    // Rejecting a pending confirmation card must only remove that card — dispatched
+    // print/online tasks for the same issue-sheet row stay intact.
+    const updated = tasks.filter((task) => task.id !== taskId);
     onUpdateTasks(updated);
     
     if (editingTaskId === taskId) {
@@ -973,8 +974,8 @@ export default function AssignmentsList({
               onChange={(e) => setFormatFilter(e.target.value)}
               className="bg-transparent outline-none cursor-pointer text-gray-800 dark:text-neutral-200"
             >
+              <option value="All" className="dark:bg-neutral-800">All Formats</option>
               <option value="Online Article" className="dark:bg-neutral-800">Online Article</option>
-              <option value="Multimedia" className="dark:bg-neutral-800">Multimedia</option>
             </select>
           </div>
 

@@ -288,8 +288,7 @@ export default function MeetingPolls({
                         )}
                       </div>
                     );
-                  })}</parameter>
-</invoke>
+                  })}
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100/60 text-[10px] text-gray-400">
