@@ -8,7 +8,7 @@ import { extractHyperlinkDetails } from "../lib/canvaTemplates";
 import { isUserAssignedToTask } from "../lib/memberUtils";
 import { compressCommentImage, formatCommentDetails, handleBulletKeyDown, MAX_COMMENT_IMAGES, RenderFormattedComment } from "../lib/commentUtils";
 import { getPreferredFirstName } from "../lib/memberUtils";
-import { isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK } from "../lib/canvaTemplates";
+import { isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK, PRINT_ISSUE_DRIVE_LINK } from "../lib/canvaTemplates";
 import { toISOFormatDate } from "../lib/taskDate";
 import { formatISOToDisplayDate } from "./AssignmentsList";
 import GoogleDocShareWidget from "./GoogleDocShareWidget";
@@ -382,6 +382,22 @@ export default function TaskDetailsModal({
                 </div>
               )}
             </div>
+            )}
+
+            {/* Print Issue Drive — where the assignee packages their progress */}
+            {showIssueTemplate && (
+              <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 p-3 sm:p-3.5 rounded-xl space-y-2 text-xs">
+                <span className="font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Print Issue Drive
+                </span>
+                <p className="text-[10px] text-emerald-900 dark:text-emerald-200 leading-normal">
+                  This is where you package your progress — upload your layout output files to this Drive folder so the editors can track them.
+                </p>
+                <a href={PRINT_ISSUE_DRIVE_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] items-center gap-1 shadow-sm cursor-pointer">
+                  Open Print Issue Drive <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
             )}
 
             {/* Medium Canva Link Editor */}
