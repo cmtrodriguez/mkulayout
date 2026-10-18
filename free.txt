@@ -1,9 +1,0 @@
-execute these revisions:
-- in the section polls, the layout editor and layout deputy should be able to see the respondents of the poll (unless the poll is set as anonymous mode)
-- fix the notifications system for all accounts where once the 'clear' button is clicked, it stays as cleared (Unless there are new notifications), also remove the 'clear all' button
-- set all tasks labelled as 'approved' to be labelled as 'completed' instead, this should still be reflected properly across the workload tracker and total number of completed tasks (make sure the workflow does not break because of this)
-- when the layout editor or layout deputy creates an assignment, in the release format field, remove the options 'Multimedia' and 'from the archives'
-- fix the issue that there is already an existing issue and online task for an article that when the layout editor edits an existing row of it in the issue sheets then rejects it in the online pubmat section, both gets erased or removed
-- once done with all revisions, commit and push immediately to: 
-
-https://github.com/cmtrodriguez/mkulayout.git
