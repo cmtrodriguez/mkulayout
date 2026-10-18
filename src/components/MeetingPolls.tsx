@@ -4,6 +4,7 @@ import {
   CheckCircle, MessageCircle, BarChart, Sparkles, HelpCircle, Trash2 
 } from "lucide-react";
 import { Poll, TeamMember } from "../types";
+import { getPreferredFirstName } from "../lib/memberUtils";
 
 interface MeetingPollsProps {
   polls: Poll[];
@@ -32,7 +33,8 @@ export default function MeetingPolls({
   currentUserRole,
   onUpdatePolls,
 }: MeetingPollsProps) {
-  const isLeader = currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy";
+  const normalizedRole = (currentUserRole || "").trim().toLowerCase();
+  const isLeader = normalizedRole === "layout editor" || normalizedRole === "layout deputy";
   const [showCreate, setShowCreate] = useState(false);
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnonymous, setNewAnonymous] = useState(false);
@@ -265,9 +267,29 @@ export default function MeetingPolls({
                             }`}
                           />
                         </div>
+
+                        {/* Respondents visible to leaders unless the poll is anonymous */}
+                        {isLeader && !poll.anonymous && opt.votes.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {opt.votes.map((email) => {
+                              const member = members.find((m) => (m.email || "").toLowerCase() === email.toLowerCase());
+                              const label = member ? getPreferredFirstName(member.name, member.email) : email;
+                              return (
+                                <span
+                                  key={email}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-[9px] font-medium"
+                                  title={email}
+                                >
+                                  <Users className="w-2.5 h-2.5" /> {label}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     );
-                  })}
+                  })}</parameter>
+</invoke>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100/60 text-[10px] text-gray-400">

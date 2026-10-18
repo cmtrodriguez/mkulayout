@@ -24,7 +24,7 @@ import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
 import { toISOFormatDate } from "./lib/taskDate";
 import { getCanvaLinkForContent, getPubmatCanvaTemplates, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
-import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, clearNotifications, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, type MemberLoginMap } from "./lib/supabase";
+import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, type MemberLoginMap } from "./lib/supabase";
 import mkuleImg from "./mkule.png";
 
 // Domain Models
@@ -218,6 +218,7 @@ export default function App() {
       const isCultureCategory = typeOfContent === "Culture";
       return {
         ...task,
+        progress: task.progress === "Approved" ? "Completed" : task.progress,
         typeOfContent,
         canvaLink: isCultCategory ? getCanvaLinkForContent("Culture") : task.canvaLink || (isCultureCategory ? getCanvaLinkForContent("Culture") : ""),
         mediumCanvaLink: isOnlinePubmatTask(task.typeOfRelease, task.title) ? task.mediumCanvaLink || MEDIUM_CANVA_LINK : undefined,
@@ -342,7 +343,14 @@ export default function App() {
         fetchProbiTrackerState()
       ]);
 
-      setTasks(tagTasksWithSourceRows(applyAssignmentLinkDefaults(sbTasks), (sbIssueSheets && sbIssueSheets.length > 0) ? sbIssueSheets : issueSheetsRef.current));
+      const loadedTasks = tagTasksWithSourceRows(applyAssignmentLinkDefaults(sbTasks), (sbIssueSheets && sbIssueSheets.length > 0) ? sbIssueSheets : issueSheetsRef.current);
+      setTasks(loadedTasks);
+      tasksRef.current = loadedTasks;
+      const originalTasksById = new Map(sbTasks.map((task) => [task.id, task]));
+      loadedTasks.forEach((task) => {
+        const original = originalTasksById.get(task.id);
+        if (original && original.progress !== task.progress) void upsertTask(task);
+      });
       setMembers(sbMembers);
       setMemberLogins(sbMemberLogins);
       setComments(sbComments);
@@ -429,9 +437,13 @@ export default function App() {
 
   const handleUpdateTasks = (newTasks: Task[]) => {
     const prevTasks = tasksRef.current;
-    tasksRef.current = newTasks;
-    setTasks(newTasks);
-    persistTaskDiff(prevTasks, newTasks);
+    const normalizedTasks = newTasks.map((task) => ({
+      ...task,
+      progress: task.progress === "Approved" ? "Completed" : task.progress,
+    }));
+    tasksRef.current = normalizedTasks;
+    setTasks(normalizedTasks);
+    persistTaskDiff(prevTasks, normalizedTasks);
 
     // Deadline-change alert: notify the assignee when a leader edits the due date.
     // Only real dates count — issue-sheet tasks store a page number in releaseDate.
@@ -512,9 +524,13 @@ export default function App() {
   // Used by every mutation path so no task change is lost on refresh.
   const commitTasks = (updater: Task[] | ((prev: Task[]) => Task[])) => {
     const prevTasks = tasksRef.current;
-    const nextTasks = typeof updater === "function"
+    const proposedTasks = typeof updater === "function"
       ? (updater as (prev: Task[]) => Task[])(prevTasks)
       : updater;
+    const nextTasks = proposedTasks.map((task) => ({
+      ...task,
+      progress: task.progress === "Approved" ? "Completed" : task.progress,
+    }));
     tasksRef.current = nextTasks;
     setTasks(nextTasks);
     persistTaskDiff(prevTasks, nextTasks);
@@ -952,8 +968,20 @@ export default function App() {
   };
 
   // The bell feed only ever shows alerts addressed to the signed-in account.
+  const clearedNotificationStorageKey = `mkule_cleared_notifications_${userEmail.toLowerCase()}`;
+  const locallyClearedNotificationIds = (() => {
+    try {
+      const stored = localStorage.getItem(clearedNotificationStorageKey);
+      const parsed = stored ? JSON.parse(stored) : [];
+      return new Set<string>(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      return new Set<string>();
+    }
+  })();
   const myNotifications = notifications.filter(n =>
-    (n.targetEmails || []).some(email => email.toLowerCase() === userEmail.toLowerCase())
+    (n.targetEmails || []).some(email => email.toLowerCase() === userEmail.toLowerCase()) &&
+    !(n.readBy || []).some(email => email.toLowerCase() === userEmail.toLowerCase()) &&
+    !locallyClearedNotificationIds.has(n.id)
   );
 
   const updateIssueRow = (id: string, field: "page" | "section" | "title" | "writer" | "graphics" | "layout" | "online" | "progress", value: string) => {
@@ -1080,11 +1108,11 @@ export default function App() {
     };
 
     commitTasks((prev) => {
+      // Replace only the prior pending review card. Keep dispatched print and
+      // online tasks for this row intact until the editor explicitly confirms a
+      // replacement; rejecting this pending card must not erase existing work.
       const filtered = prev.filter((task) =>
-        task.id !== seededUuid(`issue-pending-${issueRowDraft.id}`) &&
-        task.id !== seededUuid(`issue-task-${issueRowDraft.id}`) &&
-        task.id !== seededUuid(`online-task-${issueRowDraft.id}`) &&
-        task.sourceIssueRowId !== issueRowDraft.id
+        task.id !== seededUuid(`issue-pending-${issueRowDraft.id}`)
       );
       return [newPendingTask, ...filtered];
     });
@@ -1645,26 +1673,24 @@ export default function App() {
                 >
                   <div className="flex items-center justify-between border-b pb-1.5 border-neutral-100 dark:border-neutral-800">
                     <h3 className="font-bold text-neutral-900 dark:text-neutral-100 font-display">Notifications</h3>
-                    <div className="flex items-center gap-2">
-                      {(userRole === "Layout Editor" || userRole === "Layout Deputy" || userRole === "Online Layout Head") && (
-                        <button
-                          onClick={async () => {
-                            if (!window.confirm("Clear all notifications for everyone?")) return;
-                            await clearNotifications();
-                            setNotifications([]);
-                          }}
-                          className="text-[10px] text-red-700 dark:text-red-400 hover:underline font-bold cursor-pointer"
-                        >
-                          Clear all
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setNotifications(prev => prev.filter(n => !(n.targetEmails || []).some(email => email.toLowerCase() === userEmail.toLowerCase())))}
-                        className="text-[10px] text-red-700 dark:text-red-400 hover:underline font-bold cursor-pointer"
-                      >
-                        Clear
-                      </button>
-                    </div>
+                    <button
+                      onClick={async () => {
+                        const visibleIds = new Set(myNotifications.map((notification) => notification.id));
+                        const clearedIds = new Set([...locallyClearedNotificationIds, ...visibleIds]);
+                        localStorage.setItem(clearedNotificationStorageKey, JSON.stringify([...clearedIds]));
+                        setNotifications((prev) => prev.map((notification) => {
+                          if (!visibleIds.has(notification.id)) return notification;
+                          const readBy = notification.readBy || [];
+                          return readBy.some((email) => email.toLowerCase() === userEmail.toLowerCase())
+                            ? notification
+                            : { ...notification, readBy: [...readBy, userEmail] };
+                        }));
+                        await Promise.all(myNotifications.map((notification) => markNotificationRead(notification.id, userEmail)));
+                      }}
+                      className="text-[10px] text-red-700 dark:text-red-400 hover:underline font-bold cursor-pointer"
+                    >
+                      Clear
+                    </button>
                   </div>
 
                   <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -2337,8 +2363,7 @@ export default function App() {
                 >
                   <option value="Online Article">Online Article</option>
                   {!canAssignOnlineOnly && <option value="Issue Article">Issue Article</option>}
-                  {!canAssignOnlineOnly && <option value="Multimedia">Multimedia</option>}
-                  {!canAssignOnlineOnly && <option value="From the Archives">From the Archives</option>}
+
                 </select>
               </div>
 

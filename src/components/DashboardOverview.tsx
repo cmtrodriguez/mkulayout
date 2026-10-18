@@ -779,7 +779,7 @@ export default function DashboardOverview({
                       Workload Tracker (Online Pubs vs Issues)
                     </h3>
                     <p className="text-[9px] sm:text-[10px] text-neutral-400 dark:text-neutral-500">
-                      Approved online pubs and newspaper issues per staffer
+                      Completed online pubs and newspaper issues per staffer
                     </p>
                   </div>
 
@@ -1124,7 +1124,7 @@ export default function DashboardOverview({
               {completedList.length === 0 ? (
                 <div className="border border-neutral-200/60 dark:border-neutral-800 rounded-xl sm:rounded-2xl p-6 sm:p-10 text-center text-neutral-500 dark:text-neutral-400 text-xs">
                   <p className="font-bold text-neutral-700 dark:text-neutral-200">No completed publications yet.</p>
-                  <p className="mt-1">Approved and finished layouts will show up here.</p>
+                  <p className="mt-1">Completed layouts will show up here.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">

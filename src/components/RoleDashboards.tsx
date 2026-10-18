@@ -704,7 +704,7 @@ export function EicDashboard({
     const isLayoutEditor = currentUserRole === "Layout Editor";
     const updated: Task = {
       ...task,
-      progress: "Approved",
+      progress: "Completed",
       lastUpdated: new Date().toISOString()
     };
     onUpdateTask(updated);
@@ -720,15 +720,15 @@ export function EicDashboard({
     if (onAddNotification) {
       const assigneeEmail = task.assigneeEmail || resolveMemberEmail(task.illusLayout);
       onAddNotification(
-        isLayoutEditor ? "Layout Approved" : "Layout Approved",
-        `Your layout '${task.title}' was approved and locked for publication.`,
+        "Layout Completed",
+        `Your layout '${task.title}' was approved and completed for publication.`,
         "assignment",
         assigneeEmail ? [assigneeEmail] : undefined
       );
     }
     setRevisionFeedback("");
     setSelectedReviewTaskId(null);
-    speakText(`Layout ${task.title} approved for publication release!`);
+    speakText(`Layout ${task.title} completed and approved for publication release!`);
   };
 
   const handleRequestRevision = (task: Task) => {
@@ -1152,7 +1152,7 @@ export function EicDashboard({
                 { label: "Designing", color: "bg-blue-500" },
                 { label: "Pending Critique", color: "bg-purple-500" },
                 { label: "Revision Loop", color: "bg-rose-500" },
-                { label: "Approved & Done", color: "bg-emerald-600" }
+                { label: "Completed", color: "bg-emerald-600" }
               ];
 
               return (
@@ -1294,7 +1294,7 @@ export function EicDashboard({
                     Approve & lock this submission?
                   </h4>
                   <p className="text-xs text-gray-500 dark:text-neutral-400 leading-relaxed">
-                    '{confirmTask.title}' will be marked approved and locked for publication release.
+                    '{confirmTask.title}' will be marked completed and locked for publication release.
                     {typedNote
                       ? " Your typed note will be sent to the assigned artist."
                       : " No typed note will be sent — you can add one in the review box before confirming."}

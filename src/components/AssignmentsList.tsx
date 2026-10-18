@@ -222,7 +222,8 @@ export default function AssignmentsList({
   };
 
   const handleRejectTask = (taskId: string) => {
-    const updated = tasks.filter(t => t.id !== taskId && t.id !== `${taskId}-online`);
+    const rejectedTask = tasks.find((task) => task.id === taskId);
+    const updated = tasks.filter((task) => task.id !== taskId && !(task.isPendingConfirmation && rejectedTask?.sourceIssueRowId && task.sourceIssueRowId === rejectedTask.sourceIssueRowId && task.id === taskId));
     onUpdateTasks(updated);
     
     if (editingTaskId === taskId) {
@@ -748,7 +749,7 @@ export default function AssignmentsList({
                           >
                             <option value="Issue Article">Issue Article (Print Issue)</option>
                             <option value="Online Article">Online Article (Pubmat Dashboard)</option>
-                            <option value="Multimedia">Multimedia Layout</option>
+
                           </select>
                         </div>
 
