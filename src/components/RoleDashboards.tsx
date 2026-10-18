@@ -383,8 +383,25 @@ export function LayoutStaffDashboard({
                       );
                     })()}
 
-                    {/* 3. Pubmat / Drive Link */}
-                    {(() => {
+                    {/* 3. Pubmat / Drive Link — issue tasks package progress in the Print Issue Drive */}
+                    {isIssueArticleTask(task.typeOfRelease) ? (
+                      <a
+                        href={PRINT_ISSUE_DRIVE_LINK}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Upload and package your layout progress in this Drive folder"
+                        className="flex items-center justify-between p-2.5 sm:p-3 bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-200/80 rounded-lg sm:rounded-xl transition-all group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                          <Folder className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700 shrink-0" />
+                          <div className="min-w-0 text-left">
+                            <span className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-emerald-700">Print Issue Drive</span>
+                            <span className="block text-[11px] sm:text-xs font-semibold text-emerald-900 truncate">Package your progress here</span>
+                          </div>
+                        </div>
+                        <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-700 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </a>
+                    ) : (() => {
                       const pubmatRaw = task.pubmatLink || "";
                       const details = extractHyperlinkDetails(pubmatRaw);
                       const hasDrive = details.url && details.url.startsWith("http");
