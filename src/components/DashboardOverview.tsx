@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Task, TeamMember, CalendarEvent, Poll } from "../types";
 import { getPreferredFirstName, isUserAssignedToTask } from "../lib/memberUtils";
+import { byReleaseDateDesc } from "../lib/taskDate";
 import { createPoll, updatePollOptionVotes, deletePoll, createAnnouncement, deleteAnnouncement } from "../lib/supabase";
 import CalendarView from "./CalendarView";
 import MeetingPolls from "./MeetingPolls";
@@ -85,6 +86,8 @@ export default function DashboardOverview({
   // Workload Tracker period & filter state (for Editor & Deputy)
   const [workloadPeriod, setWorkloadPeriod] = useState<"month" | "semester">("semester");
   const [selectedMonth, setSelectedMonth] = useState<string>(CURRENT_MONTH);
+  // Bar drill-down: completed tasks of the clicked staffer
+  const [workloadDetail, setWorkloadDetail] = useState<{ fullName: string; tasks: Task[] } | null>(null);
 
   // Staffer & Probi Personal Task Stats & Category period
   const [staffStatsPeriod, setStaffStatsPeriod] = useState<"semester" | "month">("semester");
@@ -253,21 +256,22 @@ export default function DashboardOverview({
       });
     }
 
-    const onlinePubs = filtered.filter(
+    const onlineTasks = filtered.filter(
       (t) => t.typeOfRelease === "Online Article" || t.title.toLowerCase().includes("online")
-    ).length;
+    );
 
-    const issues = filtered.filter(
+    const issueTasks = filtered.filter(
       (t) => t.typeOfRelease === "Issue Article" || t.typeOfRelease === "Newspaper Issue" || t.title.toLowerCase().includes("issue")
-    ).length;
+    );
 
     return {
       id: m.id,
       name: shortName,
       fullName: m.displayName || m.name,
-      onlinePubs,
-      issues,
-      total: onlinePubs + issues,
+      onlinePubs: onlineTasks.length,
+      issues: issueTasks.length,
+      total: onlineTasks.length + issueTasks.length,
+      tasks: filtered,
     };
   });
 
@@ -779,7 +783,7 @@ export default function DashboardOverview({
                       Workload Tracker (Online Pubs vs Issues)
                     </h3>
                     <p className="text-[9px] sm:text-[10px] text-neutral-400 dark:text-neutral-500">
-                      Completed online pubs and newspaper issues per staffer
+                      Completed online pubs and newspaper issues per staffer · click a staffer&apos;s bars to view their completed tasks
                     </p>
                   </div>
 
@@ -883,7 +887,21 @@ export default function DashboardOverview({
                         const issuesY = 140 - issuesHeight;
 
                         return (
-                          <g key={d.id} className="group cursor-pointer">
+                          <g
+                            key={d.id}
+                            className="group cursor-pointer"
+                            onClick={() => setWorkloadDetail({ fullName: d.fullName, tasks: d.tasks })}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`View ${d.fullName}'s completed tasks`}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setWorkloadDetail({ fullName: d.fullName, tasks: d.tasks });
+                              }
+                            }}
+                          >
+                            <title>{`${d.fullName} — click to view completed tasks`}</title>
                             {/* Staffer group background hover */}
                             <rect
                               x={groupX - 5}
@@ -1167,6 +1185,87 @@ export default function DashboardOverview({
           </div>
         </div>
       )}
+
+      {/* Workload Tracker drill-down — completed tasks of a clicked staffer */}
+      {workloadDetail && (() => {
+        const sortedTasks = [...workloadDetail.tasks].sort(byReleaseDateDesc);
+        const periodLabel = workloadPeriod === "semester"
+          ? "Semester 1"
+          : (selectedMonth === "All" ? "All months" : selectedMonth);
+        return (
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-6"
+            onClick={() => setWorkloadDetail(null)}
+          >
+            <div
+              className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl border border-neutral-200/60 dark:border-neutral-800 shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-3 p-3.5 sm:p-5 border-b border-neutral-200/60 dark:border-neutral-800">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <span className="p-1.5 sm:p-2 bg-brand-maroon/5 dark:bg-brand-maroon/15 rounded-lg sm:rounded-xl text-brand-maroon dark:text-brand-maroon-light shrink-0">
+                    <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="font-sans font-black text-sm sm:text-base text-neutral-900 dark:text-neutral-100 tracking-tight truncate">
+                      {workloadDetail.fullName}&apos;s Completed Tasks
+                    </h3>
+                    <p className="text-[9px] sm:text-[10px] text-neutral-400 dark:text-neutral-500">
+                      {sortedTasks.length} {sortedTasks.length === 1 ? "task" : "tasks"} · {periodLabel} · newest release first
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setWorkloadDetail(null)}
+                  className="p-1.5 sm:p-2 text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-all cursor-pointer shrink-0"
+                  aria-label="Close staffer completed tasks list"
+                >
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto p-3 sm:p-5">
+                {sortedTasks.length === 0 ? (
+                  <div className="border border-neutral-200/60 dark:border-neutral-800 rounded-xl sm:rounded-2xl p-6 sm:p-10 text-center text-neutral-500 dark:text-neutral-400 text-xs">
+                    <p className="font-bold text-neutral-700 dark:text-neutral-200">No completed tasks in this period.</p>
+                    <p className="mt-1">Approved and completed layouts will show up here.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
+                    {sortedTasks.map(task => (
+                      <div
+                        key={task.id}
+                        className="p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-neutral-200/60 dark:border-neutral-800 bg-neutral-50/40 dark:bg-neutral-800/30 space-y-1.5 sm:space-y-2 text-left"
+                      >
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[8px] sm:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon dark:bg-brand-maroon/15 dark:text-brand-maroon-light">
+                            {task.typeOfRelease}
+                          </span>
+                          <span className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            task.progress === "Approved"
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
+                              : "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
+                          }`}>
+                            {task.progress}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-neutral-900 dark:text-neutral-100 text-[11px] sm:text-xs leading-snug">
+                          {task.title}
+                        </h4>
+                        <div className="space-y-0.5 text-[9px] sm:text-[10px] text-neutral-500 dark:text-neutral-400">
+                          <p>Category: <span className="font-bold text-neutral-700 dark:text-neutral-200">{resolveEditorialCategory(task.typeOfContent)}</span></p>
+                          <p>Release date: <span className="font-bold text-neutral-700 dark:text-neutral-200">{task.releaseDate || "—"}</span></p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

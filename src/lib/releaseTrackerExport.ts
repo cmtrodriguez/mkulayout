@@ -1,11 +1,12 @@
 import ExcelJS from "exceljs";
 import type { Task } from "../types";
 import { extractHyperlinkDetails } from "./canvaTemplates";
-import { byReleaseDateDesc } from "./taskDate";
+import { byReleaseDateDesc, releaseDateTimestamp } from "./taskDate";
 
 const RELEASE_TRACKER_COLUMNS = [
   "SECTION",
   "TITLE",
+  "TYPE",
   "LAYOUT ARTIST (PRINT)",
   "LAYOUT ARTIST (ONLINE)",
   "ILLUSTRATOR",
@@ -15,6 +16,21 @@ const RELEASE_TRACKER_COLUMNS = [
   "PUB LINK",
   "STATUS",
 ];
+
+const MONTH_NAMES = [
+  "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+  "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER",
+];
+
+// POSTING DATE cells must read "MONTH DAY, YEAR" (e.g. "OCTOBER 27, 2026").
+// Labels like a bare "OCTOBER 20" get their year from lastUpdated; cells with
+// no real date (an issue-sheet page number, "Issue Board") stay as-is.
+function formatPostingDate(task: Task): string {
+  const timestamp = releaseDateTimestamp(task);
+  if (isNaN(timestamp)) return task.releaseDate || "";
+  const date = new Date(timestamp);
+  return `${MONTH_NAMES[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+}
 
 const isPrintIssue = (task: Task) => task.typeOfRelease === "Issue Article" || task.typeOfRelease === "Newspaper Issue";
 const isOnlineRelease = (task: Task) => task.typeOfRelease.toLowerCase().includes("online") || /\(online pubmat\)$/i.test(task.title);
@@ -51,15 +67,17 @@ export function buildReleaseTrackerRows(tasks: Task[]): string[][] {
       onlineTask?.graphicsIllus || onlineTask?.graphics || "",
     ].map((name) => name.trim()).filter(Boolean))).join(", ");
 
+    const dateSource = onlineTask?.releaseDate ? onlineTask : printTask;
     datedRows.push({
-      dateSource: onlineTask?.releaseDate ? onlineTask : printTask,
+      dateSource,
       values: [
         sourceTask.typeOfContent,
         baseTitle,
+        "Issue",
         printTask.illusLayout,
         onlineTask?.illusLayout || "",
         illustrators,
-        onlineTask?.releaseDate || printTask.releaseDate,
+        formatPostingDate(dateSource),
         onlineTask?.writeup || printTask.writeup,
         getLinkValue(onlineTask?.draftLink || printTask.draftLink || onlineTask?.addedToLayout || printTask.addedToLayout),
         getLinkValue(onlineTask?.pubmatLink || printTask.pubmatLink),
@@ -74,10 +92,11 @@ export function buildReleaseTrackerRows(tasks: Task[]): string[][] {
       values: [
         task.typeOfContent,
         getBaseTitle(task.title),
+        "Online",
         "",
         task.illusLayout,
         task.graphicsIllus || task.graphics || "",
-        task.releaseDate,
+        formatPostingDate(task),
         task.writeup,
         getLinkValue(task.draftLink || task.addedToLayout),
         getLinkValue(task.pubmatLink),
@@ -101,15 +120,16 @@ export async function buildReleaseTrackerWorkbook(tasks: Task[]): Promise<ArrayB
 
   const sheet = workbook.addWorksheet("Releases Tracker", {
     properties: { defaultRowHeight: 19 },
-    views: [{ state: "frozen", ySplit: 3 }],
+    views: [{ state: "frozen", ySplit: 2 }],
   });
   sheet.columns = [
     { width: 23 },
     { width: 34 },
+    { width: 12 },
     { width: 28 },
     { width: 28 },
     { width: 24 },
-    { width: 16 },
+    { width: 20 },
     { width: 42 },
     { width: 34 },
     { width: 26 },
@@ -124,15 +144,6 @@ export async function buildReleaseTrackerWorkbook(tasks: Task[]): Promise<ArrayB
   titleRow.getCell(1).font = { name: "Arial", size: 19, bold: true, color: { argb: "FFFFFFFF" } };
   titleRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
   sheet.mergeCells(1, 1, 1, RELEASE_TRACKER_COLUMNS.length);
-
-  const subtitleRow = sheet.addRow(["OTHER ONLINE RELEASES"]);
-  subtitleRow.height = 34;
-  for (let column = 1; column <= RELEASE_TRACKER_COLUMNS.length; column += 1) {
-    subtitleRow.getCell(column).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF920000" } };
-  }
-  subtitleRow.getCell(1).font = { name: "Arial", size: 13, bold: true, color: { argb: "FFFFFFFF" } };
-  subtitleRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
-  sheet.mergeCells(2, 1, 2, RELEASE_TRACKER_COLUMNS.length);
 
   const headerRow = sheet.addRow(RELEASE_TRACKER_COLUMNS);
   headerRow.height = 34;
