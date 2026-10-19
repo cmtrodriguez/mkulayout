@@ -6,11 +6,7 @@ import {
   FileText, CheckCircle2, Loader2, RefreshCw, Undo2
 } from "lucide-react";
 import { Task, TeamMember } from "../types";
-import { getAllCanvaTemplates, extractHyperlinkDetails, getCanvaLinkForContent, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "../lib/canvaTemplates";
-import GoogleDocShareWidget from "./GoogleDocShareWidget";
-import GoogleDocConfirmModal from "./GoogleDocConfirmModal";
-import { shareGoogleDocWithMember } from "../lib/googleDriveShare";
-import { fetchGoogleDocTitle, extractDocInputDetails } from "../lib/googleDocTitle";
+import { getAllCanvaTemplates, extractHyperlinkDetails, extractDocInputDetails, getCanvaLinkForContent, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "../lib/canvaTemplates";
 
 import { OFFICIAL_MEMBERS_MAP, getOfficialDisplayName, getPreferredFirstName, resolveLayoutAssignee } from "../lib/memberUtils";
 import { seededUuid } from "../lib/seededUuid";
@@ -58,7 +54,6 @@ export default function AssignmentsList({
   // State for pending tasks inline editing
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Task> | null>(null);
-  const [isFetchingDocTitle, setIsFetchingDocTitle] = useState(false);
   const [confirmRejectId, setConfirmRejectId] = useState<string | null>(null);
 
   const canvaTemplates = getAllCanvaTemplates();
@@ -104,14 +99,6 @@ export default function AssignmentsList({
     }
     speakText(`Task ${task.title} reactivated and back under review.`);
   };
-
-  // State for Google Doc access confirmation modal
-  const [confirmModalData, setConfirmModalData] = useState<{
-    task: Task;
-    activeForm: Task;
-    docUrl: string;
-    assignedName: string;
-  } | null>(null);
 
   const executeDispatch = (task: Task, activeForm: Task) => {
     // Auto-resolve Canva link from template if not already explicitly specified
@@ -309,7 +296,7 @@ export default function AssignmentsList({
     return "Low";
   };
 
-  const handleArtxDocLinkChange = async (urlVal: string) => {
+  const handleArtxDocLinkChange = (urlVal: string) => {
     const details = extractDocInputDetails(urlVal);
     const cleanUrl = details.url || urlVal;
 
@@ -327,26 +314,6 @@ export default function AssignmentsList({
       draftLink: cleanUrl,
       addedToLayout: cleanUrl
     });
-
-    // Auto-fetch Google Docs title
-    if (cleanUrl && (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://"))) {
-      setIsFetchingDocTitle(true);
-      try {
-        const res = await fetchGoogleDocTitle(cleanUrl);
-        if (res.success && res.title) {
-          handleFieldsChange({
-            writeup: res.title,
-            title: (!editForm?.title || editForm.title === "ArtX Assignment" || editForm.title.startsWith("http")) ? res.title : editForm.title,
-            draftLink: cleanUrl,
-            addedToLayout: `=HYPERLINK("${cleanUrl}", "${res.title}")`
-          });
-        }
-      } catch (err) {
-        console.error("Auto fetch doc title error:", err);
-      } finally {
-        setIsFetchingDocTitle(false);
-      }
-    }
   };
 
   const savePendingEdit = (taskId: string) => {
@@ -707,9 +674,6 @@ export default function AssignmentsList({
                         <div className="space-y-1">
                           <label className="font-bold text-gray-700 dark:text-neutral-300 block flex items-center justify-between">
                             <span>ArtX Document Link</span>
-                            {isFetchingDocTitle && (
-                              <span className="text-[10px] text-brand-maroon dark:text-brand-maroon-light font-semibold animate-pulse">Auto-fetching title...</span>
-                            )}
                           </label>
                           <input
                             type="text"
@@ -796,14 +760,6 @@ export default function AssignmentsList({
                       </div>
 
                       {/* Google Doc Auto-Share Permissions Widget (Placed cleanly below 4 rows) */}
-                      <div className="pt-2">
-                        <GoogleDocShareWidget
-                          docUrl={editForm.draftLink || editForm.addedToLayout || editForm.pubmatLink || ""}
-                          assignedMemberName={editForm.illusLayout || "Unassigned"}
-                          members={members}
-                        />
-                      </div>
-
                       <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2.5">
                         <button 
                           onClick={() => {
@@ -1159,22 +1115,6 @@ export default function AssignmentsList({
         })}
         </div>
       )}
-
-      {/* Modal for Google Doc Permission Confirmation */}
-      <GoogleDocConfirmModal
-        isOpen={Boolean(confirmModalData)}
-        taskTitle={confirmModalData?.activeForm.title || ""}
-        docUrl={confirmModalData?.docUrl || ""}
-        assignedMemberName={confirmModalData?.assignedName || ""}
-        members={members}
-        onConfirm={async () => {
-          if (confirmModalData) {
-            executeDispatch(confirmModalData.task, confirmModalData.activeForm);
-            setConfirmModalData(null);
-          }
-        }}
-        onCancel={() => setConfirmModalData(null)}
-      />
     </div>
   );
 }

@@ -11,8 +11,6 @@ import { getPreferredFirstName } from "../lib/memberUtils";
 import { isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK, PRINT_ISSUE_DRIVE_LINK } from "../lib/canvaTemplates";
 import { toISOFormatDate } from "../lib/taskDate";
 import { formatISOToDisplayDate } from "./AssignmentsList";
-import GoogleDocShareWidget from "./GoogleDocShareWidget";
-import { shareGoogleDocWithMember } from "../lib/googleDriveShare";
 import CommentImageAnnotator from "./CommentImageAnnotator";
 
 interface TaskDetailsModalProps {
@@ -533,13 +531,6 @@ export default function TaskDetailsModal({
             </div>
 
           </div>
-
-          {/* Google Doc Auto-Share Permissions Widget */}
-          <GoogleDocShareWidget
-            docUrl={task.draftLink || task.addedToLayout || task.pubmatLink || ""}
-            assignedMemberName={task.illusLayout}
-            members={members}
-          />
 
           {/* Workflow Transitions Panel */}
           <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">

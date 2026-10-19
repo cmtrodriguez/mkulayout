@@ -112,3 +112,44 @@ export function extractHyperlinkDetails(input: string | undefined | null): { url
 
   return { url: "", label: str };
 }
+
+/**
+ * Extract URL and optional embedded title from user input.
+ * Handles raw URLs, =HYPERLINK("url", "title"), and markdown [title](url).
+ * Relocated here when the Google Docs integration was removed; this is pure
+ * string parsing with no Google API access.
+ */
+export function extractDocInputDetails(input: string): { url: string; embeddedTitle?: string } {
+  if (!input) return { url: "" };
+  const trimmed = input.trim();
+
+  const hyperlinkMatch = trimmed.match(/=HYPERLINK\(\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']\s*\)/i);
+  if (hyperlinkMatch) {
+    const url = hyperlinkMatch[1].trim();
+    const title = hyperlinkMatch[2].trim();
+    return {
+      url,
+      embeddedTitle: title && !title.startsWith("http") ? title : undefined
+    };
+  }
+
+  const mdMatch = trimmed.match(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/i);
+  if (mdMatch) {
+    const title = mdMatch[1].trim();
+    const url = mdMatch[2].trim();
+    return {
+      url,
+      embeddedTitle: title && !title.startsWith("http") ? title : undefined
+    };
+  }
+
+  const ext = extractHyperlinkDetails(trimmed);
+  if (ext.url && ext.label && ext.label !== ext.url && !ext.label.startsWith("http")) {
+    return {
+      url: ext.url,
+      embeddedTitle: ext.label
+    };
+  }
+
+  return { url: ext.url || trimmed };
+}

@@ -181,15 +181,6 @@ export interface LayoutCritiqueResponse {
   recommendations: string[]; // key improvements
 }
 
-export interface SheetMerge {
-  startRowIndex: number;    // 0-indexed inclusive
-  endRowIndex: number;      // 0-indexed exclusive (endRowIndex > startRowIndex)
-  startColumnIndex: number; // 0-indexed inclusive
-  endColumnIndex: number;   // 0-indexed exclusive (endColumnIndex > startColumnIndex)
-  sheetId?: number;
-  label?: string;
-}
-
 
 /* Probi graduation tracking */
 export interface OpinionArticle {
