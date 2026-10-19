@@ -57,6 +57,15 @@ export function LayoutStaffDashboard({
     window.speechSynthesis.speak(utterance);
   };
 
+  // Opening a workspace link counts as starting the work: the assignee's first
+  // click on their design/template/Drive link moves a not-yet-started task into
+  // "In Progress" (Designing). Forward-only — later stages are never touched.
+  const markTaskDesigning = (task: Task) => {
+    if (task.progress !== "Not Started" && task.progress !== "Assigned") return;
+    onUpdateTask({ ...task, progress: "In Progress", lastUpdated: new Date().toISOString() });
+    speakText(`Task ${task.title} moved to In Progress.`);
+  };
+
   const handleSendTaskComment = (taskId: string) => {
     const text = commentInputs[taskId]?.trim();
     const images = commentImages[taskId] || [];
@@ -312,6 +321,7 @@ export function LayoutStaffDashboard({
                     {isIssueArticleTask(task.typeOfRelease) ? (
                       <a
                         href={ISSUE_TEMPLATE_LINK}
+                        onClick={() => markTaskDesigning(task)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-between p-2.5 sm:p-3 bg-amber-50/80 hover:bg-amber-100 border border-amber-200/80 rounded-lg sm:rounded-xl transition-all group cursor-pointer"
@@ -333,6 +343,7 @@ export function LayoutStaffDashboard({
                       return hasCanva ? (
                         <a
                           href={details.url}
+                          onClick={() => markTaskDesigning(task)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center justify-between p-2.5 sm:p-3 bg-cyan-50/80 hover:bg-cyan-100 border border-cyan-200/80 rounded-lg sm:rounded-xl transition-all group cursor-pointer"
@@ -362,6 +373,7 @@ export function LayoutStaffDashboard({
                       return hasMediumCanva ? (
                         <a
                           href={mediumCanva.url}
+                          onClick={() => markTaskDesigning(task)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center justify-between p-2.5 sm:p-3 bg-blue-50/80 hover:bg-blue-100 border border-blue-200/80 rounded-lg sm:rounded-xl transition-all group cursor-pointer"
@@ -387,6 +399,7 @@ export function LayoutStaffDashboard({
                     {isIssueArticleTask(task.typeOfRelease) ? (
                       <a
                         href={PRINT_ISSUE_DRIVE_LINK}
+                        onClick={() => markTaskDesigning(task)}
                         target="_blank"
                         rel="noopener noreferrer"
                         title="Upload and package your layout progress in this Drive folder"

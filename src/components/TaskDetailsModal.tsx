@@ -90,6 +90,16 @@ export default function TaskDetailsModal({
     window.speechSynthesis.speak(utterance);
   };
 
+  // Opening a workspace link counts as starting the work: the assignee's first
+  // click on their design/template/Drive link moves a not-yet-started task into
+  // "In Progress" (Designing). Forward-only — later stages are never touched.
+  const markTaskDesigning = () => {
+    if (!isThisTaskAssignee) return;
+    if (task.progress !== "Not Started" && task.progress !== "Assigned") return;
+    onUpdateTask({ ...task, progress: "In Progress", lastUpdated: new Date().toISOString() });
+    speakText(`Task ${task.title} moved to In Progress.`);
+  };
+
   const taskComments = comments.filter((c) => c.taskId === task.id);
 
   const handleSaveComment = async (comment: TaskComment) => {
@@ -331,7 +341,7 @@ export default function TaskDetailsModal({
                   Issue Template
                 </span>
                 <p className="text-[10px] text-amber-900 dark:text-amber-200 font-mono truncate bg-white dark:bg-neutral-800 px-2 py-1 rounded border border-amber-100 dark:border-amber-800">Issue layout template folder</p>
-                <a href={ISSUE_TEMPLATE_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[10px] items-center gap-1 shadow-sm cursor-pointer">Open Issue Template</a>
+                <a href={ISSUE_TEMPLATE_LINK} onClick={markTaskDesigning} target="_blank" rel="noopener noreferrer" className="inline-flex px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[10px] items-center gap-1 shadow-sm cursor-pointer">Open Issue Template</a>
               </div>
             ) : (
             /* Canva Workspace Link Editor */
@@ -348,6 +358,7 @@ export default function TaskDetailsModal({
                   </p>
                   <a 
                     href={extractHyperlinkDetails(task.canvaLink).url}
+                    onClick={markTaskDesigning}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-2 py-1 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg text-[10px] flex items-center gap-1 shrink-0 shadow-sm cursor-pointer"
@@ -394,7 +405,7 @@ export default function TaskDetailsModal({
                 <p className="text-[10px] text-emerald-900 dark:text-emerald-200 leading-normal">
                   This is where you package your progress — upload your layout output files to this Drive folder so the editors can track them.
                 </p>
-                <a href={PRINT_ISSUE_DRIVE_LINK} target="_blank" rel="noopener noreferrer" className="inline-flex px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] items-center gap-1 shadow-sm cursor-pointer">
+                <a href={PRINT_ISSUE_DRIVE_LINK} onClick={markTaskDesigning} target="_blank" rel="noopener noreferrer" className="inline-flex px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] items-center gap-1 shadow-sm cursor-pointer">
                   Open Print Issue Drive <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
@@ -411,7 +422,7 @@ export default function TaskDetailsModal({
                   <p className="text-[10px] text-blue-900 dark:text-blue-200 font-mono truncate bg-white dark:bg-neutral-800 px-2 py-1 rounded border border-blue-100 dark:border-blue-800 flex-1">
                     {extractHyperlinkDetails(task.mediumCanvaLink).label || task.mediumCanvaLink}
                   </p>
-                  <a href={extractHyperlinkDetails(task.mediumCanvaLink).url} target="_blank" rel="noopener noreferrer" className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] flex items-center gap-1 shrink-0 shadow-sm cursor-pointer">Launch</a>
+                  <a href={extractHyperlinkDetails(task.mediumCanvaLink).url} onClick={markTaskDesigning} target="_blank" rel="noopener noreferrer" className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] flex items-center gap-1 shrink-0 shadow-sm cursor-pointer">Launch</a>
                 </div>
               ) : (
                 <p className="text-[10px] text-gray-500 dark:text-neutral-400 italic">No Medium Canva link attached yet.</p>
