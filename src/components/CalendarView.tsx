@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { CalendarEvent, Task, PersonalCalendarEvent } from "../types";
 import { fetchPersonalEvents, upsertPersonalEvent, deletePersonalEvent } from "../lib/supabase";
+import { isIssueArticleTask, isOnlinePubmatTask } from "../lib/canvaTemplates";
 
 interface CalendarViewProps {
   events: CalendarEvent[];
@@ -27,6 +28,7 @@ interface CalendarEntry {
   category: string;
   assignee?: string;
   personalId?: string;
+  taskKind?: "Issue" | "Online";
 }
 
 export default function CalendarView({
@@ -176,7 +178,7 @@ export default function CalendarView({
 
   const taskEntries = tasks
     .filter(t => !isDoneTask(t))
-    .map(t => ({ id: `task-${t.id}`, title: t.title, start: toTaskISO(t.releaseDate || "") || "", type: "deadline", isTask: true, isPersonal: false, description: "", category: t.typeOfContent || "", assignee: t.illusLayout || "Unassigned" }))
+    .map(t => ({ id: `task-${t.id}`, title: t.title, start: toTaskISO(t.releaseDate || "") || "", type: "deadline", isTask: true, isPersonal: false, description: "", category: t.typeOfContent || "", assignee: t.illusLayout || "Unassigned", taskKind: (isIssueArticleTask(t.typeOfRelease) ? "Issue" : isOnlinePubmatTask(t.typeOfRelease, t.title) ? "Online" : undefined) as "Issue" | "Online" | undefined }))
     .filter(e => e.start);
 
   const eventEntries = events.map(e => ({ id: e.id, title: e.title, start: e.start, type: e.type, isTask: false, isPersonal: false, description: e.description || "", category: e.type }));
@@ -321,7 +323,7 @@ export default function CalendarView({
                       entry.type === "deadline" ? "bg-red-100 text-red-700" :
                       entry.type === "meeting" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
                     }`}>
-                      {entry.isPersonal ? "Personal" : entry.isTask ? "Task Deadline" : entry.type}
+                      {entry.isPersonal ? "Personal" : entry.isTask ? (entry.taskKind ? `${entry.taskKind} Task Deadline` : "Task Deadline") : entry.type}
                     </span>
                   </div>
                   {entry.category && <p className="text-[10px] text-neutral-600 dark:text-neutral-300">Category: {entry.category}</p>}
@@ -486,7 +488,7 @@ export default function CalendarView({
                       e.type === "deadline" ? "bg-red-50 dark:bg-red-950/40 text-brand-red dark:text-red-300 border border-red-100 dark:border-red-900/40" :
                       e.type === "meeting" ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/40" : "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300"
                     }`}>
-                      {e.isPersonal ? "private" : e.isTask ? "task deadline" : e.type}
+                      {e.isPersonal ? "private" : e.isTask ? (e.taskKind ? `${e.taskKind.toLowerCase()} task deadline` : "task deadline") : e.type}
                     </span>
                     {e.isPersonal && (
                       <button
