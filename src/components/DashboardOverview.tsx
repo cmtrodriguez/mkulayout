@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Task, TeamMember, CalendarEvent, Poll } from "../types";
 import { getPreferredFirstName, isUserAssignedToTask } from "../lib/memberUtils";
-import { byReleaseDateDesc } from "../lib/taskDate";
+import { byReleaseDateDesc, isPastDue } from "../lib/taskDate";
 import { createPoll, updatePollOptionVotes, deletePoll, createAnnouncement, deleteAnnouncement } from "../lib/supabase";
 import CalendarView from "./CalendarView";
 import MeetingPolls from "./MeetingPolls";
@@ -370,7 +370,7 @@ export default function DashboardOverview({
               >
                 <FileText className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span>Home Desk</span>
-                <span className={`text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full font-bold ${
+                <span className={`text-[9px] sm:text-[9px] px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full font-bold ${
                   overviewTab === "desk" ? "bg-white/20 text-white" : "bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200"
                 }`}>{activeTasks.length}</span>
               </button>
@@ -388,7 +388,7 @@ export default function DashboardOverview({
               >
                 <CalendarIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span>Timeline Calendar</span>
-                <span className={`text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full font-bold ${
+                <span className={`text-[9px] sm:text-[9px] px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full font-bold ${
                   overviewTab === "calendar" ? "bg-white/20 text-white" : "bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200"
                 }`}>{events.length}</span>
               </button>
@@ -406,7 +406,7 @@ export default function DashboardOverview({
               >
                 <Vote className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span>Section Polls</span>
-                <span className={`text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full font-bold ${
+                <span className={`text-[9px] sm:text-[9px] px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full font-bold ${
                   overviewTab === "polls" ? "bg-white/20 text-white" : "bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200"
                 }`}>{polls?.length || 0}</span>
               </button>
@@ -536,19 +536,27 @@ export default function DashboardOverview({
                       { bg: "bg-[#fcfdf2] dark:bg-neutral-900/90", tagBg: "bg-[#f3f7ca] dark:bg-lime-950/60", tagText: "text-[#6c7d0f] dark:text-lime-300", text: "text-[#1a2e05] dark:text-neutral-100", barColor: "bg-lime-600" },
                       { bg: "bg-[#faf5f8] dark:bg-neutral-900/90", tagBg: "bg-[#f5daeb] dark:bg-pink-950/60", tagText: "text-[#b01e74] dark:text-pink-300", text: "text-[#3d0322] dark:text-neutral-100", barColor: "bg-rose-500" }
                     ];
-                    const theme = colors[idx % colors.length];
+                    const isOverdue = isPastDue(task.releaseDate) && task.progress !== "Completed" && task.progress !== "Approved";
+                    const theme = isOverdue
+                      ? { bg: "bg-red-50 dark:bg-red-950/40", tagBg: "bg-red-100 dark:bg-red-900/60", tagText: "text-red-700 dark:text-red-300", text: "text-red-900 dark:text-red-100", barColor: "bg-red-600" }
+                      : colors[idx % colors.length];
                     const progressVal = getTaskProgress(task);
 
                     return (
                       <div 
                         key={task.id} 
-                        className={`${theme.bg} rounded-xl sm:rounded-[24px] p-3 sm:p-5 flex flex-col justify-between hover:scale-[1.01] transition-all cursor-pointer relative shadow-sm hover:shadow-md border border-neutral-200/40 dark:border-neutral-800 overflow-hidden group`}
+                        className={`${theme.bg} rounded-xl sm:rounded-[24px] p-3 sm:p-5 flex flex-col justify-between hover:scale-[1.01] transition-all cursor-pointer relative shadow-sm hover:shadow-md border ${isOverdue ? "border-red-300 dark:border-red-700" : "border-neutral-200/40 dark:border-neutral-800"} overflow-hidden group`}
                         onClick={() => onNavigate(isStaffOrProbi ? "my-assignments" : "online-pubmat")}
                       >
                         <div>
                           <span className={`${theme.tagBg} ${theme.tagText} text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block`}>
                             {task.typeOfRelease || "Online Article"}
                           </span>
+                          {isOverdue && (
+                            <span className="bg-red-600 text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block ml-1">
+                              Past Due
+                            </span>
+                          )}
                           {task.sourceSheetTitle && (
                             <span className="bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block ml-1">
                               {task.sourceSheetTitle}
@@ -687,7 +695,7 @@ export default function DashboardOverview({
                       <Plus className="w-2.5 h-2.5" /> Post
                     </button>
                   )}
-                  <span className="text-[8px] sm:text-[9px] bg-brand-maroon/5 dark:bg-brand-maroon/20 text-brand-maroon dark:text-brand-maroon-light px-1.5 sm:px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">
+                  <span className="text-[9px] sm:text-[9px] bg-brand-maroon/5 dark:bg-brand-maroon/20 text-brand-maroon dark:text-brand-maroon-light px-1.5 sm:px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">
                     Live
                   </span>
                 </div>
@@ -743,7 +751,7 @@ export default function DashboardOverview({
                           {ann.title}
                         </h4>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[8px] sm:text-[9px] font-mono text-neutral-400 dark:text-neutral-500 font-semibold">{ann.date}</span>
+                          <span className="text-[9px] sm:text-[9px] font-mono text-neutral-400 dark:text-neutral-500 font-semibold">{ann.date}</span>
                           {isEditorOrDeputy && (
                             <button
                               type="button"
@@ -760,7 +768,7 @@ export default function DashboardOverview({
                         {ann.content}
                       </p>
                       <div className="flex items-center justify-between pt-1 border-t border-neutral-200/10 dark:border-neutral-700/50">
-                        <span className="text-[8px] sm:text-[9px] bg-brand-maroon/5 dark:bg-brand-maroon/20 text-brand-maroon dark:text-brand-maroon-light font-bold uppercase px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] sm:text-[9px] bg-brand-maroon/5 dark:bg-brand-maroon/20 text-brand-maroon dark:text-brand-maroon-light font-bold uppercase px-1.5 py-0.5 rounded">
                           {ann.author}
                         </span>
                       </div>
@@ -788,7 +796,7 @@ export default function DashboardOverview({
                   </div>
 
                   {/* Toggle Period: Per Month vs Per Semester */}
-                  <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                  <div className="flex flex-wrap items-center gap-2 self-end">
                     <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-lg gap-1">
                       <button
                         type="button"
@@ -926,7 +934,7 @@ export default function DashboardOverview({
                               x={groupX + barWidth / 2}
                               y={onlineY - 3}
                               textAnchor="middle"
-                              className="font-mono text-[8px] font-bold fill-brand-maroon dark:fill-red-400"
+                              className="font-mono text-[10px] font-bold fill-brand-maroon dark:fill-red-400"
                             >
                               {d.onlinePubs}
                             </text>
@@ -945,7 +953,7 @@ export default function DashboardOverview({
                               x={groupX + barWidth + 3 + barWidth / 2}
                               y={issuesY - 3}
                               textAnchor="middle"
-                              className="font-mono text-[8px] font-bold fill-[#1E3A8A] dark:fill-blue-400"
+                              className="font-mono text-[10px] font-bold fill-[#1E3A8A] dark:fill-blue-400"
                             >
                               {d.issues}
                             </text>
@@ -955,7 +963,7 @@ export default function DashboardOverview({
                               x={groupX + barWidth + 1.5}
                               y="156"
                               textAnchor="middle"
-                              className="font-sans text-[8.5px] font-bold fill-neutral-600 dark:fill-neutral-400 group-hover:fill-neutral-950 dark:group-hover:fill-white"
+                              className="font-sans text-[10px] font-bold fill-neutral-600 dark:fill-neutral-400 group-hover:fill-neutral-950 dark:group-hover:fill-white"
                             >
                               {d.name}
                             </text>
@@ -1156,10 +1164,10 @@ export default function DashboardOverview({
                         className="p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-neutral-200/60 dark:border-neutral-800 bg-neutral-50/40 dark:bg-neutral-800/30 space-y-1.5 sm:space-y-2 text-left"
                       >
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[8px] sm:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon dark:bg-brand-maroon/15 dark:text-brand-maroon-light">
+                          <span className="text-[9px] sm:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon dark:bg-brand-maroon/15 dark:text-brand-maroon-light">
                             {task.typeOfRelease}
                           </span>
-                          <span className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          <span className={`text-[9px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${
                             task.progress === "Approved"
                               ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
                               : "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"
@@ -1239,10 +1247,10 @@ export default function DashboardOverview({
                         className="p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-neutral-200/60 dark:border-neutral-800 bg-neutral-50/40 dark:bg-neutral-800/30 space-y-1.5 sm:space-y-2 text-left"
                       >
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[8px] sm:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon dark:bg-brand-maroon/15 dark:text-brand-maroon-light">
+                          <span className="text-[9px] sm:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon dark:bg-brand-maroon/15 dark:text-brand-maroon-light">
                             {task.typeOfRelease}
                           </span>
-                          <span className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          <span className={`text-[9px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${
                             task.progress === "Approved"
                               ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
                               : "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400"

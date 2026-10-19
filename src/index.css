@@ -27,6 +27,23 @@
   box-sizing: border-box;
 }
 
+/* Mobile usability floor: tiny pills and filters become tappable, and form
+   text stays readable on phone screens. Desktop layout is untouched. */
+@media (max-width: 639px) {
+  button,
+  select,
+  a,
+  [role="button"] {
+    min-height: 2rem;
+  }
+  select,
+  input,
+  textarea {
+    /* !important: must win over per-element text-[11px]/text-xs utilities. */
+    font-size: 13px !important;
+  }
+}
+
 html, body, #root {
   width: 100%;
   max-width: 100%;

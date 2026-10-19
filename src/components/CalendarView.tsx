@@ -271,7 +271,7 @@ export default function CalendarView({
                 }}
               >
                 <span className="font-mono text-[10px] font-bold text-gray-400 dark:text-neutral-500">{day}</span>
-                <span className="block w-full truncate text-[8px] leading-3 font-bold text-brand-maroon dark:text-brand-maroon-light">
+                <span className="block w-full truncate text-[9px] leading-3 font-bold text-brand-maroon dark:text-brand-maroon-light">
                   {daySummary}
                 </span>
               </button>
@@ -318,7 +318,7 @@ export default function CalendarView({
                 <div key={entry.id} className="p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/70 space-y-1.5">
                   <div className="flex items-start justify-between gap-2">
                     <h4 className="font-bold text-xs text-neutral-900 dark:text-neutral-100 break-words">{entry.title}</h4>
-                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
                       entry.isPersonal ? "bg-emerald-100 text-emerald-700" :
                       entry.type === "deadline" ? "bg-red-100 text-red-700" :
                       entry.type === "meeting" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
@@ -483,7 +483,7 @@ export default function CalendarView({
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="font-bold text-gray-900 dark:text-neutral-100 text-xs truncate max-w-[150px]">{e.title}</h4>
                   <div className="flex items-center gap-1.5">
-                    <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                       e.isPersonal ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-900/40" :
                       e.type === "deadline" ? "bg-red-50 dark:bg-red-950/40 text-brand-red dark:text-red-300 border border-red-100 dark:border-red-900/40" :
                       e.type === "meeting" ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/40" : "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300"

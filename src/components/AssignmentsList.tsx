@@ -14,7 +14,7 @@ import { fetchGoogleDocTitle, extractDocInputDetails } from "../lib/googleDocTit
 
 import { OFFICIAL_MEMBERS_MAP, getOfficialDisplayName, getPreferredFirstName, resolveLayoutAssignee } from "../lib/memberUtils";
 import { seededUuid } from "../lib/seededUuid";
-import { toISOFormatDate } from "../lib/taskDate";
+import { isPastDue, toISOFormatDate } from "../lib/taskDate";
 
 interface AssignmentsListProps {
   tasks: Task[];
@@ -833,10 +833,10 @@ export default function AssignmentsList({
                     <div className="flex flex-col md:flex-row justify-between gap-3 sm:gap-5 text-xs text-left">
                       <div className="space-y-2 sm:space-y-3 flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                          <span className="text-[8px] sm:text-[9px] font-bold uppercase px-1.5 sm:px-2 py-0.5 rounded bg-brand-maroon/5 dark:bg-brand-maroon/20 text-brand-maroon dark:text-brand-maroon-light border border-brand-maroon/10 dark:border-brand-maroon/40">
+                          <span className="text-[9px] sm:text-[9px] font-bold uppercase px-1.5 sm:px-2 py-0.5 rounded bg-brand-maroon/5 dark:bg-brand-maroon/20 text-brand-maroon dark:text-brand-maroon-light border border-brand-maroon/10 dark:border-brand-maroon/40">
                             {task.typeOfContent}
                           </span>
-                          <span className="text-[8px] sm:text-[9px] font-bold uppercase px-1.5 sm:px-2 py-0.5 rounded bg-amber-500/10 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-500/20 dark:border-amber-800">
+                          <span className="text-[9px] sm:text-[9px] font-bold uppercase px-1.5 sm:px-2 py-0.5 rounded bg-amber-500/10 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-500/20 dark:border-amber-800">
                             Sheets Row Import
                           </span>
                         </div>
@@ -849,22 +849,22 @@ export default function AssignmentsList({
 
                         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 text-[11px] sm:text-xs pt-0.5 sm:pt-1">
                           <div>
-                            <span className="text-gray-400 dark:text-neutral-500 block font-semibold text-[8px] sm:text-[9px] uppercase">Writer</span>
+                            <span className="text-gray-400 dark:text-neutral-500 block font-semibold text-[9px] sm:text-[9px] uppercase">Writer</span>
                             <span className="font-bold text-gray-800 dark:text-neutral-200">{task.writer}</span>
                           </div>
                           <div>
-                            <span className="text-gray-400 dark:text-neutral-500 block font-semibold text-[8px] sm:text-[9px] uppercase">Layout Artist</span>
+                            <span className="text-gray-400 dark:text-neutral-500 block font-semibold text-[9px] sm:text-[9px] uppercase">Layout Artist</span>
                             <span className="font-bold text-gray-800 dark:text-neutral-200">{task.illusLayout}</span>
                           </div>
                           {task.graphicsIllus && (
                             <div>
-                              <span className="text-gray-400 dark:text-neutral-500 block font-semibold text-[8px] sm:text-[9px] uppercase">Graphics/Illus</span>
+                              <span className="text-gray-400 dark:text-neutral-500 block font-semibold text-[9px] sm:text-[9px] uppercase">Graphics/Illus</span>
                               <span className="font-bold text-gray-800 dark:text-neutral-200">{task.graphicsIllus}</span>
                             </div>
                           )}
                           {task.onlineHandler && (
                             <div>
-                              <span className="text-gray-400 dark:text-neutral-500 block font-semibold text-[8px] sm:text-[9px] uppercase">Online</span>
+                              <span className="text-gray-400 dark:text-neutral-500 block font-semibold text-[9px] sm:text-[9px] uppercase">Online</span>
                               <span className="font-bold text-gray-800 dark:text-neutral-200">{task.onlineHandler}</span>
                             </div>
                           )}
@@ -1033,7 +1033,7 @@ export default function AssignmentsList({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {sortedTasks.map(task => {
           const isDone = isDoneTask(task);
-          const isOverdue = !isDone && task.progress !== "Completed" && task.priority === "Urgent";
+          const isOverdue = !isDone && isPastDue(task.releaseDate);
           return (
             <div 
               key={task.id} 
@@ -1041,7 +1041,7 @@ export default function AssignmentsList({
                 isDone
                   ? "opacity-55 border-gray-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 hover:opacity-90"
                   : isOverdue 
-                  ? "border-red-200 dark:border-red-800 bg-red-50/10 dark:bg-red-950/20" 
+                  ? "border-red-300 dark:border-red-700 bg-red-50/80 dark:bg-red-950/30" 
                   : "border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-900"
               }`}
               onMouseEnter={() => speakText(`Layout assignment card for: ${task.title}. Assigned to: ${task.illusLayout}`)}
@@ -1055,6 +1055,11 @@ export default function AssignmentsList({
                     {task.sourceSheetTitle && (
                       <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
                         {task.sourceSheetTitle}
+                      </span>
+                    )}
+                    {isOverdue && (
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-red-600 text-white border border-red-700">
+                        Past Due
                       </span>
                     )}
                   </div>
@@ -1086,7 +1091,7 @@ export default function AssignmentsList({
                       href={task.canvaLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-2 py-0.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg text-[8px] sm:text-[9px] flex items-center gap-0.5 shrink-0"
+                      className="px-2 py-0.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg text-[9px] sm:text-[9px] flex items-center gap-0.5 shrink-0"
                     >
                       Canva <ExternalLink className="w-2.5 h-2.5" />
                     </a>
@@ -1111,7 +1116,7 @@ export default function AssignmentsList({
               {/* Status Select and Actions */}
               <div className="pt-2 sm:pt-3 border-t border-gray-100 dark:border-neutral-800 flex items-center justify-between gap-2 sm:gap-3 text-xs">
                 <div>
-                  <span className="text-[8px] sm:text-[9px] text-gray-400 dark:text-neutral-400 font-semibold uppercase block mb-0.5 sm:mb-1">Update Status</span>
+                  <span className="text-[9px] sm:text-[9px] text-gray-400 dark:text-neutral-400 font-semibold uppercase block mb-0.5 sm:mb-1">Update Status</span>
                   <select
                     value={task.progress}
                     onChange={(e) => handleStatusChange(task.id, e.target.value as any)}

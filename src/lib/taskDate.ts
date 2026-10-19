@@ -62,3 +62,14 @@ export function byReleaseDateDesc<T extends { releaseDate?: string | null; lastU
   }
   return dateB - dateA;
 }
+
+// True when the release-date label resolves to a calendar date strictly
+// before today. Labels with no real date (page numbers, "Issue Board") are
+// never past due.
+export function isPastDue(dateStr?: string | null): boolean {
+  const iso = dateStr ? toISOFormatDate(dateStr) : "";
+  if (!iso) return false;
+  const now = new Date();
+  const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return iso < todayISO;
+}

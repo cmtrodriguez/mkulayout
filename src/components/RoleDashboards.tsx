@@ -9,6 +9,7 @@ import { Task, TeamMember, TaskComment, UserRole } from "../types";
 import { extractHyperlinkDetails, isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK, PRINT_ISSUE_DRIVE_LINK } from "../lib/canvaTemplates";
 import { compressCommentImage, formatCommentDetails, handleBulletKeyDown, MAX_COMMENT_IMAGES, RenderFormattedComment } from "../lib/commentUtils";
 import { isUserAssignedToTask, resolveMemberEmail, getEditorDeputyEmails } from "../lib/memberUtils";
+import { isPastDue } from "../lib/taskDate";
 import CommentImageAnnotator from "./CommentImageAnnotator";
 
 // ==========================================
@@ -192,6 +193,7 @@ export function LayoutStaffDashboard({
               const isForReview = task.progress === "For Review";
               const isApproved = task.progress === "Approved";
               const isCompleted = task.progress === "Completed";
+              const isOverdue = !isApproved && !isCompleted && isPastDue(task.releaseDate);
               
               const taskComments = comments.filter(c => c.taskId === task.id);
               const revisionComments = taskComments.filter(c => 
@@ -205,6 +207,7 @@ export function LayoutStaffDashboard({
                 <div 
                   key={task.id} 
                   className={`rounded-xl sm:rounded-2xl p-3.5 sm:p-6 border transition-all space-y-3.5 sm:space-y-4 hover:shadow-md ${
+                    isOverdue ? "border-red-400 bg-red-50/70 shadow-sm" :
                     isRevision ? "border-red-300 bg-red-50/20 shadow-sm" : 
                     isForReview ? "border-purple-200 bg-purple-50/10" :
                     isApproved || isCompleted ? "border-emerald-200 bg-emerald-50/10" :
@@ -224,7 +227,12 @@ export function LayoutStaffDashboard({
                           </span>
                         )}
                         <span className="text-[11px] sm:text-xs text-gray-500 font-medium">Priority: <strong className="text-gray-800">{task.priority}</strong></span>
-                        <span className="text-[11px] sm:text-xs text-gray-500 font-medium">• Target: <strong className="text-gray-800">{task.releaseDate}</strong></span>
+                        <span className={`text-[11px] sm:text-xs font-medium ${isOverdue ? "text-red-600" : "text-gray-500"}`}>• Target: <strong className={isOverdue ? "text-red-700" : "text-gray-800"}>{task.releaseDate}</strong></span>
+                        {isOverdue && (
+                          <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-600 text-white">
+                            Past Due
+                          </span>
+                        )}
                       </div>
                       <h4 className="font-bold text-gray-900 text-sm sm:text-base leading-snug">{task.title}</h4>
                     </div>
@@ -303,7 +311,7 @@ export function LayoutStaffDashboard({
                           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                             <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-maroon shrink-0" />
                             <div className="min-w-0 text-left">
-                              <span className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-brand-maroon">ArtX Writer Draft</span>
+                              <span className="block text-[9px] sm:text-[9px] font-bold uppercase tracking-wider text-brand-maroon">ArtX Writer Draft</span>
                               <span className="block text-[11px] sm:text-xs font-semibold text-gray-900 truncate">{details.label || "Open Writer Document"}</span>
                             </div>
                           </div>
@@ -329,7 +337,7 @@ export function LayoutStaffDashboard({
                         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-700 shrink-0" />
                           <div className="min-w-0 text-left">
-                            <span className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-amber-700">Issue Template</span>
+                            <span className="block text-[9px] sm:text-[9px] font-bold uppercase tracking-wider text-amber-700">Issue Template</span>
                             <span className="block text-[11px] sm:text-xs font-semibold text-amber-900 truncate">Open Issue Layout Template</span>
                           </div>
                         </div>
@@ -351,7 +359,7 @@ export function LayoutStaffDashboard({
                           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                             <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-700 shrink-0" />
                             <div className="min-w-0 text-left">
-                              <span className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-cyan-700">Assigned Canva Link</span>
+                              <span className="block text-[9px] sm:text-[9px] font-bold uppercase tracking-wider text-cyan-700">Assigned Canva Link</span>
                               <span className="block text-[11px] sm:text-xs font-semibold text-cyan-900 truncate">{details.label || "Open Canva Design"}</span>
                             </div>
                           </div>
@@ -381,7 +389,7 @@ export function LayoutStaffDashboard({
                           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                             <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-700 shrink-0" />
                             <div className="min-w-0 text-left">
-                              <span className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-blue-700">Medium Canva Link</span>
+                              <span className="block text-[9px] sm:text-[9px] font-bold uppercase tracking-wider text-blue-700">Medium Canva Link</span>
                               <span className="block text-[11px] sm:text-xs font-semibold text-blue-900 truncate">{mediumCanva.label || "Open Medium Canva"}</span>
                             </div>
                           </div>
@@ -408,7 +416,7 @@ export function LayoutStaffDashboard({
                         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <Folder className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700 shrink-0" />
                           <div className="min-w-0 text-left">
-                            <span className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-emerald-700">Print Issue Drive</span>
+                            <span className="block text-[9px] sm:text-[9px] font-bold uppercase tracking-wider text-emerald-700">Print Issue Drive</span>
                             <span className="block text-[11px] sm:text-xs font-semibold text-emerald-900 truncate">Package your progress here</span>
                           </div>
                         </div>
@@ -429,7 +437,7 @@ export function LayoutStaffDashboard({
                           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                             <Folder className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700 shrink-0" />
                             <div className="min-w-0 text-left">
-                              <span className="block text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-emerald-700">Pubmat / Drive Link</span>
+                              <span className="block text-[9px] sm:text-[9px] font-bold uppercase tracking-wider text-emerald-700">Pubmat / Drive Link</span>
                               <span className="block text-[11px] sm:text-xs font-semibold text-emerald-900 truncate">{details.label || "Open Drive Folder"}</span>
                             </div>
                           </div>
@@ -497,7 +505,7 @@ export function LayoutStaffDashboard({
                                     {initials}
                                   </div>
                                   <span className="font-bold text-gray-900 text-[11px] sm:text-xs">{c.authorName}</span>
-                                  <span className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${badgeStyle}`}>
+                                  <span className={`text-[9px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${badgeStyle}`}>
                                     {roleLabel}
                                   </span>
                                 </div>
@@ -647,7 +655,7 @@ export function LayoutStaffDashboard({
                         </button>
                       </div>
                       <div className="text-[9px] sm:text-[10px] text-gray-400 font-medium text-left">
-                        Press <kbd className="px-1 py-0.2 bg-gray-100 border rounded text-[8px] sm:text-[9px]">Enter</kbd> for new line, <kbd className="px-1 py-0.2 bg-gray-100 border rounded text-[8px] sm:text-[9px]">- </kbd> for bullets.
+                        Press <kbd className="px-1 py-0.2 bg-gray-100 border rounded text-[9px] sm:text-[9px]">Enter</kbd> for new line, <kbd className="px-1 py-0.2 bg-gray-100 border rounded text-[9px] sm:text-[9px]">- </kbd> for bullets.
                       </div>
                     </div>
                   </div>
@@ -943,7 +951,7 @@ export function EicDashboard({
                       {/* Links review section */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 bg-neutral-50 p-2 sm:p-3 rounded-lg sm:rounded-xl border border-gray-150">
                         <div>
-                          <span className="text-[8px] sm:text-[9px] uppercase font-bold text-gray-400 block mb-0.5 sm:mb-1">{isIssueArticleTask(task.typeOfRelease) ? "Print Issue Drive" : "Canva Link"}</span>
+                          <span className="text-[9px] sm:text-[9px] uppercase font-bold text-gray-400 block mb-0.5 sm:mb-1">{isIssueArticleTask(task.typeOfRelease) ? "Print Issue Drive" : "Canva Link"}</span>
                           {isIssueArticleTask(task.typeOfRelease) ? (
                             <a
                               href={PRINT_ISSUE_DRIVE_LINK}
@@ -967,7 +975,7 @@ export function EicDashboard({
                           )}
                         </div>
                         <div>
-                          <span className="text-[8px] sm:text-[9px] uppercase font-bold text-gray-400 block mb-0.5 sm:mb-1">Google Drive & Illustration Link</span>
+                          <span className="text-[9px] sm:text-[9px] uppercase font-bold text-gray-400 block mb-0.5 sm:mb-1">Google Drive & Illustration Link</span>
                           {task.pubmatLink ? (
                             <a 
                               href={task.pubmatLink} 
