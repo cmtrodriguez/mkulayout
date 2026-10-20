@@ -785,7 +785,7 @@ export default function DashboardOverview({
                 
                 {/* Header with period toggle */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-neutral-100 dark:border-neutral-800 gap-2">
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="font-sans font-black text-neutral-900 dark:text-neutral-100 text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2">
                       <BarChart3 className="w-4 h-4 text-brand-maroon" />
                       Workload Tracker (Online Pubs vs Issues)
@@ -795,8 +795,8 @@ export default function DashboardOverview({
                     </p>
                   </div>
 
-                  {/* Toggle Period: Per Month vs Per Semester */}
-                  <div className="flex flex-wrap items-center gap-2 self-end">
+                  {/* Toggle Period: Per Month vs Per Semester (Export Sheet sits inline on the same row) */}
+                  <div className="flex items-center gap-2 self-end shrink-0">
                     <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 p-0.5 rounded-lg gap-1">
                       <button
                         type="button"
