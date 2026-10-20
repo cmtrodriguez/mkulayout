@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Task, TeamMember, CalendarEvent, Poll } from "../types";
 import { getPreferredFirstName, isUserAssignedToTask } from "../lib/memberUtils";
-import { byReleaseDateDesc, isPastDue } from "../lib/taskDate";
+import { byReleaseDateDesc, isPastDue, releaseDateTimestamp } from "../lib/taskDate";
 import { createPoll, updatePollOptionVotes, deletePoll, createAnnouncement, deleteAnnouncement } from "../lib/supabase";
 import CalendarView from "./CalendarView";
 import MeetingPolls from "./MeetingPolls";
@@ -313,6 +313,42 @@ export default function DashboardOverview({
     const category = resolveEditorialCategory(t.typeOfContent);
     categoryCounts[category] = (categoryCounts[category] || 0) + 1;
   });
+
+  // Deadlines Timeline = manual calendar events + upcoming release dates of
+  // active tasks. Issue/Online companion tasks share base title and date, so
+  // they collapse into one entry.
+  const timelineEntries = (() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const fromEvents = events.map((e) => ({
+      id: e.id,
+      title: e.title,
+      dateLabel: e.start,
+      type: e.type,
+      ts: Date.parse(e.start) || 0
+    }));
+    const seenTaskKeys = new Set<string>();
+    const fromTasks: Array<{ id: string; title: string; dateLabel: string; type: "deadline"; ts: number }> = [];
+    tasks
+      .filter(t => !t.isPendingConfirmation && t.progress !== "Completed" && t.progress !== "Archived")
+      .map(t => ({ task: t, ts: releaseDateTimestamp(t) }))
+      .filter(x => !isNaN(x.ts) && x.ts >= startOfToday.getTime())
+      .sort((a, b) => a.ts - b.ts)
+      .forEach(x => {
+        const base = x.task.title.replace(/\s*\(Online Pubmat\)$/i, "").trim();
+        const key = `${base.toLowerCase()}|${x.ts}`;
+        if (seenTaskKeys.has(key)) return;
+        seenTaskKeys.add(key);
+        fromTasks.push({
+          id: `task-${x.task.id}`,
+          title: base,
+          dateLabel: x.task.releaseDate || "",
+          type: "deadline",
+          ts: x.ts
+        });
+      });
+    return [...fromEvents, ...fromTasks].sort((a, b) => a.ts - b.ts).slice(0, 3);
+  })();
 
   return (
     <div className="space-y-2.5 sm:space-y-4 md:space-y-5 text-left bg-[#faf9f6] dark:bg-neutral-950 p-0 sm:p-1 md:p-3 rounded-xl sm:rounded-[28px] transition-colors">
@@ -621,12 +657,12 @@ export default function DashboardOverview({
                 </div>
 
                 <div className="space-y-1.5 sm:space-y-2">
-                  {events.length === 0 ? (
+                  {timelineEntries.length === 0 ? (
                     <div className="py-3 text-center text-neutral-400 dark:text-neutral-500 text-xs">
                       No upcoming events in timeline.
                     </div>
                   ) : (
-                    events.slice(0, 3).map((e) => (
+                    timelineEntries.map((e) => (
                       <div 
                         key={e.id} 
                         className="flex items-center justify-between gap-2 sm:gap-3 p-1.5 sm:p-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 rounded-xl sm:rounded-2xl transition-all border border-neutral-100/50 dark:border-neutral-800"
@@ -643,7 +679,7 @@ export default function DashboardOverview({
                               {e.title}
                             </h5>
                             <p className="text-[9px] sm:text-[10px] text-neutral-400 dark:text-neutral-500 font-sans mt-0.5">
-                              Date: {e.start}
+                              Date: {e.dateLabel}
                             </p>
                           </div>
                         </div>
