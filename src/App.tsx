@@ -528,23 +528,44 @@ export default function App() {
       );
     };
 
+    const retargets: Array<{ from: string; to: string }> = [];
     prevTasks.forEach((prevTask) => {
       if (nextTasks.some(t => t.id === prevTask.id)) return;
       const successor = findSuccessorTask(prevTask);
       if (!successor || successor.id === prevTask.id) return;
       setComments((current) => current.map(c => c.taskId === prevTask.id ? { ...c, taskId: successor.id } : c));
-      retargetComments(prevTask.id, successor.id).catch(() => {});
+      retargets.push({ from: prevTask.id, to: successor.id });
     });
 
-    prevById.forEach((_, id) => {
-      if (!newById.has(id)) void deleteTask(id);
-    });
-    newById.forEach((task, id) => {
-      const prev = prevById.get(id);
-      if (!prev || JSON.stringify(prev) !== JSON.stringify(task)) {
-        void upsertTask(task);
-      }
-    });
+    // Order matters: task_comments.task_id cascades on task deletion, so the
+    // successor row must exist (upsert) and the messages must be re-keyed
+    // (retarget) BEFORE the replaced task row is deleted — otherwise the
+    // database destroys the whole workspace chat.
+    void (async () => {
+      const upserts: Array<Promise<unknown>> = [];
+      newById.forEach((task, id) => {
+        const prev = prevById.get(id);
+        if (!prev || JSON.stringify(prev) !== JSON.stringify(task)) {
+          upserts.push(Promise.resolve(upsertTask(task)));
+        }
+      });
+      await Promise.all(upserts);
+
+      const deletable = new Set<string>();
+      prevById.forEach((_, id) => {
+        if (!newById.has(id)) deletable.add(id);
+      });
+
+      const retargetResults = await Promise.all(retargets.map((r) =>
+        retargetComments(r.from, r.to).then((ok) => ({ ...r, ok }))
+      ));
+      // A failed retarget means the chat is still attached to the old row —
+      // keep that row alive instead of cascade-deleting the history.
+      retargetResults.forEach((r) => {
+        if (!r.ok) deletable.delete(r.from);
+      });
+      deletable.forEach((id) => { void deleteTask(id); });
+    })();
   };
 
   // Compute the next task list from current state and persist it to the backend.
