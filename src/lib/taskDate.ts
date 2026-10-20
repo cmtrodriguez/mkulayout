@@ -1,3 +1,5 @@
+import { TaskPriority } from "../types";
+
 const MONTH_NAMES = [
   "january", "february", "march", "april", "may", "june",
   "july", "august", "september", "october", "november", "december",
@@ -72,4 +74,19 @@ export function isPastDue(dateStr?: string | null): boolean {
   const now = new Date();
   const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   return iso < todayISO;
+}
+
+// Deadline-driven priority, same rule as the assignment creation form:
+// same day = Urgent, 1-2 days = High, 3-5 days = Medium, beyond = Low.
+export function computePriorityFromISO(isoDate: string): TaskPriority {
+  const parts = (isoDate || "").split("-");
+  if (parts.length !== 3) return "Medium";
+  const target = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (diffDays <= 0) return "Urgent";
+  if (diffDays <= 2) return "High";
+  if (diffDays <= 5) return "Medium";
+  return "Low";
 }

@@ -30,6 +30,33 @@ import mkuleImg from "./mkule.png";
 // Domain Models
 import { Task, TeamMember, CalendarEvent, Poll, Notification, TaskComment, UserRole, normalizeEmail, OpinionArticle, ProbiTrackerState, DEFAULT_PROBI_CONGRATS_MESSAGE } from "./types";
 
+// Short two-tone ping played when a new notification lands in the bell feed.
+function playNotificationPing() {
+  try {
+    const AudioCtor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtor) return;
+    const ctx = new AudioCtor();
+    const playTone = (freq: number, start: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + 0.3);
+    };
+    playTone(880, 0);
+    playTone(1174.66, 0.12);
+    setTimeout(() => { ctx.close().catch(() => {}); }, 800);
+  } catch {
+    // Autoplay policy or unsupported browser — stay silent.
+  }
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   
@@ -984,6 +1011,34 @@ export default function App() {
     !locallyClearedNotificationIds.has(n.id)
   );
 
+  // Notifications already opened via the bell. Clicking the bell acknowledges
+  // everything currently visible, which stops the red blink until a genuinely
+  // new alert arrives. Persisted per account so a refresh doesn't re-blink.
+  const acknowledgedNotificationStorageKey = `mkule_seen_notifications_${userEmail.toLowerCase()}`;
+  const acknowledgedNotificationIds = (() => {
+    try {
+      const stored = localStorage.getItem(acknowledgedNotificationStorageKey);
+      const parsed = stored ? JSON.parse(stored) : [];
+      return new Set<string>(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      return new Set<string>();
+    }
+  })();
+  const liveAlertIds = myNotifications
+    .filter((n) => !acknowledgedNotificationIds.has(n.id))
+    .map((n) => n.id);
+  const liveAlertKey = liveAlertIds.join(",");
+  const previousAlertIdsRef = useRef<string[] | null>(null);
+  useEffect(() => {
+    const current = liveAlertKey ? liveAlertKey.split(",") : [];
+    const previous = previousAlertIdsRef.current;
+    if (previous !== null) {
+      const previousSet = new Set(previous);
+      if (current.some((id) => !previousSet.has(id))) playNotificationPing();
+    }
+    previousAlertIdsRef.current = current;
+  }, [liveAlertKey]);
+
   const updateIssueRow = (id: string, field: "page" | "section" | "title" | "writer" | "graphics" | "layout" | "online" | "progress", value: string) => {
     updateIssueSheets((prev) => prev.map((sheet) => {
       if (sheet.id !== currentIssueSheetId) return sheet;
@@ -1655,13 +1710,24 @@ export default function App() {
             <div className="relative">
               <button
                 onClick={() => {
+                  if (!showNotificationsDropdown && myNotifications.length > 0) {
+                    try {
+                      const merged = Array.from(new Set([
+                        ...acknowledgedNotificationIds,
+                        ...myNotifications.map((notification) => notification.id)
+                      ]));
+                      localStorage.setItem(acknowledgedNotificationStorageKey, JSON.stringify(merged));
+                    } catch {
+                      // Storage unavailable (private mode) — the blink just stays on.
+                    }
+                  }
                   setShowNotificationsDropdown(!showNotificationsDropdown);
                 }}
                 className="p-2 bg-neutral-50 hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 rounded-xl text-neutral-600 dark:text-neutral-200 hover:text-neutral-900 border border-neutral-200 dark:border-neutral-700 transition-all relative cursor-pointer shadow-xs"
                 aria-label="Notification center"
               >
                 <Bell className="w-4 h-4" />
-                {myNotifications.length > 0 && (
+                {liveAlertIds.length > 0 && (
                   <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-600 rounded-full animate-ping" />
                 )}
               </button>
@@ -2548,16 +2614,24 @@ export default function App() {
             );
 
             if (companionIndex !== -1) {
+              const companion = updatedList[companionIndex];
               updatedList[companionIndex] = {
-                ...updatedList[companionIndex],
+                ...companion,
                 illusLayout: updatedTask.illusLayout,
-                writer: updatedTask.writer || updatedList[companionIndex].writer,
-                draftLink: updatedTask.draftLink || updatedList[companionIndex].draftLink,
-                addedToLayout: updatedTask.addedToLayout || updatedList[companionIndex].addedToLayout,
-                pubmatLink: updatedTask.pubmatLink || updatedList[companionIndex].pubmatLink,
-                canvaLink: updatedTask.canvaLink || updatedList[companionIndex].canvaLink,
-                mediumCanvaLink: updatedTask.mediumCanvaLink ?? updatedList[companionIndex].mediumCanvaLink,
-                writeup: updatedTask.writeup || updatedList[companionIndex].writeup,
+                // Mirror the assignee identity too, or the old assignee keeps
+                // seeing the companion task after a transfer.
+                assigneeName: updatedTask.assigneeName || companion.assigneeName,
+                assigneeEmail: updatedTask.assigneeEmail ?? companion.assigneeEmail,
+                ...(companion.onlineHandler && companion.onlineHandler !== "Unassigned"
+                  ? { onlineHandler: updatedTask.illusLayout === "Unassigned" ? "" : updatedTask.illusLayout }
+                  : {}),
+                writer: updatedTask.writer || companion.writer,
+                draftLink: updatedTask.draftLink || companion.draftLink,
+                addedToLayout: updatedTask.addedToLayout || companion.addedToLayout,
+                pubmatLink: updatedTask.pubmatLink || companion.pubmatLink,
+                canvaLink: updatedTask.canvaLink || companion.canvaLink,
+                mediumCanvaLink: updatedTask.mediumCanvaLink ?? companion.mediumCanvaLink,
+                writeup: updatedTask.writeup || companion.writeup,
                 lastUpdated: new Date().toISOString()
               };
             } else if (updatedTask.typeOfRelease === "Issue Article" && updatedTask.illusLayout && updatedTask.illusLayout !== "Unassigned") {

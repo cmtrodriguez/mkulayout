@@ -5,11 +5,11 @@ import {
 } from "lucide-react";
 import { Task, TeamMember, TaskComment, TaskStatus, TaskPriority } from "../types";
 import { extractHyperlinkDetails } from "../lib/canvaTemplates";
-import { isUserAssignedToTask } from "../lib/memberUtils";
+import { isUserAssignedToTask, resolveLayoutAssignee } from "../lib/memberUtils";
 import { compressCommentImage, formatCommentDetails, handleBulletKeyDown, MAX_COMMENT_IMAGES, RenderFormattedComment } from "../lib/commentUtils";
 import { getPreferredFirstName } from "../lib/memberUtils";
 import { isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK, PRINT_ISSUE_DRIVE_LINK } from "../lib/canvaTemplates";
-import { toISOFormatDate } from "../lib/taskDate";
+import { toISOFormatDate, computePriorityFromISO } from "../lib/taskDate";
 import { formatISOToDisplayDate } from "./AssignmentsList";
 import CommentImageAnnotator from "./CommentImageAnnotator";
 
@@ -65,11 +65,16 @@ export default function TaskDetailsModal({
 
   const canViewThisTaskComments = isEditorOrDeputy || isAssignedStaffer;
 
-  // Once a task has an assignee, only that assigned account may change the workflow
-  // fields (status / priority / assignee). Editor & Deputy may still set them while the
-  // task is unassigned so it can be handed out in the first place.
+  // Once a task has an assignee, only that assigned account may change the
+  // workflow fields (status / priority). Editor & Deputy may still set them
+  // while the task is unassigned so it can be handed out in the first place.
   const hasAssignee = Boolean(task.illusLayout) && task.illusLayout !== "Unassigned";
   const canEditCoreFields = isAssignedStaffer || (!hasAssignee && isEditorOrDeputy);
+
+  // Editors & deputies may also re-assign an already-assigned task, but the
+  // change goes through a confirmation modal and transfers the task.
+  const canReassignTask = canEditCoreFields || isEditorOrDeputy;
+  const [pendingAssignee, setPendingAssignee] = useState<string | null>(null);
 
   // Only the assigned artist may submit for review — leaders viewing someone
   // else's task should not see the submit button.
@@ -164,10 +169,32 @@ export default function TaskDetailsModal({
     speakText(`Assignment priority adjusted to ${newPriority}`);
   };
 
-  // Assignee handle
+  // Assignee handle — changes are staged and only applied after the
+  // confirmation modal, so a mis-click never silently re-routes work.
   const handleAssigneeChange = (newName: string) => {
-    onUpdateTask({ ...task, illusLayout: newName });
-    speakText(`Re-assigned task to ${newName}`);
+    if (newName === task.illusLayout) return;
+    setPendingAssignee(newName);
+  };
+
+  const confirmAssigneeTransfer = () => {
+    if (pendingAssignee === null) return;
+    const newName = pendingAssignee;
+    setPendingAssignee(null);
+    const isUnassigned = !newName || newName === "Unassigned";
+    const resolved = resolveLayoutAssignee(newName, members);
+    const assigneeLabel = isUnassigned ? "Unassigned" : resolved.name;
+    const updated: Task = {
+      ...task,
+      illusLayout: assigneeLabel,
+      assigneeName: assigneeLabel,
+      assigneeEmail: isUnassigned ? "" : resolved.email,
+      ...(task.onlineHandler && task.onlineHandler !== "Unassigned"
+        ? { onlineHandler: assigneeLabel }
+        : {}),
+      lastUpdated: new Date().toISOString()
+    };
+    onUpdateTask(updated);
+    speakText(isUnassigned ? `Task unassigned.` : `Task transferred to ${assigneeLabel}.`);
   };
 
   // Add Comment
@@ -238,7 +265,15 @@ export default function TaskDetailsModal({
                   <input
                     type="date"
                     value={toISOFormatDate(task.releaseDate || "")}
-                    onChange={(e) => onUpdateTask({ ...task, releaseDate: formatISOToDisplayDate(e.target.value), lastUpdated: new Date().toISOString() })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      onUpdateTask({
+                        ...task,
+                        releaseDate: val ? formatISOToDisplayDate(val) : "",
+                        priority: val ? computePriorityFromISO(val) : "Medium",
+                        lastUpdated: new Date().toISOString()
+                      });
+                    }}
                     className="px-2 py-1 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg text-[11px] font-semibold text-gray-700 dark:text-neutral-200 outline-none focus:ring-2 focus:ring-brand-maroon cursor-pointer"
                     aria-label="Change task deadline"
                   />
@@ -313,9 +348,9 @@ export default function TaskDetailsModal({
               <label className="text-gray-400 dark:text-neutral-400 block font-semibold mb-1">Assignee</label>
               <select
                 value={task.illusLayout}
-                disabled={!canEditCoreFields}
+                disabled={!canReassignTask}
                 onChange={(e) => handleAssigneeChange(e.target.value)}
-                className={`w-full px-2.5 py-1.5 sm:py-2 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg font-semibold text-gray-800 dark:text-neutral-200 outline-none focus:ring-2 focus:ring-brand-maroon ${canEditCoreFields ? "cursor-pointer" : "opacity-60 cursor-not-allowed"}`}
+                className={`w-full px-2.5 py-1.5 sm:py-2 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg font-semibold text-gray-800 dark:text-neutral-200 outline-none focus:ring-2 focus:ring-brand-maroon ${canReassignTask ? "cursor-pointer" : "opacity-60 cursor-not-allowed"}`}
               >
                 <option value="Unassigned">Unassigned</option>
                 {members.map(m => {
@@ -780,6 +815,50 @@ export default function TaskDetailsModal({
         </div>
 
       </div>
+
+      {pendingAssignee !== null && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Confirm assignee transfer">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-gray-100 dark:border-neutral-800 text-left space-y-4">
+            <div className="flex items-center gap-2.5">
+              <span className="w-9 h-9 rounded-full bg-brand-maroon/10 dark:bg-brand-maroon/25 flex items-center justify-center shrink-0">
+                <User className="w-5 h-5 text-brand-maroon dark:text-brand-maroon-light" />
+              </span>
+              <h3 className="font-display font-black text-gray-900 dark:text-neutral-100 text-base">
+                {pendingAssignee === "Unassigned" ? "Unassign this task?" : "Transfer this task?"}
+              </h3>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-neutral-300 leading-relaxed">
+              {pendingAssignee === "Unassigned" ? (
+                <>
+                  <strong>{task.title}</strong> will be removed from{" "}
+                  <strong>{task.illusLayout || "the current assignee"}</strong> and returned to the unassigned pool.
+                </>
+              ) : (
+                <>
+                  <strong>{task.title}</strong> will be transferred from{" "}
+                  <strong>{task.illusLayout && task.illusLayout !== "Unassigned" ? task.illusLayout : "the unassigned pool"}</strong>{" "}
+                  to <strong>{pendingAssignee}</strong>. It will appear in {pendingAssignee}'s assignments and be
+                  removed from the previous assignee.
+                </>
+              )}
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                onClick={() => setPendingAssignee(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 text-xs font-bold cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmAssigneeTransfer}
+                className="px-3.5 py-1.5 rounded-xl bg-brand-maroon hover:bg-brand-maroon-dark text-white text-xs font-bold cursor-pointer transition-all shadow-sm"
+              >
+                {pendingAssignee === "Unassigned" ? "Confirm Unassign" : "Confirm Transfer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
