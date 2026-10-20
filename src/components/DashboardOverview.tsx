@@ -790,9 +790,6 @@ export default function DashboardOverview({
                       <BarChart3 className="w-4 h-4 text-brand-maroon" />
                       Workload Tracker (Online Pubs vs Issues)
                     </h3>
-                    <p className="text-[9px] sm:text-[10px] text-neutral-400 dark:text-neutral-500">
-                      Completed online pubs and newspaper issues per staffer · click a staffer&apos;s bars to view their completed tasks
-                    </p>
                   </div>
 
                   {/* Toggle Period: Per Month vs Per Semester (Export Sheet sits inline on the same row) */}
