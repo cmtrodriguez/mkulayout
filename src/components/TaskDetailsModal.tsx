@@ -644,7 +644,7 @@ export default function TaskDetailsModal({
                         </div>
                       );
                     }
-                    const { cleanedText, roleLabel, badgeStyle, initials } = formatCommentDetails(com);
+                    const { cleanedText, roleLabel, badgeStyle, initials } = formatCommentDetails(com, undefined, { members, task });
                     return (
                       <div key={com.id} className="space-y-1.5 bg-white dark:bg-neutral-800 p-3 sm:p-3.5 rounded-2xl border border-gray-100/80 dark:border-neutral-700 text-xs shadow-2xs text-left">
                         <div className="flex items-center justify-between gap-2 flex-wrap">

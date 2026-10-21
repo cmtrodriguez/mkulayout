@@ -316,7 +316,8 @@ export default function DashboardOverview({
 
   // Deadlines Timeline = manual calendar events + upcoming release dates of
   // active tasks. Issue/Online companion tasks share base title and date, so
-  // they collapse into one entry.
+  // they collapse into one entry. Staffers and probis only see the deadlines
+  // of the tasks assigned to them, never the whole desk's pipeline.
   const timelineEntries = (() => {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -329,7 +330,7 @@ export default function DashboardOverview({
     }));
     const seenTaskKeys = new Set<string>();
     const fromTasks: Array<{ id: string; title: string; dateLabel: string; type: "deadline"; ts: number }> = [];
-    tasks
+    (isStaffOrProbi ? staffAssignedTasks : tasks)
       .filter(t => !t.isPendingConfirmation && t.progress !== "Completed" && t.progress !== "Archived")
       .map(t => ({ task: t, ts: releaseDateTimestamp(t) }))
       .filter(x => !isNaN(x.ts) && x.ts >= startOfToday.getTime())

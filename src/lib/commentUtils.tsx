@@ -1,5 +1,6 @@
 import React from "react";
 import { TaskComment } from "../types";
+import { getPreferredFirstName, isUserAssignedToTask, OFFICIAL_MEMBERS_MAP } from "./memberUtils";
 
 export const MAX_COMMENT_IMAGES = 5;
 const MAX_COMMENT_IMAGE_BYTES = 120 * 1024;
@@ -55,7 +56,47 @@ export async function compressCommentImage(file: File): Promise<string> {
   }
 }
 
-export function formatCommentDetails(c: { authorName: string; text: string; authorEmail?: string }, defaultRole?: string) {
+export type CommentRoleContext = {
+  members?: Array<{ name?: string; email?: string; displayName?: string; role?: string }>;
+  task?: { illusLayout?: string; assigneeName?: string; assigneeEmail?: string; graphics?: string; onlineHandler?: string };
+};
+
+/**
+ * Role badge from the roster instead of guesswork: the task's assignee is
+ * always "Assignee" (even when that person is an editor or deputy), then the
+ * directory role decides the rest. Returns null when the author cannot be
+ * placed, leaving the legacy text heuristics to handle it.
+ */
+function resolveAuthorRoleLabel(
+  author: { authorName: string; authorEmail?: string },
+  ctx?: CommentRoleContext
+): string | null {
+  if (!ctx) return null;
+
+  if (ctx.task && isUserAssignedToTask(ctx.task, author.authorName, author.authorEmail || "")) {
+    return "Assignee";
+  }
+
+  const email = (author.authorEmail || "").trim().toLowerCase();
+  const roster = ctx.members || [];
+  const member =
+    (email ? roster.find((m) => (m.email || "").trim().toLowerCase() === email) : undefined) ||
+    roster.find((m) => {
+      const mine = getPreferredFirstName(author.authorName, email);
+      const theirs = getPreferredFirstName(m.name || "", m.email || "");
+      return Boolean(mine) && Boolean(theirs) && mine.toLowerCase() === theirs.toLowerCase();
+    });
+
+  const role = member?.role || (email ? OFFICIAL_MEMBERS_MAP[email]?.role : undefined) || "";
+  if (role === "Layout Editor" || role === "Layout Deputy") return role;
+  return null;
+}
+
+export function formatCommentDetails(
+  c: { authorName: string; text: string; authorEmail?: string },
+  defaultRole?: string,
+  roleContext?: CommentRoleContext
+) {
   let text = c.text || "";
 
   // Strip unwanted uppercase prefix headers
@@ -76,24 +117,33 @@ export function formatCommentDetails(c: { authorName: string; text: string; auth
   const authorLower = (c.authorName || "").toLowerCase();
   const textLower = (c.text || "").toLowerCase();
 
-  let roleLabel = defaultRole || "Layout Staff";
+  const resolvedRole = resolveAuthorRoleLabel(c, roleContext);
+  let roleLabel = resolvedRole || defaultRole || "Layout Staff";
   let badgeStyle = "bg-neutral-100 text-neutral-700 border-neutral-200";
 
-  if (authorLower.includes("layout editor") || textLower.includes("layout editor")) {
+  if (resolvedRole === "Layout Editor") {
     roleLabel = "Layout Editor";
     badgeStyle = "bg-amber-100 text-amber-900 border-amber-200/90";
-  } else if (authorLower.includes("editor-in-chief") || authorLower.includes("eic") || textLower.includes("eic")) {
-    roleLabel = "Editor-in-Chief";
-    badgeStyle = "bg-red-100 text-red-900 border-red-200/90";
-  } else if (authorLower.includes("online layout head") || authorLower.includes("online head")) {
-    roleLabel = "Online Layout Head";
-    badgeStyle = "bg-blue-100 text-blue-900 border-blue-200/90";
-  } else if (authorLower.includes("editor")) {
-    roleLabel = "Editor";
-    badgeStyle = "bg-amber-100 text-amber-900 border-amber-200/90";
-  } else if (authorLower.includes("layout staff") || authorLower.includes("artist") || authorLower.includes("illustrator")) {
-    roleLabel = "Layout Staff";
-    badgeStyle = "bg-neutral-100 text-neutral-700 border-neutral-200";
+  } else if (resolvedRole === "Layout Deputy") {
+    roleLabel = "Layout Deputy";
+    badgeStyle = "bg-orange-100 text-orange-900 border-orange-200/90";
+  } else if (!resolvedRole) {
+    if (authorLower.includes("layout editor") || textLower.includes("layout editor")) {
+      roleLabel = "Layout Editor";
+      badgeStyle = "bg-amber-100 text-amber-900 border-amber-200/90";
+    } else if (authorLower.includes("editor-in-chief") || authorLower.includes("eic") || textLower.includes("eic")) {
+      roleLabel = "Editor-in-Chief";
+      badgeStyle = "bg-red-100 text-red-900 border-red-200/90";
+    } else if (authorLower.includes("online layout head") || authorLower.includes("online head")) {
+      roleLabel = "Online Layout Head";
+      badgeStyle = "bg-blue-100 text-blue-900 border-blue-200/90";
+    } else if (authorLower.includes("editor")) {
+      roleLabel = "Editor";
+      badgeStyle = "bg-amber-100 text-amber-900 border-amber-200/90";
+    } else if (authorLower.includes("layout staff") || authorLower.includes("artist") || authorLower.includes("illustrator")) {
+      roleLabel = "Layout Staff";
+      badgeStyle = "bg-neutral-100 text-neutral-700 border-neutral-200";
+    }
   }
 
   const parts = c.authorName ? c.authorName.trim().split(" ") : ["U"];
