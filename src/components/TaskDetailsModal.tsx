@@ -75,6 +75,9 @@ export default function TaskDetailsModal({
   // change goes through a confirmation modal and transfers the task.
   const canReassignTask = canEditCoreFields || isEditorOrDeputy;
   const [pendingAssignee, setPendingAssignee] = useState<string | null>(null);
+  // Deadline edits by an editor/deputy are staged the same way, because moving
+  // a date also rewrites the priority and the assignee's whole week.
+  const [pendingDeadline, setPendingDeadline] = useState<string | null>(null);
 
   // Only the assigned artist may submit for review — leaders viewing someone
   // else's task should not see the submit button.
@@ -197,6 +200,26 @@ export default function TaskDetailsModal({
     speakText(isUnassigned ? `Task unassigned.` : `Task transferred to ${assigneeLabel}.`);
   };
 
+  // Deadline handle — same staging as the assignee change: the picker only
+  // queues the new date, the task is rewritten once it is confirmed.
+  const handleDeadlineChange = (val: string) => {
+    if (val === toISOFormatDate(task.releaseDate || "")) return;
+    setPendingDeadline(val);
+  };
+
+  const confirmDeadlineChange = () => {
+    if (pendingDeadline === null) return;
+    const val = pendingDeadline;
+    setPendingDeadline(null);
+    onUpdateTask({
+      ...task,
+      releaseDate: val ? formatISOToDisplayDate(val) : "",
+      priority: val ? computePriorityFromISO(val) : "Medium",
+      lastUpdated: new Date().toISOString()
+    });
+    speakText(val ? `Deadline moved to ${formatISOToDisplayDate(val)}.` : "Deadline removed.");
+  };
+
   // Add Comment
   const handlePostComment = () => {
     if ((!commentText.trim() && commentImages.length === 0) || isPreparingImages) return;
@@ -265,15 +288,7 @@ export default function TaskDetailsModal({
                   <input
                     type="date"
                     value={toISOFormatDate(task.releaseDate || "")}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      onUpdateTask({
-                        ...task,
-                        releaseDate: val ? formatISOToDisplayDate(val) : "",
-                        priority: val ? computePriorityFromISO(val) : "Medium",
-                        lastUpdated: new Date().toISOString()
-                      });
-                    }}
+                    onChange={(e) => handleDeadlineChange(e.target.value)}
                     className="px-2 py-1 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg text-[11px] font-semibold text-gray-700 dark:text-neutral-200 outline-none focus:ring-2 focus:ring-brand-maroon cursor-pointer"
                     aria-label="Change task deadline"
                   />
@@ -854,6 +869,53 @@ export default function TaskDetailsModal({
                 className="px-3.5 py-1.5 rounded-xl bg-brand-maroon hover:bg-brand-maroon-dark text-white text-xs font-bold cursor-pointer transition-all shadow-sm"
               >
                 {pendingAssignee === "Unassigned" ? "Confirm Unassign" : "Confirm Transfer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingDeadline !== null && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Confirm deadline change">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-gray-100 dark:border-neutral-800 text-left space-y-4">
+            <div className="flex items-center gap-2.5">
+              <span className="w-9 h-9 rounded-full bg-brand-maroon/10 dark:bg-brand-maroon/25 flex items-center justify-center shrink-0">
+                <Calendar className="w-5 h-5 text-brand-maroon dark:text-brand-maroon-light" />
+              </span>
+              <h3 className="font-display font-black text-gray-900 dark:text-neutral-100 text-base">
+                {pendingDeadline ? "Move this deadline?" : "Remove this deadline?"}
+              </h3>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-neutral-300 leading-relaxed">
+              {pendingDeadline ? (
+                <>
+                  <strong>{task.title}</strong> is currently due{" "}
+                  <strong>{task.releaseDate || "undated"}</strong>. Confirming moves it to{" "}
+                  <strong>{formatISOToDisplayDate(pendingDeadline)}</strong> and sets the priority to{" "}
+                  <strong>{computePriorityFromISO(pendingDeadline)}</strong>.
+                  {task.illusLayout && task.illusLayout !== "Unassigned"
+                    ? <> {task.illusLayout} will be working to the new date.</>
+                    : null}
+                </>
+              ) : (
+                <>
+                  <strong>{task.title}</strong> is currently due <strong>{task.releaseDate || "undated"}</strong>.
+                  Confirming removes the date and resets the priority to <strong>Medium</strong>.
+                </>
+              )}
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                onClick={() => setPendingDeadline(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 text-xs font-bold cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeadlineChange}
+                className="px-3.5 py-1.5 rounded-xl bg-brand-maroon hover:bg-brand-maroon-dark text-white text-xs font-bold cursor-pointer transition-all shadow-sm"
+              >
+                {pendingDeadline ? "Confirm New Deadline" : "Confirm Removal"}
               </button>
             </div>
           </div>
