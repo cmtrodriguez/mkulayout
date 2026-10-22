@@ -9,7 +9,7 @@ import { isUserAssignedToTask, resolveLayoutAssignee } from "../lib/memberUtils"
 import { compressCommentImage, formatCommentDetails, handleBulletKeyDown, MAX_COMMENT_IMAGES, RenderFormattedComment } from "../lib/commentUtils";
 import { getPreferredFirstName } from "../lib/memberUtils";
 import { isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK, PRINT_ISSUE_DRIVE_LINK } from "../lib/canvaTemplates";
-import { toISOFormatDate, computePriorityFromISO } from "../lib/taskDate";
+import { toISOFormatDate, computePriorityFromISO, todayISODate } from "../lib/taskDate";
 import { formatISOToDisplayDate } from "./AssignmentsList";
 import CommentImageAnnotator from "./CommentImageAnnotator";
 
@@ -78,6 +78,7 @@ export default function TaskDetailsModal({
   // Deadline edits by an editor/deputy are staged the same way, because moving
   // a date also rewrites the priority and the assignee's whole week.
   const [pendingDeadline, setPendingDeadline] = useState<string | null>(null);
+  const [deadlineNotice, setDeadlineNotice] = useState("");
 
   // Only the assigned artist may submit for review — leaders viewing someone
   // else's task should not see the submit button.
@@ -201,8 +202,14 @@ export default function TaskDetailsModal({
   };
 
   // Deadline handle — same staging as the assignee change: the picker only
-  // queues the new date, the task is rewritten once it is confirmed.
+  // queues the new date, the task is rewritten once it is confirmed. A
+  // deadline is a promise about the future, so past dates are refused.
   const handleDeadlineChange = (val: string) => {
+    if (val && val < todayISODate()) {
+      setDeadlineNotice("Deadlines can only be set from today onwards.");
+      return;
+    }
+    setDeadlineNotice("");
     if (val === toISOFormatDate(task.releaseDate || "")) return;
     setPendingDeadline(val);
   };
@@ -211,6 +218,7 @@ export default function TaskDetailsModal({
     if (pendingDeadline === null) return;
     const val = pendingDeadline;
     setPendingDeadline(null);
+    setDeadlineNotice("");
     onUpdateTask({
       ...task,
       releaseDate: val ? formatISOToDisplayDate(val) : "",
@@ -282,12 +290,13 @@ export default function TaskDetailsModal({
 
             <div className="flex items-center gap-2 shrink-0">
               {/* Deadline — visible to all, editable only by Editor / Deputy */}
-              <div className="flex items-center gap-1.5" title="Task deadline">
+              <div className="flex items-center gap-1.5 relative" title="Task deadline">
                 <Calendar className="w-4 h-4 text-gray-400 dark:text-neutral-400 shrink-0" />
                 {isEditorOrDeputy ? (
                   <input
                     type="date"
                     value={toISOFormatDate(task.releaseDate || "")}
+                    min={todayISODate()}
                     onChange={(e) => handleDeadlineChange(e.target.value)}
                     className="px-2 py-1 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg text-[11px] font-semibold text-gray-700 dark:text-neutral-200 outline-none focus:ring-2 focus:ring-brand-maroon cursor-pointer"
                     aria-label="Change task deadline"
@@ -295,6 +304,14 @@ export default function TaskDetailsModal({
                 ) : (
                   <span className="px-2 py-1 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg text-[11px] font-semibold text-gray-700 dark:text-neutral-200">
                     {task.releaseDate ? formatISOToDisplayDate(task.releaseDate) : "No deadline"}
+                  </span>
+                )}
+                {deadlineNotice && (
+                  <span
+                    role="status"
+                    className="absolute right-0 top-full mt-1.5 z-20 whitespace-nowrap rounded-lg border border-rose-200 dark:border-rose-800 bg-white dark:bg-neutral-900 px-2 py-1 text-[10px] font-bold text-rose-600 dark:text-rose-300 shadow-sm"
+                  >
+                    {deadlineNotice}
                   </span>
                 )}
               </div>

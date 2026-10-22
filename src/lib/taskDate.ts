@@ -76,6 +76,14 @@ export function isPastDue(dateStr?: string | null): boolean {
   return iso < todayISO;
 }
 
+// Today as "YYYY-MM-DD" in the viewer's own calendar, which is what a date
+// input compares against. toISOString() is avoided because it reports UTC and
+// would let the day before today be picked late in the evening.
+export function todayISODate(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
 // Deadline-driven priority, same rule as the assignment creation form:
 // same day = Urgent, 1-2 days = High, 3-5 days = Medium, beyond = Low.
 export function computePriorityFromISO(isoDate: string): TaskPriority {
