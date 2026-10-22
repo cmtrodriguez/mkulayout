@@ -134,7 +134,9 @@ export default function TeamDirectory({
       level: existing?.level || 1,
       completedTasks: existing?.completedTasks || 0,
       currentSemPubs: calculatedSemPubs,
-      schedule: existing?.schedule || "Mon/Wed/Fri: Free afternoons | Tue/Thu: Classes until 4PM",
+      // Never invent an availability: this list is persisted for every member when
+      // one account saves, so a placeholder here would overwrite real submissions.
+      schedule: existing?.schedule,
       pin: official.pin
     };
   });

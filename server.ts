@@ -175,6 +175,38 @@ app.get("/api/state", async (req, res) => {
   res.json(fallbackState);
 });
 
+// 1a. Roster read for the client. The browser queries Supabase directly, but this
+// endpoint exists so a failing/empty browser read can be recovered — the server uses
+// the service key, which is not affected by RLS or PostgREST schema-cache problems.
+app.get("/api/members", async (req, res) => {
+  if (supabase) {
+    const { data, error } = await supabase.from("members").select("*");
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return res.json(data.map((row: any) => ({
+        id: row.id,
+        name: row.name || "",
+        displayName: row.display_name || row.name || "",
+        role: row.role || "Layout Staffer",
+        college: row.college || "",
+        email: row.email || "",
+        contact: row.contact || "",
+        statusSem1: row.status_sem1 || "Active",
+        statusSem2: row.status_sem2 || "Active",
+        type: row.type || "layout",
+        xp: row.xp ?? 0,
+        level: row.level ?? 1,
+        completedTasks: row.completed_tasks ?? 0,
+        currentSemPubs: row.current_sem_pubs ?? 0,
+        schedule: row.schedule ?? "",
+        avatarUrl: row.avatar_url || undefined
+      })));
+    }
+    console.warn("Server roster read failed:", error?.message);
+  }
+
+  res.json(readDb().members || []);
+});
+
 // 1b. Get personal calendar events for a specific user
 app.get("/api/personal-events", (req, res) => {
   const email = (req.query.email as string || "").trim().toLowerCase();

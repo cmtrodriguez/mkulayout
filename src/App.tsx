@@ -586,8 +586,19 @@ export default function App() {
   };
 
   const handleUpdateMembers = (newMembers: TeamMember[]) => {
+    const previousById = new Map(members.map((m) => [m.id, m]));
     setMembers(newMembers);
-    newMembers.forEach(m => upsertMember(m).catch(() => {}));
+    newMembers.forEach((m) => {
+      const previous = previousById.get(m.id);
+      // The directory hands back the whole roster for one member's edit, and
+      // currentSemPubs is derived from tasks for display only. Without this check
+      // every untouched account gets rewritten — and its stored data flattened to
+      // whatever the merged fallback list happened to hold.
+      if (previous && JSON.stringify({ ...previous, currentSemPubs: 0 }) === JSON.stringify({ ...m, currentSemPubs: 0 })) {
+        return;
+      }
+      upsertMember(m).catch(() => {});
+    });
   };
 
   const handleUpdateEvents = (newEvents: CalendarEvent[]) => {

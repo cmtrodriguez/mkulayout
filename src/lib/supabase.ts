@@ -140,14 +140,33 @@ export function memberFromDb(row: any): TeamMember {
   };
 }
 
+// A failed roster read used to leave the app with zero members, after which the
+// directory and dashboards filled in placeholder data for all 10 accounts. Sort in
+// JS so the read carries no schema-cache dependency, and let the server re-read the
+// table with its service key whenever the browser read fails or comes back empty.
 export async function fetchMembers(): Promise<TeamMember[]> {
-  if (!supabase) return [];
-  const { data, error } = await supabase.from("members").select("*").order("name", { ascending: true });
-  if (error) {
-    console.error("Error fetching members:", error.message);
-    return [];
+  const byName = (list: TeamMember[]) =>
+    list.sort((a, b) => (a.displayName || a.name || "").localeCompare(b.displayName || b.name || ""));
+
+  if (supabase) {
+    const { data, error } = await supabase.from("members").select("*");
+    if (!error && (data || []).length > 0) {
+      return byName((data || []).map(memberFromDb));
+    }
+    if (error) console.error("Error fetching members:", error.message);
   }
-  return (data || []).map(memberFromDb);
+
+  try {
+    const response = await fetch("/api/members");
+    if (response.ok) {
+      const rows = (await response.json()) as TeamMember[];
+      if (Array.isArray(rows)) return byName(rows);
+    }
+  } catch (err) {
+    console.error("Fallback roster read failed:", err);
+  }
+
+  return [];
 }
 
 export async function upsertMember(member: Partial<TeamMember>): Promise<void> {
