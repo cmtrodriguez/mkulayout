@@ -1879,6 +1879,7 @@ export default function App() {
                 currentUserRole={userRole}
                 currentUserName={userName}
                 currentUserEmail={userEmail}
+                onOpenTaskDetails={setSelectedTask}
               />
             )}
 

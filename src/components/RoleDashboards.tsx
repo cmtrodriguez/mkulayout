@@ -684,6 +684,7 @@ interface EicDashboardProps {
   currentUserRole?: UserRole;
   currentUserName?: string;
   currentUserEmail?: string;
+  onOpenTaskDetails?: (task: Task) => void;
 }
 
 export function EicDashboard({
@@ -696,10 +697,12 @@ export function EicDashboard({
   currentUserRole,
   currentUserName,
   currentUserEmail,
+  onOpenTaskDetails,
 }: EicDashboardProps) {
   const [selectedReviewTaskId, setSelectedReviewTaskId] = useState<string | null>(null);
   const [revisionFeedback, setRevisionFeedback] = useState("");
   const [approveConfirmTaskId, setApproveConfirmTaskId] = useState<string | null>(null);
+  const [revisionNoNoteTaskId, setRevisionNoNoteTaskId] = useState<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<"review" | "revisions" | "pipeline">("review");
   const [pipelineSearch, setPipelineSearch] = useState("");
 
@@ -769,21 +772,20 @@ export function EicDashboard({
     speakText(`Layout ${task.title} completed and approved for publication release!`);
   };
 
-  const handleRequestRevision = (task: Task) => {
-    if (!revisionFeedback.trim()) {
-      speakText("Please write constructive revision notes before requesting layout changes.");
-      return;
-    }
+  const submitRevisionRequest = (task: Task) => {
     const updated: Task = {
       ...task,
       progress: "Revision Needed",
       lastUpdated: new Date().toISOString()
     };
     onUpdateTask(updated);
-    
+
     const isLayoutEditor = currentUserRole === "Layout Editor";
-    onAddComment(revisionFeedback.trim(), task.id);
-    
+    const typedNote = revisionFeedback.trim();
+    if (typedNote) {
+      onAddComment(typedNote, task.id);
+    }
+
     if (onAddNotification) {
       const assigneeEmail = task.assigneeEmail || resolveMemberEmail(task.illusLayout);
       onAddNotification(
@@ -793,10 +795,20 @@ export function EicDashboard({
         assigneeEmail ? [assigneeEmail] : undefined
       );
     }
-    
+
     setRevisionFeedback("");
     setSelectedReviewTaskId(null);
     speakText(`Revision request submitted for ${task.title}. Assigned artist notified.`);
+  };
+
+  // An empty note is allowed — sending work back is often self-evident — but it is
+  // confirmed first, because the artist then gets the status change with no reason.
+  const handleRequestRevision = (task: Task) => {
+    if (!revisionFeedback.trim()) {
+      setRevisionNoNoteTaskId(task.id);
+      return;
+    }
+    submitRevisionRequest(task);
   };
 
   // Reopens a finished task — for accidental approvals or last-minute revisions.
@@ -926,20 +938,6 @@ export function EicDashboard({
                           </div>
                           <h4 className="font-bold text-gray-900 text-xs sm:text-sm mt-1 sm:mt-1.5">{task.title}</h4>
                           <p className="text-[9px] sm:text-[10px] text-gray-400 font-mono">Artist: {task.illusLayout}</p>
-                          {isIssueArticleTask(task.typeOfRelease) ? (
-                            <p className="text-[9px] sm:text-[10px] text-amber-600 font-medium mt-0.5 sm:mt-1 max-w-full">
-                              Print Issue Drive: <a href={PRINT_ISSUE_DRIVE_LINK} target="_blank" rel="noopener noreferrer" className="underline font-bold hover:text-amber-800 break-all">{PRINT_ISSUE_DRIVE_LINK}</a>
-                            </p>
-                          ) : task.canvaLink && (
-                            <p className="text-[9px] sm:text-[10px] text-cyan-600 font-medium mt-0.5 sm:mt-1 max-w-full">
-                              Canva: <a href={task.canvaLink} target="_blank" rel="noopener noreferrer" className="underline font-bold hover:text-cyan-800 break-all">{task.canvaLink}</a>
-                            </p>
-                          )}
-                          {task.pubmatLink && (
-                            <p className="text-[9px] sm:text-[10px] text-emerald-600 font-medium mt-0.5 sm:mt-1 max-w-full">
-                              Pubmat/Drive: <a href={task.pubmatLink} target="_blank" rel="noopener noreferrer" className="underline font-bold hover:text-emerald-800 break-all">{task.pubmatLink}</a>
-                            </p>
-                          )}
                         </div>
 
                         <div className="text-right shrink-0 pl-1">
@@ -1020,26 +1018,17 @@ export function EicDashboard({
                             </button>
                             
                             <div className="flex gap-1.5 sm:gap-2 flex-wrap">
-                              {isIssueArticleTask(task.typeOfRelease) ? (
-                                <a
-                                  href={PRINT_ISSUE_DRIVE_LINK}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 font-bold rounded-lg sm:rounded-xl transition-all flex items-center gap-1 text-[11px] sm:text-xs"
-                                  onClick={(e) => e.stopPropagation()}
+                              {onOpenTaskDetails && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenTaskDetails(task);
+                                  }}
+                                  className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-cyan-50 border border-cyan-200 hover:bg-cyan-100 text-cyan-800 font-bold rounded-lg sm:rounded-xl transition-all flex items-center gap-1 text-[11px] sm:text-xs cursor-pointer"
                                 >
-                                  Print Issue Drive <ExternalLink className="w-3 h-3" />
-                                </a>
-                              ) : task.canvaLink && (
-                                <a
-                                  href={task.canvaLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-cyan-50 border border-cyan-200 hover:bg-cyan-100 text-cyan-800 font-bold rounded-lg sm:rounded-xl transition-all flex items-center gap-1 text-[11px] sm:text-xs"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  Canva <ExternalLink className="w-3 h-3" />
-                                </a>
+                                  Workspace <LayoutGrid className="w-3 h-3" />
+                                </button>
                               )}
                               <button
                                 onClick={(e) => {
@@ -1356,6 +1345,60 @@ export function EicDashboard({
                   className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-sm"
                 >
                   <ShieldCheck className="w-3.5 h-3.5" /> Approve & Lock
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Request revision without a note — confirmation */}
+      {revisionNoNoteTaskId && (() => {
+        const confirmTask = reviewTasks.find(t => t.id === revisionNoNoteTaskId);
+        if (!confirmTask) return null;
+        return (
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Confirm revision request without a note for ${confirmTask.title}`}
+            onClick={() => setRevisionNoNoteTaskId(null)}
+          >
+            <div
+              className="bg-white dark:bg-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800 shadow-2xl max-w-sm w-full p-5 space-y-4 text-left animate-fade-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 flex items-center justify-center shrink-0">
+                  <XCircle className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-display font-black text-gray-900 dark:text-neutral-100 text-sm">
+                    Send this back with no note?
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 leading-relaxed">
+                    '{confirmTask.title}' will return to {confirmTask.illusLayout || "the assigned artist"}
+                    {" "}as Revision Needed, and no comment will be added to the chat.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRevisionNoNoteTaskId(null)}
+                  className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg cursor-pointer transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRevisionNoNoteTaskId(null);
+                    submitRevisionRequest(confirmTask);
+                  }}
+                  className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-sm"
+                >
+                  <XCircle className="w-3.5 h-3.5" /> Return Without Note
                 </button>
               </div>
             </div>
