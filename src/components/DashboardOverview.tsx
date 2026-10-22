@@ -96,6 +96,9 @@ export default function DashboardOverview({
   // Completed/Published metric drill-down
   const [showCompletedModal, setShowCompletedModal] = useState(false);
 
+  // Active tasks metric drill-down
+  const [showActiveModal, setShowActiveModal] = useState(false);
+
   // Announcement state
   const [showAddAnnouncement, setShowAddAnnouncement] = useState(false);
   const [newAnnTitle, setNewAnnTitle] = useState("");
@@ -164,6 +167,17 @@ export default function DashboardOverview({
   const activeTasks = isStaffOrProbi 
     ? staffAssignedTasks.filter(isActive)
     : tasks.filter(isActive);
+
+  // The metric lists live work of every kind — print and online alike — ordered by
+  // how soon it is due, with undated tasks pushed to the end.
+  const activeList = activeTasks.slice().sort((a, b) => {
+    const dateA = releaseDateTimestamp(a);
+    const dateB = releaseDateTimestamp(b);
+    if (isNaN(dateA) || isNaN(dateB)) {
+      return isNaN(dateA) === isNaN(dateB) ? 0 : isNaN(dateA) ? 1 : -1;
+    }
+    return dateA - dateB;
+  });
 
   // "Completed / Published items" must count every finished state — approve &
   // lock moves tasks to "Approved", and online tasks end at "for posting", so
@@ -472,7 +486,7 @@ export default function DashboardOverview({
               {/* Metric 1 */}
               <div 
                 className="bg-white dark:bg-neutral-900 rounded-xl sm:rounded-3xl p-2.5 sm:p-4 md:p-5 border border-neutral-200/60 dark:border-neutral-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group"
-                onClick={() => onNavigate("online-pubmat")}
+                onClick={() => setShowActiveModal(true)}
                 onMouseEnter={() => speakText(`Active layout assignments: ${activeTasks.length}`)}
               >
                 <div className="flex justify-between items-start mb-1 sm:mb-2">
@@ -1148,6 +1162,97 @@ export default function DashboardOverview({
             currentUserRole={currentUserRole}
             onUpdatePolls={onUpdatePolls}
           />
+        </div>
+      )}
+
+      {/* Active tasks drill-down — 2-column list of unfinished work, print and online */}
+      {showActiveModal && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-6"
+          onClick={() => setShowActiveModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl border border-neutral-200/60 dark:border-neutral-800 shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-5 border-b border-neutral-200/60 dark:border-neutral-800">
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <span className="p-1.5 sm:p-2 bg-brand-maroon/5 dark:bg-brand-maroon/15 rounded-lg sm:rounded-xl text-brand-maroon dark:text-brand-maroon-light shrink-0">
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-sans font-black text-sm sm:text-base text-neutral-900 dark:text-neutral-100 tracking-tight">
+                    Active Tasks
+                  </h3>
+                  <p className="text-[9px] sm:text-[10px] text-neutral-400 dark:text-neutral-500">
+                    {activeList.length} {activeList.length === 1 ? "task" : "tasks"} · soonest deadline first
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowActiveModal(false)}
+                className="p-1.5 sm:p-2 text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-all cursor-pointer shrink-0"
+                aria-label="Close active tasks list"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-3 sm:p-5">
+              {activeList.length === 0 ? (
+                <div className="border border-neutral-200/60 dark:border-neutral-800 rounded-xl sm:rounded-2xl p-6 sm:p-10 text-center text-neutral-500 dark:text-neutral-400 text-xs">
+                  <p className="font-bold text-neutral-700 dark:text-neutral-200">No active tasks right now.</p>
+                  <p className="mt-1">Assignments still in progress will show up here.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
+                  {activeList.map(task => {
+                    const overdue = isPastDue(task.releaseDate);
+                    return (
+                      <div
+                        key={task.id}
+                        className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border space-y-1.5 sm:space-y-2 text-left ${
+                          overdue
+                            ? "border-rose-300/70 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20"
+                            : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-50/40 dark:bg-neutral-800/30"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[9px] sm:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon dark:bg-brand-maroon/15 dark:text-brand-maroon-light">
+                            {task.typeOfRelease}
+                          </span>
+                          <span className={`text-[9px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            task.progress === "Revision Needed"
+                              ? "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
+                              : task.progress === "For Review"
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
+                                : "bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                          }`}>
+                            {task.progress}
+                          </span>
+                          {overdue && (
+                            <span className="text-[9px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-600 text-white">
+                              Past due
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="font-bold text-neutral-900 dark:text-neutral-100 text-[11px] sm:text-xs leading-snug">
+                          {task.title}
+                        </h4>
+                        <div className="space-y-0.5 text-[9px] sm:text-[10px] text-neutral-500 dark:text-neutral-400">
+                          <p>Artist: <span className="font-bold text-neutral-700 dark:text-neutral-200">{task.illusLayout || "Unassigned"}</span></p>
+                          <p>Category: <span className="font-bold text-neutral-700 dark:text-neutral-200">{resolveEditorialCategory(task.typeOfContent)}</span></p>
+                          <p>Priority: <span className="font-bold text-neutral-700 dark:text-neutral-200">{task.priority || "Medium"}</span></p>
+                          <p>Target date: <span className={`font-bold ${overdue ? "text-rose-600 dark:text-rose-300" : "text-neutral-700 dark:text-neutral-200"}`}>{task.releaseDate || "No deadline"}</span></p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
