@@ -7,7 +7,7 @@ import {
   CheckCircle2, Download, FileSpreadsheet
 } from "lucide-react";
 import { Task, TeamMember, CalendarEvent, Poll } from "../types";
-import { getPreferredFirstName, isUserAssignedToTask } from "../lib/memberUtils";
+import { getPreferredFirstName, isUserAssignedToTask, OFFICIAL_MEMBERS_MAP } from "../lib/memberUtils";
 import { byReleaseDateDesc, isPastDue, releaseDateTimestamp } from "../lib/taskDate";
 import { createPoll, updatePollOptionVotes, deletePoll, createAnnouncement, deleteAnnouncement } from "../lib/supabase";
 import CalendarView from "./CalendarView";
@@ -181,7 +181,12 @@ export default function DashboardOverview({
     ? staffAssignedTasks.filter(t => t.progress === "For Review" || t.progress === "Revision Needed").length
     : tasks.filter(t => t.progress === "Revision Needed" || t.progress === "drafting").length;
 
-  const activeArtistsCount = members.filter(m => m.statusSem1 === "Active" || m.statusSem2 === "Active").length;
+  // The members table can arrive empty for a session — the directory and the
+  // workload chart below both merge around it — so the roster falls back to the
+  // official desk list instead of ever reporting an empty team.
+  const activeArtistsCount = members.length > 0
+    ? members.filter(m => m.statusSem1 === "Active" || m.statusSem2 === "Active").length
+    : Object.values(OFFICIAL_MEMBERS_MAP).length;
   
   // "My Layout Assignments" lists only tasks assigned to the signed-in
   // account — staff, probi, editor, and deputy alike — and hides finished
@@ -540,7 +545,7 @@ export default function DashboardOverview({
                 </div>
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-neutral-800 dark:text-neutral-200 tracking-tight">Team Roster</p>
-                  <p className="text-[9px] sm:text-[10px] text-neutral-400 dark:text-neutral-500">Authorized personnel</p>
+                  <p className="text-[9px] sm:text-[10px] text-neutral-400 dark:text-neutral-500">Layout members</p>
                 </div>
               </div>
             </div>
