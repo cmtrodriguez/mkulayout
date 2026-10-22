@@ -13,7 +13,7 @@ import {
 interface CanvaTemplate {
   id: string;
   name: string;
-  category: "Branding & Gen" | "Editorial" | "Visuals & Layouts";
+  category: string;
   defaultLink: string;
   isCustom?: boolean;
 }
@@ -61,7 +61,6 @@ export function CanvaDirectory({ currentUserRole }: CanvaDirectoryProps = {}) {
   // New Template Form modal/inline state
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newCategory, setNewCategory] = useState<"Branding & Gen" | "Editorial" | "Visuals & Layouts">("Editorial");
   const [newLink, setNewLink] = useState("");
 
   const defaultLinks = (): Record<string, string> => {
@@ -160,7 +159,7 @@ export function CanvaDirectory({ currentUserRole }: CanvaDirectoryProps = {}) {
     const newT: CanvaTemplate = {
       id,
       name: newName.trim(),
-      category: newCategory,
+      category: "Custom",
       defaultLink: newLink.trim(),
       isCustom: true,
     };
@@ -276,7 +275,7 @@ export function CanvaDirectory({ currentUserRole }: CanvaDirectoryProps = {}) {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
                   <label className="block text-[10px] font-bold text-stone-700 mb-1">Template Name</label>
                   <input 
@@ -287,19 +286,6 @@ export function CanvaDirectory({ currentUserRole }: CanvaDirectoryProps = {}) {
                     onChange={(e) => setNewName(e.target.value)}
                     className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white outline-none focus:ring-1 focus:ring-brand-maroon"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-stone-700 mb-1">Category</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as any)}
-                    className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white outline-none focus:ring-1 focus:ring-brand-maroon cursor-pointer"
-                  >
-                    <option value="Branding & Gen">Branding</option>
-                    <option value="Editorial">Publishing</option>
-                    <option value="Visuals & Layouts">Visuals</option>
-                  </select>
                 </div>
 
                 <div>
