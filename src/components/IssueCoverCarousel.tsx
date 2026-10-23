@@ -45,7 +45,7 @@ export default function IssueCoverCarousel() {
 
   return (
     <div
-      className="relative rounded-2xl sm:rounded-3xl border border-brand-maroon/20 dark:border-brand-maroon/40 shadow-sm overflow-hidden"
+      className="relative rounded-2xl sm:rounded-3xl border border-brand-maroon/20 dark:border-brand-maroon/40 shadow-sm overflow-hidden lg:h-full lg:w-auto lg:aspect-[800/945]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={(e) => {

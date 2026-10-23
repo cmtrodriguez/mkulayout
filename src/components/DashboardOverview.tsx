@@ -474,12 +474,16 @@ export default function DashboardOverview({
 
       {/* Available-today roster + current issue covers — Layout Editor & Layout Deputy home workspace */}
       {(currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy") && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 lg:items-center gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
           <div className="lg:col-span-2 min-w-0">
             <AvailableTodayCard members={members} compact />
           </div>
-          <div className="min-w-0">
-            <IssueCoverCarousel />
+          {/* The roster decides how tall this row is, so the carousel is lifted out of
+              the flow and scaled to that height instead of stretching the row. */}
+          <div className="relative min-w-0">
+            <div className="lg:absolute lg:inset-0 lg:flex lg:items-center lg:justify-center">
+              <IssueCoverCarousel />
+            </div>
           </div>
         </div>
       )}
