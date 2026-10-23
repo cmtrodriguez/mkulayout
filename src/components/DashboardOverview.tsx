@@ -474,8 +474,8 @@ export default function DashboardOverview({
 
       {/* Available-today roster + current issue covers — Layout Editor & Layout Deputy home workspace */}
       {(currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy") && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-          <div className="lg:col-span-2 min-w-0">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-3 sm:gap-4">
+          <div className="min-w-0">
             <AvailableTodayCard members={members} compact />
           </div>
           {/* The roster decides how tall this row is, so the carousel is lifted out of
