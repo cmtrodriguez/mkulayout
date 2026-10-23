@@ -427,9 +427,6 @@ export default function DashboardOverview({
               >
                 <FileText className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span>Home Desk</span>
-                <span className={`text-[9px] sm:text-[9px] px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full font-bold ${
-                  overviewTab === "desk" ? "bg-white/20 text-white" : "bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200"
-                }`}>{activeTasks.length}</span>
               </button>
 
               <button
@@ -445,9 +442,6 @@ export default function DashboardOverview({
               >
                 <CalendarIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span>Timeline Calendar</span>
-                <span className={`text-[9px] sm:text-[9px] px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full font-bold ${
-                  overviewTab === "calendar" ? "bg-white/20 text-white" : "bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200"
-                }`}>{events.length}</span>
               </button>
 
               <button
@@ -472,8 +466,8 @@ export default function DashboardOverview({
         </div>
       </div>
 
-      {/* Available-today roster + current issue covers — Layout Editor & Layout Deputy home workspace */}
-      {(currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy") && (
+      {/* Available-today roster + current issue covers — Layout Editor & Layout Deputy home desk only */}
+      {overviewTab === "desk" && (currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy") && (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-3 sm:gap-4">
           <div className="min-w-0">
             <AvailableTodayCard members={members} compact />
