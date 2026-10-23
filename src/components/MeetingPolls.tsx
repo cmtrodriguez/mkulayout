@@ -3,7 +3,7 @@ import {
   Vote, Plus, Users, Clock, EyeOff,
   CheckCircle, MessageCircle, BarChart, Sparkles, HelpCircle, Trash2 
 } from "lucide-react";
-import { Poll, TeamMember } from "../types";
+import { Poll, PollOption, TeamMember } from "../types";
 import { getPreferredFirstName } from "../lib/memberUtils";
 
 interface MeetingPollsProps {
@@ -38,8 +38,10 @@ export default function MeetingPolls({
   const [showCreate, setShowCreate] = useState(false);
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnonymous, setNewAnonymous] = useState(false);
+  const [newMemberOptions, setNewMemberOptions] = useState(false);
   const [newOptions, setNewOptions] = useState<string[]>(["", ""]);
   const [newEndsAt, setNewEndsAt] = useState<string>(defaultPollDeadlineInput);
+  const [memberOptionDrafts, setMemberOptionDrafts] = useState<Record<string, string>>({});
 
   const speakText = (text: string) => {
     if (!speechEnabled) return;
@@ -91,6 +93,30 @@ export default function MeetingPolls({
     setNewOptions([...newOptions, ""]);
   };
 
+  const handleToggleMemberOptions = (pollId: string, allow: boolean) => {
+    onUpdatePolls(polls.map((p) => (p.id === pollId ? { ...p, allowMemberOptions: allow } : p)));
+    speakText(allow ? "Members can now add their own options." : "Member options closed.");
+  };
+
+  // A contributed choice joins the poll as a regular option, so voting, percentages
+  // and the respondent list work on it without any special casing.
+  const handleAddMemberOption = (poll: Poll) => {
+    const text = (memberOptionDrafts[poll.id] || "").trim();
+    if (!text) {
+      speakText("Type the option you want to add first.");
+      return;
+    }
+    if (poll.options.some((opt) => opt.text.trim().toLowerCase() === text.toLowerCase())) {
+      speakText("That option is already on the list.");
+      return;
+    }
+
+    const option: PollOption = { id: crypto.randomUUID(), text, votes: [] };
+    onUpdatePolls(polls.map((p) => (p.id === poll.id ? { ...p, options: [...p.options, option] } : p)));
+    setMemberOptionDrafts((prev) => ({ ...prev, [poll.id]: "" }));
+    speakText(`Your option '${text}' was added to the poll.`);
+  };
+
   // Create Poll helper
   const handleCreatePoll = () => {
     if (!newQuestion.trim()) {
@@ -125,13 +151,15 @@ export default function MeetingPolls({
       anonymous: newAnonymous,
       active: true,
       endsAt: deadline.toISOString(),
-      creator: currentUserEmail
+      creator: currentUserEmail,
+      allowMemberOptions: newMemberOptions
     };
 
     onUpdatePolls([newPoll, ...polls]);
     setShowCreate(false);
     setNewQuestion("");
     setNewOptions(["", ""]);
+    setNewMemberOptions(false);
     setNewEndsAt(defaultPollDeadlineInput());
     speakText("New design coordination poll launched successfully.");
   };
@@ -204,6 +232,14 @@ export default function MeetingPolls({
                         <EyeOff className="w-3 h-3" /> Anonymous
                       </span>
                     )}
+                    {poll.allowMemberOptions && (
+                      <span
+                        className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-brand-maroon/10 text-brand-maroon font-semibold text-[10px]"
+                        title="Layout members can contribute their own option to this poll"
+                      >
+                        <Plus className="w-3 h-3" /> Open to member options
+                      </span>
+                    )}
                   </div>
 
                   <span
@@ -214,19 +250,35 @@ export default function MeetingPolls({
                   </span>
 
                   {isLeader && (
-                    <button
-                      onClick={() => {
-                        if (window.confirm("Delete this poll? This cannot be undone.")) {
-                          onUpdatePolls(polls.filter((p) => p.id !== poll.id));
-                          speakText("Poll removed.");
-                        }
-                      }}
-                      className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-600 transition-all shrink-0 cursor-pointer"
-                      aria-label={`Delete poll: ${poll.question}`}
-                      title="Delete poll"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => handleToggleMemberOptions(poll.id, !poll.allowMemberOptions)}
+                        aria-pressed={Boolean(poll.allowMemberOptions)}
+                        title={poll.allowMemberOptions
+                          ? "Member options are open — click to close them"
+                          : "Let layout members add their own option to this poll"}
+                        className={`px-2 py-0.5 rounded-md border text-[10px] font-bold transition-all cursor-pointer ${
+                          poll.allowMemberOptions
+                            ? "bg-brand-maroon text-white border-brand-maroon"
+                            : "bg-white text-gray-500 border-gray-200 hover:border-brand-maroon hover:text-brand-maroon"
+                        }`}
+                      >
+                        Member options: {poll.allowMemberOptions ? "On" : "Off"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm("Delete this poll? This cannot be undone.")) {
+                            onUpdatePolls(polls.filter((p) => p.id !== poll.id));
+                            speakText("Poll removed.");
+                          }
+                        }}
+                        className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-600 transition-all shrink-0 cursor-pointer"
+                        aria-label={`Delete poll: ${poll.question}`}
+                        title="Delete poll"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -290,6 +342,31 @@ export default function MeetingPolls({
                     );
                   })}
                 </div>
+
+                {poll.allowMemberOptions && !isClosed && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="text"
+                      value={memberOptionDrafts[poll.id] || ""}
+                      onChange={(e) => setMemberOptionDrafts((prev) => ({ ...prev, [poll.id]: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddMemberOption(poll);
+                        }
+                      }}
+                      placeholder="Add your own option"
+                      className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-brand-maroon outline-none"
+                      aria-label={`Add an option to: ${poll.question}`}
+                    />
+                    <button
+                      onClick={() => handleAddMemberOption(poll)}
+                      className="px-2.5 py-1.5 bg-brand-cream hover:bg-brand-maroon hover:text-white text-brand-maroon border border-brand-maroon/20 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add option
+                    </button>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100/60 text-[10px] text-gray-400">
                   <span>Total votes: {totalVotes} layout staff</span>
@@ -391,6 +468,31 @@ export default function MeetingPolls({
                   />
                 </button>
               </div>
+
+              {/* Member-contributed options */}
+              <div className="flex items-center justify-between">
+                <label htmlFor="toggle-poll-member-options" className="text-xs font-semibold flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-gray-400" /> Members Add Their Own Option?
+                </label>
+                <button
+                  id="toggle-poll-member-options"
+                  onClick={() => setNewMemberOptions(!newMemberOptions)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    newMemberOptions ? "bg-brand-maroon" : "bg-gray-200"
+                  }`}
+                  role="switch"
+                  aria-checked={newMemberOptions}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      newMemberOptions ? "translate-x-5" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-400 -mt-2">
+                When on, layout members can add a response option of their own to this poll. You can change this later on the poll card.
+              </p>
 
               <button
                 onClick={handleCreatePoll}

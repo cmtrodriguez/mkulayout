@@ -24,7 +24,7 @@ import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
 import { toISOFormatDate } from "./lib/taskDate";
 import { getCanvaLinkForContent, getPubmatCanvaTemplates, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
-import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, type MemberLoginMap } from "./lib/supabase";
+import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, createPollOption, updatePollMemberOptions, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, type MemberLoginMap } from "./lib/supabase";
 import mkuleImg from "./mkule.png";
 
 // Domain Models
@@ -622,10 +622,19 @@ export default function App() {
       }
       poll.options.forEach((opt) => {
         const prevOpt = prev.options.find(o => o.id === opt.id);
-        if (!prevOpt || prevOpt.votes.join("|") !== opt.votes.join("|")) {
+        if (!prevOpt) {
+          // A choice added after the poll was published (by a member, when the
+          // editor opened it) needs its row, not just a local state entry.
+          void createPollOption(poll.id, opt.id, opt.text);
+          return;
+        }
+        if (prevOpt.votes.join("|") !== opt.votes.join("|")) {
           void updatePollOptionVotes(opt.id, opt.votes);
         }
       });
+      if (Boolean(prev.allowMemberOptions) !== Boolean(poll.allowMemberOptions)) {
+        void updatePollMemberOptions(poll.id, Boolean(poll.allowMemberOptions));
+      }
     });
 
     prevById.forEach((_, id) => {

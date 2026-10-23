@@ -143,6 +143,7 @@ export interface Poll {
   active: boolean;
   endsAt: string; // ISO timestamp
   creator: string;
+  allowMemberOptions?: boolean; // set by the editor/deputy: layout members may add their own option
 }
 
 export interface Notification {

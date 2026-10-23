@@ -599,7 +599,8 @@ export async function fetchPolls(): Promise<Poll[]> {
     anonymous: Boolean(p.anonymous),
     active: Boolean(p.active),
     endsAt: p.ends_at || "",
-    creator: p.creator || ""
+    creator: p.creator || "",
+    allowMemberOptions: Boolean(p.allow_member_options)
   }));
 }
 
@@ -613,7 +614,8 @@ export async function createPoll(poll: Partial<Poll>): Promise<Poll | null> {
     anonymous: Boolean(poll.anonymous),
     active: poll.active !== false,
     ends_at: poll.endsAt ? new Date(poll.endsAt).toISOString() : null,
-    creator: poll.creator || ""
+    creator: poll.creator || "",
+    allow_member_options: Boolean(poll.allowMemberOptions)
   };
   const { data: insertedPoll, error: pollErr } = await supabase.from("polls").insert(pollRow).select().single();
   if (pollErr) {
@@ -644,8 +646,38 @@ export async function createPoll(poll: Partial<Poll>): Promise<Poll | null> {
     anonymous: Boolean(insertedPoll.anonymous),
     active: Boolean(insertedPoll.active),
     endsAt: insertedPoll.ends_at || "",
-    creator: insertedPoll.creator
+    creator: insertedPoll.creator,
+    allowMemberOptions: Boolean(insertedPoll.allow_member_options)
   };
+}
+
+// Opens or closes a poll for options contributed by layout members.
+export async function updatePollMemberOptions(pollId: string, allow: boolean): Promise<boolean> {
+  if (!supabase || !pollId) return false;
+  const { error } = await supabase
+    .from("polls")
+    .update({ allow_member_options: allow, updated_at: new Date().toISOString() })
+    .eq("id", pollId);
+  if (error) console.error("Error updating poll settings:", error.message);
+  return !error;
+}
+
+// Adds a response choice to an existing poll. The caller keeps the same option id in
+// its local state, so realtime refreshes from the database do not duplicate the row.
+export async function createPollOption(
+  pollId: string,
+  optionId: string,
+  text: string
+): Promise<boolean> {
+  if (!supabase || !pollId || !text.trim()) return false;
+  const { error } = await supabase.from("poll_options").insert({
+    id: ensureUuid(optionId),
+    poll_id: pollId,
+    text: text.trim(),
+    votes: []
+  });
+  if (error) console.error("Error adding poll option:", error.message);
+  return !error;
 }
 
 export async function updatePollOptionVotes(optionId: string, votes: string[]): Promise<boolean> {
