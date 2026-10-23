@@ -228,7 +228,9 @@ export function taskFromDb(row: any): Task {
     revisionCount: row.revision_count != null ? Number(row.revision_count) : 0,
     lastUpdated: row.last_updated || row.updated_at || new Date().toISOString(),
     canvaLink: row.canva_link || undefined,
-    mediumCanvaLink: row.medium_canva_link || (isOnlinePubmatTask(typeOfRelease, title) ? MEDIUM_CANVA_LINK : undefined),
+    // ?? so a link the editors cleared stays cleared; NULL (never set) still
+    // falls back to the standard Medium template for pubmat tasks.
+    mediumCanvaLink: row.medium_canva_link ?? (isOnlinePubmatTask(typeOfRelease, title) ? MEDIUM_CANVA_LINK : undefined),
     pubmatLink: row.pubmat_link || undefined,
     draftLink: row.draft_link || undefined,
     addedToLayout: row.added_to_layout || undefined,

@@ -22,6 +22,7 @@ import { CanvaDirectory } from "./components/CanvaDirectory";
 import { OFFICIAL_MEMBERS_MAP, getPreferredFirstName, resolveLayoutAssignee, resolveMemberEmail, getEditorDeputyEmails } from "./lib/memberUtils";
 import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
+import { applyTaskEditToPair } from "./lib/taskPairSync";
 import { toISOFormatDate } from "./lib/taskDate";
 import { getCanvaLinkForContent, getPubmatCanvaTemplates, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
 import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, createPollOption, updatePollMemberOptions, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, type MemberLoginMap } from "./lib/supabase";
@@ -247,8 +248,12 @@ export default function App() {
         ...task,
         progress: task.progress === "Approved" ? "Completed" : task.progress,
         typeOfContent,
-        canvaLink: isCultCategory ? getCanvaLinkForContent("Culture") : task.canvaLink || (isCultureCategory ? getCanvaLinkForContent("Culture") : ""),
-        mediumCanvaLink: isOnlinePubmatTask(task.typeOfRelease, task.title) ? task.mediumCanvaLink || MEDIUM_CANVA_LINK : undefined,
+        // A lead-edited link always wins; the template is only a placeholder for
+        // tasks that never had one attached.
+        canvaLink: task.canvaLink || (isCultCategory || isCultureCategory ? getCanvaLinkForContent("Culture") : ""),
+        // ?? keeps an intentionally cleared link cleared instead of restoring the
+        // standard Medium template on every fetch.
+        mediumCanvaLink: isOnlinePubmatTask(task.typeOfRelease, task.title) ? task.mediumCanvaLink ?? MEDIUM_CANVA_LINK : undefined,
       };
     });
 
@@ -424,7 +429,15 @@ export default function App() {
 
     // Subscribe to realtime updates — no polling needed
     const unsubscribe = subscribeToLayoutRealtime({
-      onTasksChange: async () => { setTasks(tagTasksWithSourceRows(applyAssignmentLinkDefaults(await fetchTasks()), issueSheetsRef.current)); },
+      onTasksChange: async () => {
+        const nextTasks = tagTasksWithSourceRows(applyAssignmentLinkDefaults(await fetchTasks()), issueSheetsRef.current);
+        tasksRef.current = nextTasks;
+        setTasks(nextTasks);
+        // An open workspace has to follow the live row, otherwise the next edit the
+        // lead makes is written from a stale snapshot and reverts whatever another
+        // account changed in the meantime — links included.
+        setSelectedTask((current) => current ? (nextTasks.find((t) => t.id === current.id) || current) : current);
+      },
       onCommentsChange: async () => { setComments(await fetchComments()); },
       onCalendarChange: async () => { setEvents(await fetchCalendarEvents()); },
       onPollsChange: async () => { setPolls(await fetchPolls()); },
@@ -2639,55 +2652,7 @@ export default function App() {
         onRemoveComment={handleRemoveComment}
         onUpdateTask={(updatedTask) => {
           setSelectedTask(updatedTask);
-          let updatedList = tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
-
-          // Keep an Issue Article and its Online Pubmat companion in sync. Companions
-          // are matched by base title + type (ids are now UUIDs, not derivable suffixes).
-          const stripPubmat = (t: string) => t.replace(/\s*\(Online Pubmat\)$/i, "").trim();
-          const updatedBase = stripPubmat(updatedTask.title);
-          const updatedIsOnline =
-            updatedTask.typeOfRelease === "Online Article" || updatedTask.title.includes("(Online Pubmat)");
-
-          if (updatedTask.typeOfRelease === "Issue Article" || updatedIsOnline) {
-            const companionIndex = updatedList.findIndex(
-              t => t.id !== updatedTask.id &&
-                t.typeOfRelease === (updatedIsOnline ? "Issue Article" : "Online Article") &&
-                stripPubmat(t.title) === updatedBase
-            );
-
-            if (companionIndex !== -1) {
-              const companion = updatedList[companionIndex];
-              updatedList[companionIndex] = {
-                ...companion,
-                // Only the article's content mirrors across the pair. An issue-sheet
-                // row can name a different person for the print layout and the online
-                // pubmat, so each card keeps its own assignee.
-                writer: updatedTask.writer || companion.writer,
-                draftLink: updatedTask.draftLink || companion.draftLink,
-                addedToLayout: updatedTask.addedToLayout || companion.addedToLayout,
-                pubmatLink: updatedTask.pubmatLink || companion.pubmatLink,
-                canvaLink: updatedTask.canvaLink || companion.canvaLink,
-                mediumCanvaLink: updatedTask.mediumCanvaLink ?? companion.mediumCanvaLink,
-                writeup: updatedTask.writeup || companion.writeup,
-                lastUpdated: new Date().toISOString()
-              };
-            } else if (updatedTask.typeOfRelease === "Issue Article" && updatedTask.illusLayout && updatedTask.illusLayout !== "Unassigned") {
-              // Create online companion if missing — every online task must
-              // carry the medium Canva link, so never inherit the issue
-              // task's (intentionally empty) one.
-              const onlineTask: Task = {
-                ...updatedTask,
-                id: crypto.randomUUID(),
-                title: `${updatedBase} (Online Pubmat)`,
-                typeOfRelease: "Online Article",
-                mediumCanvaLink: updatedTask.mediumCanvaLink || MEDIUM_CANVA_LINK,
-                isPendingConfirmation: false
-              };
-              updatedList = [onlineTask, ...updatedList];
-            }
-          }
-
-          handleUpdateTasks(updatedList);
+          handleUpdateTasks(applyTaskEditToPair(tasksRef.current, updatedTask));
         }}
         onAddComment={handleAddComment}
         onTriggerCritiqueTab={handleTriggerCritiqueTab}
