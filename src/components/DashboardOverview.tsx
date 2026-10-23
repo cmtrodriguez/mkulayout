@@ -13,6 +13,7 @@ import { createPoll, updatePollOptionVotes, deletePoll, createAnnouncement, dele
 import CalendarView from "./CalendarView";
 import MeetingPolls from "./MeetingPolls";
 import AvailableTodayCard from "./AvailableTodayCard";
+import IssueCoverCarousel from "./IssueCoverCarousel";
 
 const CURRENT_MONTH = new Date().toLocaleString("en-US", { month: "long" });
 const STAFF_STATS_MONTHS = ["July", "August", "September", "October", "November", "December", "January"];
@@ -471,9 +472,16 @@ export default function DashboardOverview({
         </div>
       </div>
 
-      {/* Available-today roster — Layout Editor & Layout Deputy home workspace */}
+      {/* Available-today roster + current issue covers — Layout Editor & Layout Deputy home workspace */}
       {(currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy") && (
-        <AvailableTodayCard members={members} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 lg:items-center gap-3 sm:gap-4">
+          <div className="lg:col-span-2 min-w-0">
+            <AvailableTodayCard members={members} compact />
+          </div>
+          <div className="min-w-0">
+            <IssueCoverCarousel />
+          </div>
+        </div>
       )}
 
       {/* --- CONTENT AREA: RENDERS CONDITIONALLY BASED ON SELECT SUB-TAB --- */}

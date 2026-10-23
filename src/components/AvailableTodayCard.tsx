@@ -69,7 +69,9 @@ export function getAvailabilityRoster(
   return roster;
 }
 
-export default function AvailableTodayCard({ members }: { members: TeamMember[] }) {
+// `compact` is for the home desk, where the roster shares its row with the issue
+// cover carousel and so gets a narrower column than the directory page.
+export default function AvailableTodayCard({ members, compact = false }: { members: TeamMember[]; compact?: boolean }) {
   const today = getTodayKey();
   const dateLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -111,7 +113,7 @@ export default function AvailableTodayCard({ members }: { members: TeamMember[] 
       {/* Available members grid */}
       <div className="p-3.5 sm:p-5 space-y-3">
         {available.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
+          <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5 ${compact ? "" : "lg:grid-cols-5"}`}>
             {available.map((m) => (
               <div
                 key={m.id}
