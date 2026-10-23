@@ -1241,7 +1241,7 @@ export default function DashboardOverview({
                           {task.title}
                         </h4>
                         <div className="space-y-0.5 text-[9px] sm:text-[10px] text-neutral-500 dark:text-neutral-400">
-                          <p>Artist: <span className="font-bold text-neutral-700 dark:text-neutral-200">{task.illusLayout || "Unassigned"}</span></p>
+                          <p>Assignee: <span className="font-bold text-neutral-700 dark:text-neutral-200">{task.illusLayout || "Unassigned"}</span></p>
                           <p>Category: <span className="font-bold text-neutral-700 dark:text-neutral-200">{resolveEditorialCategory(task.typeOfContent)}</span></p>
                           <p>Priority: <span className="font-bold text-neutral-700 dark:text-neutral-200">{task.priority || "Medium"}</span></p>
                           <p>Target date: <span className={`font-bold ${overdue ? "text-rose-600 dark:text-rose-300" : "text-neutral-700 dark:text-neutral-200"}`}>{task.releaseDate || "No deadline"}</span></p>
@@ -1323,7 +1323,7 @@ export default function DashboardOverview({
                           {task.title}
                         </h4>
                         <div className="space-y-0.5 text-[9px] sm:text-[10px] text-neutral-500 dark:text-neutral-400">
-                          <p>Artist: <span className="font-bold text-neutral-700 dark:text-neutral-200">{task.illusLayout || "Unassigned"}</span></p>
+                          <p>Assignee: <span className="font-bold text-neutral-700 dark:text-neutral-200">{task.illusLayout || "Unassigned"}</span></p>
                           <p>Category: <span className="font-bold text-neutral-700 dark:text-neutral-200">{resolveEditorialCategory(task.typeOfContent)}</span></p>
                           <p>Date completed: <span className="font-bold text-neutral-700 dark:text-neutral-200">{finishedDate}</span></p>
                           {task.releaseDate && <p>Target date: <span className="font-medium text-neutral-600 dark:text-neutral-300">{task.releaseDate}</span></p>}

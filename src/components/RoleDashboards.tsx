@@ -937,7 +937,7 @@ export function EicDashboard({
                             </span>
                           </div>
                           <h4 className="font-bold text-gray-900 text-xs sm:text-sm mt-1 sm:mt-1.5">{task.title}</h4>
-                          <p className="text-[9px] sm:text-[10px] text-gray-400 font-mono">Artist: {task.illusLayout}</p>
+                          <p className="text-[9px] sm:text-[10px] text-gray-400 font-mono">Assignee: {task.illusLayout}</p>
                         </div>
 
                         <div className="text-right shrink-0 pl-1">
@@ -1107,7 +1107,7 @@ export function EicDashboard({
                             </span>
                           </div>
                           <h4 className="font-bold text-gray-900 text-xs sm:text-sm mt-1 sm:mt-1.5">{task.title}</h4>
-                          <p className="text-[9px] sm:text-[10px] text-gray-400 font-mono">Artist: {task.illusLayout}</p>
+                          <p className="text-[9px] sm:text-[10px] text-gray-400 font-mono">Assignee: {task.illusLayout}</p>
                           {latestNote && (
                             <div className="mt-2 sm:mt-2.5 bg-rose-50/70 border border-rose-100 rounded-lg p-2 sm:p-2.5">
                               <p className="text-[9px] sm:text-[10px] font-bold text-rose-700">
@@ -1198,7 +1198,7 @@ export function EicDashboard({
                       </div>
                       <h4 className="font-bold text-gray-900 text-sm mt-1">{task.title}</h4>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Artist: <span className="font-bold text-gray-700">{task.illusLayout}</span> • Writer: <span className="font-medium text-gray-600">{task.writer}</span>
+                        Assignee: <span className="font-bold text-gray-700">{task.illusLayout}</span> • Writer: <span className="font-medium text-gray-600">{task.writer}</span>
                       </p>
                     </div>
 
