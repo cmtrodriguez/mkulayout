@@ -260,7 +260,9 @@ export default function AssignmentsList({
       graphicsIllus: initialGraphics,
       graphics: initialGraphics,
       illusLayout: task.illusLayout || "Unassigned",
-      onlineHandler: task.onlineHandler || (task.illusLayout && task.illusLayout !== "Unassigned" ? task.illusLayout : ""),
+      // Never borrow the print artist: an unset pubmat handler stays unset, so
+      // dispatching cannot silently hand the online card to the layout artist.
+      onlineHandler: task.onlineHandler || "",
       writeup: initialTitle,
       draftLink: initialUrl,
       addedToLayout: initialUrl,
@@ -628,7 +630,7 @@ export default function AssignmentsList({
                         <div className="space-y-1">
                           <label className="font-bold text-gray-700 dark:text-neutral-300 block">Online Pubmat</label>
                           {(() => {
-                            const currentVal = editForm.onlineHandler || (editForm.illusLayout && editForm.illusLayout !== "Unassigned" ? editForm.illusLayout : "") || "Unassigned";
+                            const currentVal = editForm.onlineHandler || "Unassigned";
                             const getFirstName = (name: string) => name.split(" ")[0].trim();
 
                             const exactMatch = staffMembers.find(m => m.name === currentVal);
