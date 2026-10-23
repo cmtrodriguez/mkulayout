@@ -341,7 +341,6 @@ export default function AssignmentsList({
           if (t.id === `${taskId}-online` || (t.typeOfRelease === "Online Article" && t.title.replace(/\s*\(Online Pubmat\)$/i, "").trim() === baseTitle)) {
             return {
               ...t,
-              illusLayout: editForm.illusLayout || t.illusLayout,
               writer: editForm.writer || t.writer,
               graphicsIllus: graphicsVal || t.graphicsIllus,
               graphics: graphicsVal || t.graphics,
@@ -581,11 +580,15 @@ export default function AssignmentsList({
                                 value={selectVal}
                                 onChange={(e) => {
                                   const val = e.target.value;
-                                  const syncPubmat = val === "Unassigned" ? "" : val;
-                                  handleFieldsChange({
-                                    illusLayout: val,
-                                    onlineHandler: syncPubmat
-                                  });
+                                  const previousArtist = editForm.illusLayout || "Unassigned";
+                                  const pubmatHandler = editForm.onlineHandler || "";
+                                  // The pubmat handler follows the artist only while it is
+                                  // the same person (or unset); a deliberately different
+                                  // handler is left alone.
+                                  const followsArtist = !pubmatHandler || pubmatHandler === "Unassigned" || pubmatHandler === previousArtist;
+                                  handleFieldsChange(followsArtist
+                                    ? { illusLayout: val, onlineHandler: val === "Unassigned" ? "" : val }
+                                    : { illusLayout: val });
                                 }}
                                 className="w-full px-3 py-2 border border-gray-250 dark:border-neutral-700 rounded-lg outline-none focus:ring-1 focus:ring-brand-maroon bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-100 cursor-pointer"
                               >

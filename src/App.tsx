@@ -2650,14 +2650,9 @@ export default function App() {
               const companion = updatedList[companionIndex];
               updatedList[companionIndex] = {
                 ...companion,
-                illusLayout: updatedTask.illusLayout,
-                // Mirror the assignee identity too, or the old assignee keeps
-                // seeing the companion task after a transfer.
-                assigneeName: updatedTask.assigneeName || companion.assigneeName,
-                assigneeEmail: updatedTask.assigneeEmail ?? companion.assigneeEmail,
-                ...(companion.onlineHandler && companion.onlineHandler !== "Unassigned"
-                  ? { onlineHandler: updatedTask.illusLayout === "Unassigned" ? "" : updatedTask.illusLayout }
-                  : {}),
+                // Only the article's content mirrors across the pair. An issue-sheet
+                // row can name a different person for the print layout and the online
+                // pubmat, so each card keeps its own assignee.
                 writer: updatedTask.writer || companion.writer,
                 draftLink: updatedTask.draftLink || companion.draftLink,
                 addedToLayout: updatedTask.addedToLayout || companion.addedToLayout,
