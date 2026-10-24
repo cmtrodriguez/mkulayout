@@ -1682,25 +1682,6 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Mobile Dark / Light Mode Toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              const next = !darkMode;
-              setDarkMode(next);
-              if (speechEnabled) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(`Switched to ${next ? "dark" : "light"} mode`);
-                window.speechSynthesis.speak(utterance);
-              }
-            }}
-            className="p-1.5 text-neutral-300 hover:text-white rounded-lg cursor-pointer bg-neutral-900 border border-neutral-800 flex items-center justify-center"
-            title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            aria-label="Toggle Dark or Light Mode"
-          >
-            {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-neutral-300" />}
-          </button>
-
           <button
             onClick={handleLogout}
             className="p-1.5 text-neutral-400 hover:text-red-400 rounded-lg cursor-pointer"
