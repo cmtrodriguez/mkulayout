@@ -9,6 +9,10 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 dotenv.config();
 
+// The issue PDF proxy lives in api/ so Vercel deploys it as a serverless
+// function; reusing the same handler here keeps `npm run dev` identical.
+import issuePdfHandler from "./api/issue-pdf.js";
+
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseServiceKey
@@ -160,6 +164,8 @@ function writeDb(data: any) {
 }
 
 // 1. Get database state
+app.get("/api/issue-pdf", issuePdfHandler);
+
 app.get("/api/state", async (req, res) => {
   const supabaseState = await readSupabaseState();
   const fallbackState = readDb();

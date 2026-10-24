@@ -4,7 +4,7 @@ import {
   LayoutGrid, FileSpreadsheet, Kanban, GraduationCap, Calendar, 
   HelpCircle, Bot, Users, Bell, AlertOctagon, Plus, X, Shield, Ban, Trash2,
   Sparkles, ShieldCheck, HeartPulse, CheckSquare, RefreshCw, BookOpen,
-  Menu, LogOut, Link2, Sun, Moon, FileText, CheckCircle2, ExternalLink, Loader2, User, ArrowRight
+  Menu, LogOut, Link2, Sun, Moon, FileText, CheckCircle2, ExternalLink, Loader2, User, ArrowRight, BarChart3
 } from "lucide-react";
 
 // Sub Components
@@ -19,17 +19,18 @@ import QuickAccessHub from "./components/QuickAccessHub";
 import ProfileSettings from "./components/ProfileSettings";
 import { LayoutStaffDashboard, EicDashboard } from "./components/RoleDashboards";
 import { CanvaDirectory } from "./components/CanvaDirectory";
+import IssueAssessment from "./components/IssueAssessment";
 import { OFFICIAL_MEMBERS_MAP, getPreferredFirstName, resolveLayoutAssignee, resolveMemberEmail, getEditorDeputyEmails } from "./lib/memberUtils";
 import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
 import { applyTaskEditToPair } from "./lib/taskPairSync";
 import { toISOFormatDate } from "./lib/taskDate";
 import { getCanvaLinkForContent, getPubmatCanvaTemplates, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
-import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, createPollOption, updatePollMemberOptions, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, type MemberLoginMap } from "./lib/supabase";
+import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, createPollOption, updatePollMemberOptions, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, fetchIssueAssessments, submitIssueAssessment, type MemberLoginMap } from "./lib/supabase";
 import mkuleImg from "./mkule.png";
 
 // Domain Models
-import { Task, TeamMember, CalendarEvent, Poll, Notification, TaskComment, UserRole, normalizeEmail, OpinionArticle, ProbiTrackerState, DEFAULT_PROBI_CONGRATS_MESSAGE } from "./types";
+import { Task, TeamMember, CalendarEvent, Poll, Notification, TaskComment, UserRole, normalizeEmail, OpinionArticle, ProbiTrackerState, DEFAULT_PROBI_CONGRATS_MESSAGE, IssueAssessmentEntry, IssueAssessments } from "./types";
 
 // Short two-tone ping played when a new notification lands in the bell feed.
 function playNotificationPing() {
@@ -75,6 +76,7 @@ export default function App() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [probiTracker, setProbiTracker] = useState<ProbiTrackerState>({ congratsMessage: DEFAULT_PROBI_CONGRATS_MESSAGE, articles: [] });
+  const [issueAssessments, setIssueAssessments] = useState<IssueAssessments>({});
   const [loading, setLoading] = useState(true);
   const bootTimeRef = useRef<number>(Date.now());
 
@@ -362,7 +364,7 @@ export default function App() {
   // Fetch all app data from Supabase and initialise local state
   const fetchAllState = async () => {
     try {
-      const [sbTasks, sbMembers, sbComments, sbEvents, sbPolls, sbAnnouncements, sbNotifications, sbIssueSheets, sbMemberLogins, sbProbiTracker] = await Promise.all([
+      const [sbTasks, sbMembers, sbComments, sbEvents, sbPolls, sbAnnouncements, sbNotifications, sbIssueSheets, sbMemberLogins, sbProbiTracker, sbIssueAssessments] = await Promise.all([
         fetchTasks(),
         fetchMembers(),
         fetchComments(),
@@ -372,7 +374,8 @@ export default function App() {
         fetchNotifications(),
         fetchIssueSheets(),
         fetchMemberLogins(),
-        fetchProbiTrackerState()
+        fetchProbiTrackerState(),
+        fetchIssueAssessments()
       ]);
 
       const loadedTasks = tagTasksWithSourceRows(applyAssignmentLinkDefaults(sbTasks), (sbIssueSheets && sbIssueSheets.length > 0) ? sbIssueSheets : issueSheetsRef.current);
@@ -391,6 +394,7 @@ export default function App() {
       setAnnouncements(sbAnnouncements);
       setNotifications(sbNotifications);
       if (sbProbiTracker) setProbiTracker(sbProbiTracker);
+      setIssueAssessments(sbIssueAssessments);
 
       if (sbIssueSheets && sbIssueSheets.length > 0) {
         setIssueSheets(sbIssueSheets);
@@ -445,6 +449,7 @@ export default function App() {
       onAnnouncementsChange: async () => { setAnnouncements(await fetchAnnouncements()); },
       onMembersChange: async () => { setMembers(await fetchMembers()); },
       onMemberLoginsChange: (data) => { setMemberLogins(data || {}); },
+      onIssueAssessmentsChange: async () => { setIssueAssessments(await fetchIssueAssessments()); },
       onIssueSheetsChange: (data) => {
         if (Array.isArray(data) && data.length > 0) {
           setIssueSheets(data);
@@ -1048,6 +1053,24 @@ export default function App() {
     commitProbiTracker({ ...probiTracker, congratsMessage: trimmed });
   };
 
+  // Issue Assessment — the whole board lives in one app_state row, so the write
+  // happens optimistically for the rater and then adopts whatever the server
+  // merged back (that merge is what keeps two members from overwriting each other).
+  const handleSubmitIssueAssessment = ({ issueKey, page, entry }: { issueKey: string; page: number; entry: IssueAssessmentEntry }) => {
+    if (!isAuthenticated) return;
+    const email = normalizeEmail(userEmail);
+    setIssueAssessments((current) => ({
+      ...current,
+      [issueKey]: {
+        ...(current[issueKey] || {}),
+        [email]: { ...(current[issueKey]?.[email] || {}), [String(page)]: entry }
+      }
+    }));
+    submitIssueAssessment({ issueKey, memberEmail: email, page, entry })
+      .then((merged) => { if (merged) setIssueAssessments(merged); })
+      .catch(() => {});
+  };
+
   // The bell feed only ever shows alerts addressed to the signed-in account.
   const clearedNotificationStorageKey = `mkule_cleared_notifications_${userEmail.toLowerCase()}`;
   const locallyClearedNotificationIds = (() => {
@@ -1310,6 +1333,7 @@ export default function App() {
           { id: "dashboard", label: "Home", icon: LayoutGrid },
           { id: "issue-publication", label: "Issue Pages", icon: BookOpen },
           { id: "online-pubmat", label: "Online Pubmat", icon: Kanban },
+          { id: "issue-assessment", label: "Issue Assessment", icon: BarChart3 },
           { id: "review-submissions", label: "Review Submissions", icon: ShieldCheck },
           { id: "canva-directory", label: "Canva Template Directory", icon: Link2 },
           { id: "directory", label: "Layout Member Directory", icon: Users },
@@ -1321,6 +1345,7 @@ export default function App() {
           { id: "dashboard", label: "Home", icon: LayoutGrid },
           { id: "my-assignments", label: "My Assignments", icon: Kanban },
           { id: "online-pubmat", label: "Online Pubmat", icon: Kanban },
+          { id: "issue-assessment", label: "Issue Assessment", icon: BarChart3 },
           { id: "review-submissions", label: "Review Submissions", icon: ShieldCheck },
           { id: "canva-directory", label: "Canva Template Directory", icon: Link2 },
           { id: "directory", label: "Layout Member Directory", icon: Users },
@@ -1333,6 +1358,7 @@ export default function App() {
           { id: "dashboard", label: "Home", icon: LayoutGrid },
           { id: "canva-directory", label: "Canva Template Directory", icon: Link2 },
           { id: "my-assignments", label: "My Assignments", icon: Kanban },
+          { id: "issue-assessment", label: "Issue Assessment", icon: BarChart3 },
           { id: "directory", label: "Layout Member Directory", icon: Users },
           { id: "settings", label: "Profile & Settings", icon: Shield }
         ];
@@ -2251,6 +2277,16 @@ export default function App() {
                   setTaskFormOrigin("online-pubmat");
                   setShowTaskForm(true);
                 }}
+              />
+            )}
+
+            {activeTab === "issue-assessment" && (
+              <IssueAssessment
+                assessments={issueAssessments}
+                members={members}
+                currentUserEmail={userEmail}
+                currentUserRole={userRole}
+                onSubmit={handleSubmitIssueAssessment}
               />
             )}
 

@@ -1,27 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ExternalLink, FileText } from "lucide-react";
-
-// The current issues and their published front covers. Google Drive renders the first
-// page of a shared PDF at its thumbnail endpoint, so each cover is a plain image and
-// needs no viewer embed; the /view link is what the cover opens. That endpoint refuses
-// any request carrying a non-Google Referer, hence referrerPolicy="no-referrer".
-const ISSUE_COVERS = [
-  {
-    label: "1K1-2",
-    fileId: "1eHUhpqFtPEj07uCG9Hoc47sweVbzc59y",
-    url: "https://drive.google.com/file/d/1eHUhpqFtPEj07uCG9Hoc47sweVbzc59y/view?usp=drive_link",
-  },
-  {
-    label: "1K3-4",
-    fileId: "1z8baF1AbGRy9T2wh6my6zfH9ooWO4uO1",
-    url: "https://drive.google.com/file/d/1z8baF1AbGRy9T2wh6my6zfH9ooWO4uO1/view?usp=drive_link",
-  },
-  {
-    label: "1K5",
-    fileId: "1oDTnQQ2oJmv9OwAOzOmpZVdABh2FUq8v",
-    url: "https://drive.google.com/file/d/1oDTnQQ2oJmv9OwAOzOmpZVdABh2FUq8v/view?usp=drive_link",
-  },
-];
+import { ISSUES } from "../lib/issues";
 
 const AUTO_ADVANCE_MS = 5000;
 const SWIPE_MIN_PX = 40;
@@ -35,10 +14,10 @@ export default function IssueCoverCarousel() {
   const touchStartX = useRef<number | null>(null);
 
   const step = (delta: number) =>
-    setIndex((current) => (current + delta + ISSUE_COVERS.length) % ISSUE_COVERS.length);
+    setIndex((current) => (current + delta + ISSUES.length) % ISSUES.length);
 
   useEffect(() => {
-    if (paused || ISSUE_COVERS.length < 2) return;
+    if (paused || ISSUES.length < 2) return;
     const timer = window.setInterval(() => step(1), AUTO_ADVANCE_MS);
     return () => window.clearInterval(timer);
   }, [paused]);
@@ -69,7 +48,7 @@ export default function IssueCoverCarousel() {
         style={{ transform: `translateX(calc(-${index * 100}% - ${index * 0.75}rem))` }}
         aria-live="polite"
       >
-        {ISSUE_COVERS.map((cover, slide) => (
+        {ISSUES.map((cover, slide) => (
           <a
             key={cover.fileId}
             href={cover.url}
@@ -130,7 +109,7 @@ export default function IssueCoverCarousel() {
       </button>
 
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-black/35 backdrop-blur-sm">
-        {ISSUE_COVERS.map((cover, slide) => (
+        {ISSUES.map((cover, slide) => (
           <button
             key={cover.fileId}
             onClick={() => setIndex(slide)}

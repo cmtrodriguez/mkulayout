@@ -14,6 +14,8 @@ import {
   normalizeEmail,
   OpinionArticle,
   ProbiTrackerState,
+  IssueAssessmentEntry,
+  IssueAssessments,
   DEFAULT_PROBI_CONGRATS_MESSAGE
 } from "../types";
 import { getOfficialDisplayName, resolveMemberEmail } from "./memberUtils";
@@ -942,6 +944,7 @@ export interface RealtimeHandlers {
   onAnnouncementsChange?: () => void;
   onMembersChange?: () => void;
   onIssueSheetsChange?: (data: any) => void;
+  onIssueAssessmentsChange?: (data: any) => void;
   onMemberLoginsChange?: (data: MemberLoginMap) => void;
 }
 
@@ -986,6 +989,8 @@ export function subscribeToLayoutRealtime(handlers: RealtimeHandlers): () => voi
         handlers.onIssueSheetsChange?.(rec.data);
       } else if (rec.id === "member_logins" && rec.data && typeof rec.data === "object") {
         handlers.onMemberLoginsChange?.(rec.data as MemberLoginMap);
+      } else if (rec.id === "issue_assessments") {
+        handlers.onIssueAssessmentsChange?.(rec.data);
       }
     });
 
@@ -1031,4 +1036,87 @@ export async function saveProbiTrackerState(state: ProbiTrackerState): Promise<b
     return false;
   }
   return true;
+}
+
+/* ------------------- Issue Assessment desk (app_state row) ------------------- */
+
+const clampStars = (value: unknown): number => {
+  const stars = Number(value);
+  if (!Number.isFinite(stars) || stars < 1) return 0;
+  return Math.min(5, Math.round(stars));
+};
+
+function issueAssessmentsFromDb(raw: unknown): IssueAssessments {
+  if (!raw || typeof raw !== "object") return {};
+  const next: IssueAssessments = {};
+  Object.entries(raw as Record<string, any>).forEach(([issueKey, byMember]) => {
+    if (!byMember || typeof byMember !== "object") return;
+    next[issueKey] = {};
+    Object.entries(byMember as Record<string, any>).forEach(([email, byPage]) => {
+      if (!byPage || typeof byPage !== "object") return;
+      next[issueKey][normalizeEmail(email)] = {};
+      Object.entries(byPage as Record<string, any>).forEach(([page, entry]) => {
+        if (!entry || typeof entry !== "object") return;
+        next[issueKey][normalizeEmail(email)][page] = {
+          layout: clampStars(entry.layout),
+          typography: clampStars(entry.typography),
+          images: clampStars(entry.images),
+          comment: typeof entry.comment === "string" ? entry.comment : "",
+          updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : new Date().toISOString()
+        };
+      });
+    });
+  });
+  return next;
+}
+
+export async function fetchIssueAssessments(): Promise<IssueAssessments> {
+  if (!supabase) return {};
+  const { data, error } = await supabase.from("app_state").select("data").eq("id", "issue_assessments").maybeSingle();
+  if (error && error.code !== "PGRST116") {
+    console.warn("Issue assessments fetch failed:", error.message);
+    return {};
+  }
+  return issueAssessmentsFromDb(data?.data);
+}
+
+/**
+ * Writes one member's rating for one page. app_state keeps the whole board in a
+ * single row, so the stored blob is re-read and merged first: without that, two
+ * members submitting at the same time would each overwrite the other's rows.
+ */
+export async function submitIssueAssessment(input: {
+  issueKey: string;
+  memberEmail: string;
+  page: number;
+  entry: IssueAssessmentEntry;
+}): Promise<IssueAssessments | null> {
+  if (!supabase) return null;
+  const email = normalizeEmail(input.memberEmail);
+  const { error: readError, data: current } = await supabase
+    .from("app_state").select("data").eq("id", "issue_assessments").maybeSingle();
+  if (readError && readError.code !== "PGRST116") {
+    console.error("Error reading issue assessments:", readError.message);
+    return null;
+  }
+
+  const merged = issueAssessmentsFromDb(current?.data);
+  merged[input.issueKey] = {
+    ...(merged[input.issueKey] || {}),
+    [email]: {
+      ...((merged[input.issueKey] || {})[email] || {}),
+      [String(input.page)]: input.entry
+    }
+  };
+
+  const { error } = await supabase.from("app_state").upsert({
+    id: "issue_assessments",
+    data: merged,
+    updated_at: new Date().toISOString()
+  });
+  if (error) {
+    console.error("Error saving issue assessment:", error.message);
+    return null;
+  }
+  return merged;
 }

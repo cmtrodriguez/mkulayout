@@ -202,3 +202,23 @@ export interface ProbiTrackerState {
 
 export const DEFAULT_PROBI_CONGRATS_MESSAGE =
   "Congratulations! You have graduated as a layout probi; may you carry the same determination as you continue your journey as a layout staffer.";
+
+/* Issue Assessment desk — one rating set per page, per member, per issue */
+export interface IssueAssessmentEntry {
+  layout: number;      // Layout & Balance, 1-5 (5 highest), 0 = not rated
+  typography: number;  // Typography & Readability
+  images: number;      // Images & Graphics
+  comment: string;
+  updatedAt: string;
+}
+
+/** issueKey -> member email -> page number -> that member's assessment */
+export type IssueAssessments = Record<string, Record<string, Record<string, IssueAssessmentEntry>>>;
+
+export const ASSESSMENT_QUESTIONS = [
+  { key: "layout", label: "Layout & Balance", hint: "Grid, margins and how the eye moves across the page" },
+  { key: "typography", label: "Typography & Readability", hint: "Hierarchy, legibility and consistency of type" },
+  { key: "images", label: "Images & Graphics", hint: "Photo quality, placement and captioning" },
+] as const;
+
+export type AssessmentQuestionKey = (typeof ASSESSMENT_QUESTIONS)[number]["key"];
