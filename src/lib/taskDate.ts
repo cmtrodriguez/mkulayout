@@ -65,6 +65,17 @@ export function byReleaseDateDesc<T extends { releaseDate?: string | null; lastU
   return dateB - dateA;
 }
 
+// Readable posting date for a card, e.g. "October 20, 2026". Labels that hold no
+// real date (an issue-sheet page number, "Issue Board") return "" so a card can
+// leave the line out instead of printing the placeholder as if it were a date.
+export function releaseDateLabel(task: { releaseDate?: string | null; lastUpdated?: string | null }): string {
+  const stamp = releaseDateTimestamp(task);
+  if (isNaN(stamp)) return "";
+  const parsed = new Date(stamp);
+  const month = MONTH_NAMES[parsed.getUTCMonth()];
+  return `${month[0].toUpperCase()}${month.slice(1)} ${parsed.getUTCDate()}, ${parsed.getUTCFullYear()}`;
+}
+
 // True when the release-date label resolves to a calendar date strictly
 // before today. Labels with no real date (page numbers, "Issue Board") are
 // never past due.

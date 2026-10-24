@@ -3,14 +3,14 @@ import {
   ClipboardList, Search, Filter, Plus, ArrowUpDown, Clock, CheckCircle,
   AlertCircle, Edit2, Check, ArrowRight, BookOpen, User, ExternalLink,
   Trash2, FileSpreadsheet, ListPlus, X, Link as LinkIcon, FolderPlus,
-  FileText, CheckCircle2, Loader2, RefreshCw, Undo2
+  FileText, CheckCircle2, Loader2, RefreshCw, Undo2, CalendarDays
 } from "lucide-react";
 import { Task, TeamMember } from "../types";
 import { getAllCanvaTemplates, extractHyperlinkDetails, extractDocInputDetails, getCanvaLinkForContent, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "../lib/canvaTemplates";
 
 import { OFFICIAL_MEMBERS_MAP, getOfficialDisplayName, getPreferredFirstName, resolveLayoutAssignee } from "../lib/memberUtils";
 import { seededUuid } from "../lib/seededUuid";
-import { isPastDue, toISOFormatDate } from "../lib/taskDate";
+import { isPastDue, releaseDateLabel, toISOFormatDate } from "../lib/taskDate";
 
 interface AssignmentsListProps {
   tasks: Task[];
@@ -995,6 +995,7 @@ export default function AssignmentsList({
           {sortedTasks.map(task => {
           const isDone = isDoneTask(task);
           const isOverdue = !isDone && isPastDue(task.releaseDate);
+          const postingDate = releaseDateLabel(task);
           return (
             <div 
               key={task.id} 
@@ -1042,6 +1043,16 @@ export default function AssignmentsList({
                     {task.title}
                   </h4>
                 </div>
+
+                {postingDate && (
+                  <div>
+                    <span className="text-[9px] sm:text-[10px] text-gray-400 dark:text-neutral-400 uppercase font-semibold block">Target posting date</span>
+                    <span className="text-[11px] sm:text-xs font-bold text-gray-700 dark:text-neutral-200 flex items-center gap-1">
+                      <CalendarDays className="w-3 h-3 text-brand-maroon dark:text-brand-maroon-light shrink-0" />
+                      {postingDate}
+                    </span>
+                  </div>
+                )}
 
                 {task.canvaLink && (
                   <div className="bg-cyan-50/60 dark:bg-cyan-950/40 border border-cyan-100 dark:border-cyan-800 p-1.5 sm:p-2 rounded-lg sm:rounded-xl flex items-center justify-between gap-2 text-[10px]">
