@@ -26,11 +26,11 @@ import { seededUuid } from "./lib/seededUuid";
 import { applyTaskEditToPair } from "./lib/taskPairSync";
 import { toISOFormatDate } from "./lib/taskDate";
 import { getCanvaLinkForContent, getPubmatCanvaTemplates, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
-import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, createPollOption, updatePollMemberOptions, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, fetchIssueAssessments, submitIssueAssessment, type MemberLoginMap } from "./lib/supabase";
+import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, createPollOption, updatePollMemberOptions, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, fetchIssueAssessments, submitIssueAssessment, saveIssueAssessmentReply, type MemberLoginMap } from "./lib/supabase";
 import mkuleImg from "./mkule.png";
 
 // Domain Models
-import { Task, TeamMember, CalendarEvent, Poll, Notification, TaskComment, UserRole, normalizeEmail, OpinionArticle, ProbiTrackerState, DEFAULT_PROBI_CONGRATS_MESSAGE, IssueAssessmentEntry, IssueAssessments } from "./types";
+import { Task, TeamMember, CalendarEvent, Poll, Notification, TaskComment, UserRole, normalizeEmail, OpinionArticle, ProbiTrackerState, DEFAULT_PROBI_CONGRATS_MESSAGE, IssueAssessmentEntry, IssueAssessments, AssessmentReply } from "./types";
 
 // Short two-tone ping played when a new notification lands in the bell feed.
 function playNotificationPing() {
@@ -57,6 +57,43 @@ function playNotificationPing() {
   } catch {
     // Autoplay policy or unsupported browser — stay silent.
   }
+}
+
+type DeskTab = { id: string; label: string; icon: React.ComponentType<{ className?: string }> };
+
+// The sidebar and the mobile sheet are the same list in two skins.
+function DeskTabButton({
+  tab, isActive, variant, onSelect
+}: { tab: DeskTab; isActive: boolean; variant: "desktop" | "mobile"; onSelect: () => void }) {
+  const Icon = tab.icon;
+  if (variant === "mobile") {
+    return (
+      <button
+        onClick={onSelect}
+        className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold tracking-wide flex items-center gap-3 transition-all text-left cursor-pointer ${
+          isActive
+            ? "bg-gradient-to-r from-brand-maroon to-brand-maroon-dark text-white shadow-sm"
+            : "text-neutral-300 hover:text-white hover:bg-neutral-900"
+        }`}
+      >
+        <Icon className="w-4 h-4 shrink-0 text-red-500" />
+        <span>{tab.label}</span>
+      </button>
+    );
+  }
+  return (
+    <button
+      onClick={onSelect}
+      className={`w-full px-4 py-3 rounded-2xl text-xs font-bold tracking-wide flex items-center gap-3 transition-all cursor-pointer text-left ${
+        isActive
+          ? "bg-gradient-to-r from-brand-maroon to-brand-maroon-dark text-white font-black shadow-lg shadow-red-950/40 border-l-4 border-white"
+          : "text-neutral-400 hover:text-white hover:bg-neutral-900/80"
+      }`}
+    >
+      <Icon className="w-4 h-4 shrink-0" />
+      <span className="truncate">{tab.label}</span>
+    </button>
+  );
 }
 
 export default function App() {
@@ -1071,6 +1108,27 @@ export default function App() {
       .catch(() => {});
   };
 
+  // A lead's response is written into the rated member's own page entry, so the
+  // staffer sees it in their thread without any other field of theirs changing.
+  const handleIssueAssessmentReply = ({ issueKey, memberEmail, page, reply }: { issueKey: string; memberEmail: string; page: number; reply: AssessmentReply | null }) => {
+    if (userRole !== "Layout Editor" && userRole !== "Layout Deputy") return;
+    const target = normalizeEmail(memberEmail);
+    setIssueAssessments((current) => {
+      const existing = current[issueKey]?.[target]?.[String(page)]
+        || { layout: 0, typography: 0, images: 0, bullets: [], updatedAt: new Date().toISOString() };
+      return {
+        ...current,
+        [issueKey]: {
+          ...(current[issueKey] || {}),
+          [target]: { ...(current[issueKey]?.[target] || {}), [String(page)]: { ...existing, reply } }
+        }
+      };
+    });
+    saveIssueAssessmentReply({ issueKey, memberEmail: target, page, reply })
+      .then((merged) => { if (merged) setIssueAssessments(merged); })
+      .catch(() => {});
+  };
+
   // The bell feed only ever shows alerts addressed to the signed-in account.
   const clearedNotificationStorageKey = `mkule_cleared_notifications_${userEmail.toLowerCase()}`;
   const locallyClearedNotificationIds = (() => {
@@ -1326,6 +1384,7 @@ export default function App() {
     setActiveTab("shortcuts");
   };
 
+  // The sidebar's first group: the day-to-day desk of the role.
   const getTabsForRole = () => {
     switch (userRole) {
       case "Layout Editor":
@@ -1333,7 +1392,6 @@ export default function App() {
           { id: "dashboard", label: "Home", icon: LayoutGrid },
           { id: "issue-publication", label: "Issue Pages", icon: BookOpen },
           { id: "online-pubmat", label: "Online Pubmat", icon: Kanban },
-          { id: "issue-assessment", label: "Issue Assessment", icon: BarChart3 },
           { id: "review-submissions", label: "Review Submissions", icon: ShieldCheck },
           { id: "canva-directory", label: "Canva Template Directory", icon: Link2 },
           { id: "directory", label: "Layout Member Directory", icon: Users },
@@ -1345,7 +1403,6 @@ export default function App() {
           { id: "dashboard", label: "Home", icon: LayoutGrid },
           { id: "my-assignments", label: "My Assignments", icon: Kanban },
           { id: "online-pubmat", label: "Online Pubmat", icon: Kanban },
-          { id: "issue-assessment", label: "Issue Assessment", icon: BarChart3 },
           { id: "review-submissions", label: "Review Submissions", icon: ShieldCheck },
           { id: "canva-directory", label: "Canva Template Directory", icon: Link2 },
           { id: "directory", label: "Layout Member Directory", icon: Users },
@@ -1358,7 +1415,6 @@ export default function App() {
           { id: "dashboard", label: "Home", icon: LayoutGrid },
           { id: "canva-directory", label: "Canva Template Directory", icon: Link2 },
           { id: "my-assignments", label: "My Assignments", icon: Kanban },
-          { id: "issue-assessment", label: "Issue Assessment", icon: BarChart3 },
           { id: "directory", label: "Layout Member Directory", icon: Users },
           { id: "settings", label: "Profile & Settings", icon: Shield }
         ];
@@ -1380,6 +1436,20 @@ export default function App() {
     }
   };
 
+  // The sidebar's second group: section-wide work rather than a personal desk,
+  // so every layout member assesses the published issues in the same place.
+  const getSectionMatterTabs = () => {
+    const isLayoutMember = userRole === "Layout Editor"
+      || userRole === "Layout Deputy"
+      || userRole === "Online Layout Head"
+      || userRole === "Layout Staffer"
+      || userRole === "Layout Probi"
+      || userRole === "Layout Staff Member";
+    return isLayoutMember
+      ? [{ id: "issue-assessment", label: "Issue Assessment", icon: BarChart3 }]
+      : [];
+  };
+
   const assignableMembers = members.filter((member) => {
     const role = member.role || "";
     if (userRole === "Layout Editor") {
@@ -1394,7 +1464,7 @@ export default function App() {
   const canAssignOnlineOnly = userRole === "Layout Deputy";
 
   useEffect(() => {
-    const validTabs = getTabsForRole().map(t => t.id);
+    const validTabs = [...getTabsForRole(), ...getSectionMatterTabs()].map(t => t.id);
     if (!validTabs.includes(activeTab)) {
       setActiveTab("dashboard");
     }
@@ -1508,6 +1578,18 @@ export default function App() {
   }
 
   const roleTabs = getTabsForRole();
+  const sectionTabs = getSectionMatterTabs();
+
+  // Both sidebar groups open a panel the same way, so speech and the mobile
+  // sheet stay consistent whichever section a member came from.
+  const openTab = (tab: { id: string; label: string }) => {
+    setActiveTab(tab.id);
+    setShowMobileSidebar(false);
+    if (speechEnabled) {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(`Opened ${tab.label}`));
+    }
+  };
 
   return (
     <div
@@ -1537,31 +1619,32 @@ export default function App() {
             <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-3 block mb-2 font-sans">
               Workspace Desk
             </span>
-            {roleTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    if (speechEnabled) {
-                      window.speechSynthesis.cancel();
-                      const utterance = new SpeechSynthesisUtterance(`Opened ${tab.label}`);
-                      window.speechSynthesis.speak(utterance);
-                    }
-                  }}
-                  className={`w-full px-4 py-3 rounded-2xl text-xs font-bold tracking-wide flex items-center gap-3 transition-all cursor-pointer text-left ${
-                    isActive
-                      ? "bg-gradient-to-r from-brand-maroon to-brand-maroon-dark text-white font-black shadow-lg shadow-red-950/40 border-l-4 border-white"
-                      : "text-neutral-400 hover:text-white hover:bg-neutral-900/80"
-                  }`}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{tab.label}</span>
-                </button>
-              );
-            })}
+            {roleTabs.map((tab) => (
+              <DeskTabButton
+                key={tab.id}
+                tab={tab}
+                variant="desktop"
+                isActive={activeTab === tab.id}
+                onSelect={() => openTab(tab)}
+              />
+            ))}
+
+            {sectionTabs.length > 0 && (
+              <>
+                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-3 block mb-2 mt-5 font-sans">
+                  Section Matters
+                </span>
+                {sectionTabs.map((tab) => (
+                  <DeskTabButton
+                    key={tab.id}
+                    tab={tab}
+                    variant="desktop"
+                    isActive={activeTab === tab.id}
+                    onSelect={() => openTab(tab)}
+                  />
+                ))}
+              </>
+            )}
           </div>
         </div>
 
@@ -1663,27 +1746,35 @@ export default function App() {
               </div>
 
               <div className="space-y-1.5">
-                {roleTabs.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => {
-                        setActiveTab(tab.id);
-                        setShowMobileSidebar(false);
-                      }}
-                      className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold tracking-wide flex items-center gap-3 transition-all text-left cursor-pointer ${
-                        isActive
-                          ? "bg-gradient-to-r from-brand-maroon to-brand-maroon-dark text-white shadow-sm"
-                          : "text-neutral-300 hover:text-white hover:bg-neutral-900"
-                      }`}
-                    >
-                      <Icon className="w-4 h-4 shrink-0 text-red-500" />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
+                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-1 block mb-1 font-sans">
+                  Workspace Desk
+                </span>
+                {roleTabs.map((tab) => (
+                  <DeskTabButton
+                    key={tab.id}
+                    tab={tab}
+                    variant="mobile"
+                    isActive={activeTab === tab.id}
+                    onSelect={() => openTab(tab)}
+                  />
+                ))}
+
+                {sectionTabs.length > 0 && (
+                  <>
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-1 block mb-1 mt-4 font-sans">
+                      Section Matters
+                    </span>
+                    {sectionTabs.map((tab) => (
+                      <DeskTabButton
+                        key={tab.id}
+                        tab={tab}
+                        variant="mobile"
+                        isActive={activeTab === tab.id}
+                        onSelect={() => openTab(tab)}
+                      />
+                    ))}
+                  </>
+                )}
               </div>
 
               <div className="pt-3 border-t border-neutral-800 flex items-center justify-between">
@@ -2287,6 +2378,7 @@ export default function App() {
                 currentUserEmail={userEmail}
                 currentUserRole={userRole}
                 onSubmit={handleSubmitIssueAssessment}
+                onReply={handleIssueAssessmentReply}
               />
             )}
 

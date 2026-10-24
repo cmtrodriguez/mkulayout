@@ -204,21 +204,42 @@ export const DEFAULT_PROBI_CONGRATS_MESSAGE =
   "Congratulations! You have graduated as a layout probi; may you carry the same determination as you continue your journey as a layout staffer.";
 
 /* Issue Assessment desk — one rating set per page, per member, per issue */
+export interface AssessmentReply {
+  text: string;
+  by: string;   // the editor or deputy who answered
+  at: string;
+}
+
 export interface IssueAssessmentEntry {
   layout: number;      // Layout & Balance, 1-5 (5 highest), 0 = not rated
   typography: number;  // Typography & Readability
   images: number;      // Images & Graphics
-  comment: string;
+  bullets: string[];   // the member's own notes for that page
+  reply?: AssessmentReply | null; // a lead's answer to those notes
   updatedAt: string;
 }
 
 /** issueKey -> member email -> page number -> that member's assessment */
 export type IssueAssessments = Record<string, Record<string, Record<string, IssueAssessmentEntry>>>;
 
+// Each column asks one thing a layout member can actually answer while looking
+// at the page, so a 4 and a 5 mean the same thing to everyone.
 export const ASSESSMENT_QUESTIONS = [
-  { key: "layout", label: "Layout & Balance", hint: "Grid, margins and how the eye moves across the page" },
-  { key: "typography", label: "Typography & Readability", hint: "Hierarchy, legibility and consistency of type" },
-  { key: "images", label: "Images & Graphics", hint: "Photo quality, placement and captioning" },
+  {
+    key: "layout",
+    label: "Layout & Balance",
+    question: "Are the columns, margins and gutters on the grid, with nothing crowded, orphaned or drifting off the page?",
+  },
+  {
+    key: "typography",
+    label: "Typography & Readability",
+    question: "Is every text block readable at print size, with the correct family, size, leading and no broken or mismatched styles?",
+  },
+  {
+    key: "images",
+    label: "Images & Graphics",
+    question: "Is every photo or graphic sharp and correctly cropped, with a caption and credit that match what it shows?",
+  },
 ] as const;
 
 export type AssessmentQuestionKey = (typeof ASSESSMENT_QUESTIONS)[number]["key"];

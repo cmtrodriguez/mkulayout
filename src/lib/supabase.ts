@@ -16,6 +16,7 @@ import {
   ProbiTrackerState,
   IssueAssessmentEntry,
   IssueAssessments,
+  AssessmentReply,
   DEFAULT_PROBI_CONGRATS_MESSAGE
 } from "../types";
 import { getOfficialDisplayName, resolveMemberEmail } from "./memberUtils";
@@ -1057,11 +1058,20 @@ function issueAssessmentsFromDb(raw: unknown): IssueAssessments {
       next[issueKey][normalizeEmail(email)] = {};
       Object.entries(byPage as Record<string, any>).forEach(([page, entry]) => {
         if (!entry || typeof entry !== "object") return;
+        // A single free-text comment was the first shape of this field; keep
+        // anything already written readable by folding it into the bullet list.
+        const bullets = Array.isArray(entry.bullets)
+          ? entry.bullets.map((line: unknown) => String(line ?? "")).map((line: string) => line.trim()).filter(Boolean)
+          : typeof entry.comment === "string" && entry.comment.trim() ? [entry.comment.trim()] : [];
+        const reply = entry.reply && typeof entry.reply === "object" && typeof entry.reply.text === "string" && entry.reply.text.trim()
+          ? { text: entry.reply.text.trim(), by: String(entry.reply.by ?? ""), at: String(entry.reply.at ?? "") }
+          : null;
         next[issueKey][normalizeEmail(email)][page] = {
           layout: clampStars(entry.layout),
           typography: clampStars(entry.typography),
           images: clampStars(entry.images),
-          comment: typeof entry.comment === "string" ? entry.comment : "",
+          bullets,
+          reply,
           updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : new Date().toISOString()
         };
       });
@@ -1116,6 +1126,52 @@ export async function submitIssueAssessment(input: {
   });
   if (error) {
     console.error("Error saving issue assessment:", error.message);
+    return null;
+  }
+  return merged;
+}
+
+/**
+ * A lead's answer to one member's notes on one page. The reply is stored inside
+ * that member's own entry so it reads as a thread, which means this write reaches
+ * into someone else's slot — only the reply field is replaced, so their ratings
+ * and bullets survive.
+ */
+export async function saveIssueAssessmentReply(input: {
+  issueKey: string;
+  memberEmail: string;
+  page: number;
+  reply: AssessmentReply | null;
+}): Promise<IssueAssessments | null> {
+  if (!supabase) return null;
+  const email = normalizeEmail(input.memberEmail);
+  const { error: readError, data: current } = await supabase
+    .from("app_state").select("data").eq("id", "issue_assessments").maybeSingle();
+  if (readError && readError.code !== "PGRST116") {
+    console.error("Error reading issue assessments:", readError.message);
+    return null;
+  }
+
+  const merged = issueAssessmentsFromDb(current?.data);
+  const pageKey = String(input.page);
+  const existing = merged[input.issueKey]?.[email]?.[pageKey] || {
+    layout: 0, typography: 0, images: 0, bullets: [], updatedAt: new Date().toISOString()
+  };
+  merged[input.issueKey] = {
+    ...(merged[input.issueKey] || {}),
+    [email]: {
+      ...(merged[input.issueKey]?.[email] || {}),
+      [pageKey]: { ...existing, reply: input.reply, updatedAt: new Date().toISOString() }
+    }
+  };
+
+  const { error } = await supabase.from("app_state").upsert({
+    id: "issue_assessments",
+    data: merged,
+    updated_at: new Date().toISOString()
+  });
+  if (error) {
+    console.error("Error saving assessment reply:", error.message);
     return null;
   }
   return merged;

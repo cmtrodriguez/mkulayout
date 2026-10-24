@@ -19,7 +19,7 @@ async function pdfLibrary() {
 }
 
 /** Downloads one issue and parses it once; every later page read reuses it. */
-export function loadIssueDocument(issueKey: string): Promise<PdfDocument> {
+function loadIssueDocument(issueKey: string): Promise<PdfDocument> {
   const cached = documents.get(issueKey);
   if (cached) return cached;
 
@@ -41,9 +41,51 @@ export function loadIssueDocument(issueKey: string): Promise<PdfDocument> {
   return pending;
 }
 
-export async function getIssuePageCount(issueKey: string): Promise<number> {
-  const doc = await loadIssueDocument(issueKey);
-  return doc.numPages;
+export interface IssuePageSpan {
+  /** Sheet number inside the PDF, which is what pdf.js is asked to draw. */
+  pdfPage: number;
+  /** First printed folio that sheet carries. */
+  first: number;
+  last: number;
+  spread: boolean;
+}
+
+const pageSpans = new Map<string, Promise<IssuePageSpan[]>>();
+
+/**
+ * A spread is one PDF sheet holding two printed pages side by side, and it shows
+ * up as exactly double the issue's usual page width (792 pt versus 1584 pt for
+ * 1K1-2). Printed numbering therefore skips two on those sheets, which is why
+ * sheet 4 of 1K1-2 is folios 4-5 and sheet 5 is folio 6.
+ */
+export function getIssuePageSpans(issueKey: string): Promise<IssuePageSpan[]> {
+  const cached = pageSpans.get(issueKey);
+  if (cached) return cached;
+
+  const pending = (async () => {
+    const doc = await loadIssueDocument(issueKey);
+    const widths: number[] = [];
+    for (let page = 1; page <= doc.numPages; page++) {
+      const pdfPage = await doc.getPage(page);
+      widths.push(pdfPage.getViewport({ scale: 1 }).width);
+    }
+    const singleWidth = Math.min(...widths);
+    let folio = 1;
+    return widths.map((width, index) => {
+      const spread = width >= singleWidth * 1.5;
+      const first = folio;
+      folio += spread ? 2 : 1;
+      return { pdfPage: index + 1, first, last: spread ? first + 1 : first, spread };
+    });
+  })();
+
+  pageSpans.set(issueKey, pending);
+  pending.catch(() => pageSpans.delete(issueKey));
+  return pending;
+}
+
+export function pageSpanLabel(span: IssuePageSpan): string {
+  return span.spread ? `Pages ${span.first}-${span.last}` : `Page ${span.first}`;
 }
 
 /**

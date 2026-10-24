@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Star, X, Loader2, AlertCircle, ExternalLink, BarChart3, Users
+  Star, X, Loader2, AlertCircle, ExternalLink, BarChart3, Users, ListPlus, CornerDownRight, Trash2
 } from "lucide-react";
 import {
-  ASSESSMENT_QUESTIONS, IssueAssessmentEntry, IssueAssessments, TeamMember
+  ASSESSMENT_QUESTIONS, AssessmentReply, IssueAssessmentEntry, IssueAssessments, TeamMember
 } from "../types";
 import { ISSUES } from "../lib/issues";
-import { getIssuePageCount, getIssuePageImage } from "../lib/issuePages";
+import { getIssuePageImage, getIssuePageSpans, pageSpanLabel, IssuePageSpan } from "../lib/issuePages";
 import { getPreferredFirstName } from "../lib/memberUtils";
 
 interface IssueAssessmentProps {
@@ -15,13 +15,14 @@ interface IssueAssessmentProps {
   currentUserEmail: string;
   currentUserRole?: string;
   onSubmit: (input: { issueKey: string; page: number; entry: IssueAssessmentEntry }) => void;
+  onReply: (input: { issueKey: string; memberEmail: string; page: number; reply: AssessmentReply | null }) => void;
 }
 
 const THUMB_WIDTH = 170;
 const FULLSCREEN_WIDTH = 1500;
 
 const emptyEntry = (): IssueAssessmentEntry => ({
-  layout: 0, typography: 0, images: 0, comment: "", updatedAt: new Date().toISOString()
+  layout: 0, typography: 0, images: 0, bullets: [], updatedAt: new Date().toISOString()
 });
 
 function memberLabel(email: string, members: TeamMember[]): string {
@@ -125,22 +126,89 @@ function PagePicture({
   );
 }
 
+/** One bullet line of a member's note list; empty lines are dropped on commit. */
+function BulletList({
+  bullets, onChange, onCommit, disabled
+}: {
+  bullets: string[];
+  onChange: (next: string[]) => void;
+  onCommit: (next: string[]) => void;
+  disabled?: boolean;
+}) {
+  const clean = (lines: string[]) => lines.map((line) => line.trim()).filter(Boolean);
+
+  return (
+    <div className="space-y-1.5">
+      {bullets.map((line, index) => (
+        <div key={index} className="flex items-start gap-1.5">
+          <span className="mt-2 w-1.5 h-1.5 rounded-full bg-brand-maroon/70 shrink-0" aria-hidden="true" />
+          <input
+            type="text"
+            value={line}
+            disabled={disabled}
+            placeholder="One note for this page"
+            onChange={(event) => {
+              const next = [...bullets];
+              next[index] = event.target.value;
+              onChange(next);
+            }}
+            onBlur={() => onCommit(bullets)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                onCommit(bullets);
+                onChange([...clean(bullets), ""]);
+              }
+              if (event.key === "Backspace" && !line) {
+                event.preventDefault();
+                onCommit(bullets.filter((_, i) => i !== index));
+              }
+            }}
+            className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-[11px] sm:text-xs text-neutral-800 dark:text-neutral-200 outline-none focus:ring-1 focus:ring-brand-maroon disabled:opacity-60"
+          />
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onCommit(bullets.filter((_, i) => i !== index))}
+            className="p-1.5 mt-0.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer shrink-0"
+            aria-label={`Remove note ${index + 1}`}
+            title="Remove this note"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onChange([...clean(bullets), ""])}
+        className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-brand-maroon dark:text-brand-maroon-light hover:underline cursor-pointer disabled:opacity-60"
+      >
+        <ListPlus className="w-3.5 h-3.5" /> Add bullet
+      </button>
+    </div>
+  );
+}
+
 export default function IssueAssessment({
   assessments,
   members,
   currentUserEmail,
   currentUserRole,
   onSubmit,
+  onReply,
 }: IssueAssessmentProps) {
   const [activeIssue, setActiveIssue] = useState(ISSUES[0].key);
-  const [pageCount, setPageCount] = useState<number | null>(null);
+  const [spans, setSpans] = useState<IssuePageSpan[] | null>(null);
   const [loadError, setLoadError] = useState("");
-  const [fullscreen, setFullscreen] = useState<{ page: number; url: string } | null>(null);
+  const [fullscreen, setFullscreen] = useState<{ span: IssuePageSpan; url: string } | null>(null);
   const overlay = useRef<HTMLDivElement>(null);
 
   // Rows are edited locally first, so a member can rate several pages before each
   // write lands; anything absent here falls back to what the board already holds.
   const [drafts, setDrafts] = useState<Record<string, IssueAssessmentEntry>>({});
+  // Which member's note list currently has an open reply box.
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
   const canSeeSummaries = currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy";
   const myEmail = (currentUserEmail || "").toLowerCase();
@@ -154,12 +222,13 @@ export default function IssueAssessment({
 
   useEffect(() => {
     let cancelled = false;
-    setPageCount(null);
+    setSpans(null);
     setLoadError("");
     setFullscreen(null);
-    getIssuePageCount(activeIssue)
-      .then((count) => { if (!cancelled) setPageCount(count); })
-      .catch((err) => { if (!cancelled) setLoadError(err?.message || "The issue pages could not be loaded."); })
+    setReplyingTo(null);
+    getIssuePageSpans(activeIssue)
+      .then((list) => { if (!cancelled) setSpans(list); })
+      .catch((err) => { if (!cancelled) setLoadError(err?.message || "The issue pages could not be loaded."); });
     return () => { cancelled = true; };
   }, [activeIssue]);
 
@@ -173,15 +242,15 @@ export default function IssueAssessment({
   }, [fullscreen]);
 
   const commit = (page: number, next: IssueAssessmentEntry) => {
-    const entry = { ...next, updatedAt: new Date().toISOString() };
+    const entry = { ...next, bullets: next.bullets.map((line) => line.trim()).filter(Boolean), updatedAt: new Date().toISOString() };
     setDrafts((current) => ({ ...current, [`${activeIssue}:${page}`]: entry }));
     onSubmit({ issueKey: activeIssue, page, entry });
   };
 
-  const openFullscreen = (page: number) => {
-    getIssuePageImage(activeIssue, page, FULLSCREEN_WIDTH)
+  const openFullscreen = (span: IssuePageSpan) => {
+    getIssuePageImage(activeIssue, span.pdfPage, FULLSCREEN_WIDTH)
       .then((url) => {
-        setFullscreen({ page, url });
+        setFullscreen({ span, url });
         // Real full screen, not just a large modal, when the browser allows it.
         requestAnimationFrame(() => {
           overlay.current?.requestFullscreen?.().catch(() => {});
@@ -209,7 +278,7 @@ export default function IssueAssessment({
     return { perQuestion, raters, overall };
   }, [board, canSeeSummaries]);
 
-  const totalPages = pageCount || 0;
+  const rows = spans || [];
 
   return (
     <section className="bg-white dark:bg-neutral-900 border border-neutral-200/70 dark:border-neutral-800 rounded-xl sm:rounded-2xl shadow-sm overflow-hidden text-left">
@@ -224,7 +293,7 @@ export default function IssueAssessment({
               Issue Assessment
             </h2>
             <p className="text-[10px] sm:text-[11px] text-stone-500 dark:text-neutral-400 font-medium">
-              Rate every page of each issue on layout, typography and images — 5 is the strongest, 1 the weakest.
+              Answer each question for every page of the issue — 5 is the strongest, 1 the weakest.
             </p>
           </div>
         </div>
@@ -312,7 +381,7 @@ export default function IssueAssessment({
 
       {/* Assessment table */}
       <div className="overflow-x-auto">
-        {!pageCount && !loadError ? (
+        {!rows.length && !loadError ? (
           <div className="px-6 py-14 flex flex-col items-center gap-2 text-center">
             <Loader2 className="w-6 h-6 animate-spin text-brand-maroon" />
             <p className="text-xs font-bold text-neutral-600 dark:text-neutral-300">Loading issue {issue.label}</p>
@@ -321,7 +390,7 @@ export default function IssueAssessment({
             </p>
           </div>
         ) : (
-          <table className="w-full min-w-[820px] text-left border-collapse">
+          <table className="w-full min-w-[900px] text-left border-collapse">
             <thead>
               <tr className="bg-neutral-50/80 dark:bg-neutral-800/60 border-b border-neutral-200 dark:border-neutral-700">
                 <th rowSpan={2} scope="col" className="px-4 sm:px-6 py-3 align-middle text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 w-[190px]">
@@ -330,47 +399,54 @@ export default function IssueAssessment({
                 <th colSpan={ASSESSMENT_QUESTIONS.length} scope="colgroup" className="px-3 py-2 align-middle text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-brand-maroon dark:text-brand-maroon-light border-l border-neutral-200 dark:border-neutral-700">
                   Assessment
                 </th>
-                <th rowSpan={2} scope="col" className="px-4 sm:px-6 py-3 align-middle text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-l border-neutral-200 dark:border-neutral-700 min-w-[240px]">
+                <th rowSpan={2} scope="col" className="px-4 sm:px-6 py-3 align-middle text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-l border-neutral-200 dark:border-neutral-700 min-w-[280px]">
                   Other Comments
                 </th>
               </tr>
               <tr className="bg-neutral-50/80 dark:bg-neutral-800/60 border-b border-neutral-200 dark:border-neutral-700">
-                {ASSESSMENT_QUESTIONS.map((question) => (
-                  <th key={question.key} scope="col" className="px-3 py-2 text-left align-bottom">
+                {ASSESSMENT_QUESTIONS.map((question, index) => (
+                  <th key={question.key} scope="col" className={`px-3 py-2 text-left align-bottom min-w-[150px] ${index === 0 ? "border-l border-neutral-200 dark:border-neutral-700" : ""}`}>
                     <span className="block text-[10px] sm:text-[11px] font-bold text-neutral-700 dark:text-neutral-200">{question.label}</span>
-                    <span className="block text-[9px] font-medium text-neutral-400 dark:text-neutral-500 leading-tight">{question.hint}</span>
+                    <span className="block text-[9px] sm:text-[10px] font-medium text-neutral-500 dark:text-neutral-400 leading-snug">{question.question}</span>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => {
+              {rows.map((span) => {
+                const page = span.pdfPage;
                 const entry = entryFor(page);
+                const pageKey = String(page);
                 const pageRatings = Object.values(board)
-                  .map((byPage) => byPage?.[String(page)])
+                  .map((byPage) => byPage?.[pageKey])
                   .filter(Boolean) as IssueAssessmentEntry[];
-                const otherComments = Object.entries(board)
-                  .flatMap(([email, byPage]) => {
-                    const comment = byPage?.[String(page)]?.comment?.trim();
-                    return comment && email !== myEmail ? [{ email, comment }] : [];
-                  })
+                // Everyone else's notes for this page, oldest author first, so the
+                // leads read the page's feedback per page rather than per issue.
+                const others = Object.entries(board)
+                  .filter(([email]) => email !== myEmail)
+                  .map(([email, byPage]) => ({ email, entry: byPage?.[pageKey] }))
+                  .filter((row) => (row.entry?.bullets?.length || 0) > 0 || row.entry?.reply)
                   .sort((a, b) => (a.email > b.email ? 1 : -1));
 
                 return (
                   <tr key={page} className="border-b border-neutral-100 dark:border-neutral-800 align-middle hover:bg-neutral-50/60 dark:hover:bg-neutral-800/40">
                     <th scope="row" className="px-4 sm:px-6 py-3 font-normal">
                       <div className="flex items-center gap-2.5">
-                        <PagePicture issueKey={activeIssue} page={page} width={THUMB_WIDTH} onOpen={() => openFullscreen(page)} />
+                        <PagePicture issueKey={activeIssue} page={page} width={THUMB_WIDTH} onOpen={() => openFullscreen(span)} />
                         <div className="min-w-0">
-                          <span className="block font-sans font-black text-xs sm:text-sm text-stone-900 dark:text-neutral-100">Page {page}</span>
-                          <span className="block text-[9px] text-neutral-400 dark:text-neutral-500 font-semibold uppercase tracking-wide">of issue {issue.label}</span>
+                          <span className="block font-sans font-black text-xs sm:text-sm text-stone-900 dark:text-neutral-100">
+                            {pageSpanLabel(span)}
+                          </span>
+                          <span className="block text-[9px] text-neutral-400 dark:text-neutral-500 font-semibold uppercase tracking-wide">
+                            {span.spread ? "Two-page spread" : "Single page"} · sheet {page} of issue {issue.label}
+                          </span>
                         </div>
                       </div>
                     </th>
-                    {ASSESSMENT_QUESTIONS.map((question) => (
-                      <td key={question.key} className="px-3 py-3 border-l border-neutral-100 dark:border-neutral-800">
+                    {ASSESSMENT_QUESTIONS.map((question, index) => (
+                      <td key={question.key} className={`px-3 py-3 align-top ${index === 0 ? "border-l border-neutral-100 dark:border-neutral-800" : ""}`}>
                         <StarPicker
-                          label={`${question.label} for page ${page}`}
+                          label={`${question.label} for ${pageSpanLabel(span)}`}
                           value={entry[question.key]}
                           onChange={(stars) => commit(page, { ...entry, [question.key]: stars })}
                         />
@@ -381,27 +457,72 @@ export default function IssueAssessment({
                         )}
                       </td>
                     ))}
-                    <td className="px-4 sm:px-6 py-3 border-l border-neutral-100 dark:border-neutral-800">
-                      <input
-                        type="text"
-                        value={entry.comment}
-                        placeholder="Note what needs fixing on this page"
-                        onChange={(event) => setDrafts((current) => ({
+                    <td className="px-4 sm:px-6 py-3 border-l border-neutral-100 dark:border-neutral-800 align-top">
+                      <BulletList
+                        bullets={entry.bullets.length ? entry.bullets : [""]}
+                        onChange={(next) => setDrafts((current) => ({
                           ...current,
-                          [`${activeIssue}:${page}`]: { ...entry, comment: event.target.value }
+                          [`${activeIssue}:${page}`]: { ...entry, bullets: next }
                         }))}
-                        onBlur={(event) => commit(page, { ...entry, comment: event.target.value.trim() })}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-[11px] sm:text-xs text-neutral-800 dark:text-neutral-200 outline-none focus:ring-1 focus:ring-brand-maroon"
+                        onCommit={(next) => commit(page, { ...entry, bullets: next })}
                       />
-                      {canSeeSummaries && otherComments.length > 0 && (
-                        <ul className="mt-2 space-y-1">
-                          {otherComments.map((item) => (
-                            <li key={item.email} className="text-[10px] leading-snug text-neutral-600 dark:text-neutral-300">
-                              <span className="font-bold text-neutral-800 dark:text-neutral-100">{memberLabel(item.email, members)}:</span>{" "}
-                              {item.comment}
-                            </li>
+                      {/* The member sees the lead's answer to their own notes. */}
+                      {entry.reply && (
+                        <div className="mt-2 flex items-start gap-1.5 pl-3 border-l-2 border-brand-maroon/40">
+                          <CornerDownRight className="w-3 h-3 mt-0.5 text-brand-maroon/70 shrink-0" />
+                          <p className="text-[10px] sm:text-[11px] leading-snug text-neutral-700 dark:text-neutral-200">
+                            <span className="font-bold">{memberLabel(entry.reply.by, members)} replied:</span> {entry.reply.text}
+                          </p>
+                        </div>
+                      )}
+
+                      {canSeeSummaries && others.length > 0 && (
+                        <div className="mt-3 space-y-2.5 pt-2.5 border-t border-neutral-200/70 dark:border-neutral-700">
+                          {others.map((other) => (
+                            <div key={other.email}>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                                  {memberLabel(other.email, members)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setReplyingTo(replyingTo === `${page}:${other.email}` ? null : `${page}:${other.email}`)}
+                                  className="text-[9px] sm:text-[10px] font-bold text-brand-maroon dark:text-brand-maroon-light hover:underline cursor-pointer"
+                                >
+                                  {other.entry?.reply ? "Edit response" : "Respond"}
+                                </button>
+                              </div>
+                              <ul className="mt-1 space-y-0.5 list-disc list-inside">
+                                {(other.entry?.bullets || []).map((line, i) => (
+                                  <li key={i} className="text-[10px] sm:text-[11px] leading-snug text-neutral-700 dark:text-neutral-200">{line}</li>
+                                ))}
+                              </ul>
+                              {other.entry?.reply && (
+                                <p className="mt-1 flex items-start gap-1 text-[10px] leading-snug text-brand-maroon dark:text-brand-maroon-light font-semibold">
+                                  <CornerDownRight className="w-3 h-3 mt-0.5 shrink-0" />
+                                  <span>You replied: {other.entry.reply.text}</span>
+                                </p>
+                              )}
+                              {replyingTo === `${page}:${other.email}` && (
+                                <ReplyBox
+                                  initial={other.entry?.reply?.text || ""}
+                                  onCancel={() => setReplyingTo(null)}
+                                  onSend={(text) => {
+                                    setReplyingTo(null);
+                                    onReply({
+                                      issueKey: activeIssue,
+                                      memberEmail: other.email,
+                                      page,
+                                      reply: text
+                                        ? { text, by: myEmail, at: new Date().toISOString() }
+                                        : null
+                                    });
+                                  }}
+                                />
+                              )}
+                            </div>
                           ))}
-                        </ul>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -415,8 +536,8 @@ export default function IssueAssessment({
       <div className="px-4 sm:px-6 py-3 bg-neutral-50/70 dark:bg-neutral-800/40 border-t border-neutral-150 dark:border-neutral-700 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[10px] sm:text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
           {canSeeSummaries
-            ? "Ratings save as you set them. Summaries and every comment are visible to you as a lead."
-            : "Ratings and comments save as you set them — only your own submission is shown here."}
+            ? "Ratings save as you set them. Comments and responses stay on the page they belong to."
+            : "Ratings and notes save as you set them — only your own notes are listed here, plus any response to them."}
         </p>
         <a
           href={issue.url}
@@ -435,11 +556,11 @@ export default function IssueAssessment({
           className="fixed inset-0 z-[60] bg-black/92 flex flex-col items-center justify-center p-3 sm:p-6"
           role="dialog"
           aria-modal="true"
-          aria-label={`Issue ${issue.label} page ${fullscreen.page} in full screen`}
+          aria-label={`Issue ${issue.label} ${pageSpanLabel(fullscreen.span)} in full screen`}
         >
           <div className="w-full flex items-center justify-between gap-3 mb-2">
             <span className="font-sans font-black text-white text-sm sm:text-base">
-              Issue {issue.label} — Page {fullscreen.page}
+              Issue {issue.label} — {pageSpanLabel(fullscreen.span)}
             </span>
             <button
               type="button"
@@ -455,11 +576,54 @@ export default function IssueAssessment({
           </div>
           <img
             src={fullscreen.url}
-            alt={`Issue ${issue.label} page ${fullscreen.page}`}
+            alt={`Issue ${issue.label} ${pageSpanLabel(fullscreen.span)}`}
             className="max-h-[calc(100vh-90px)] w-auto max-w-full object-contain rounded-lg bg-white"
           />
         </div>
       )}
     </section>
+  );
+}
+
+function ReplyBox({
+  initial, onSend, onCancel
+}: { initial: string; onSend: (text: string) => void; onCancel: () => void }) {
+  const [text, setText] = useState(initial);
+  return (
+    <div className="mt-1.5 space-y-1.5">
+      <textarea
+        value={text}
+        rows={2}
+        autoFocus
+        placeholder="Answer this member's notes on the page"
+        onChange={(event) => setText(event.target.value)}
+        className="w-full px-2.5 py-1.5 rounded-lg border border-brand-maroon/40 bg-white dark:bg-neutral-800 text-[11px] text-neutral-800 dark:text-neutral-200 outline-none focus:ring-1 focus:ring-brand-maroon resize-y"
+      />
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onSend(text.trim())}
+          className="px-2.5 py-1 rounded-lg bg-brand-maroon text-white text-[10px] font-bold hover:bg-brand-maroon-dark cursor-pointer"
+        >
+          Send response
+        </button>
+        {initial ? (
+          <button
+            type="button"
+            onClick={() => onSend("")}
+            className="px-2 py-1 rounded-lg text-[10px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+          >
+            Delete
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-2 py-1 rounded-lg text-[10px] font-bold text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 cursor-pointer"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
