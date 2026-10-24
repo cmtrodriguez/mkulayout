@@ -126,7 +126,8 @@ function PagePicture({
   );
 }
 
-/** One bullet line of a member's note list; empty lines are dropped on commit. */
+/** One bullet line of a member's note list. Typing only edits locally; the list
+ *  reaches the board when Submit is pressed, and empty lines are dropped then. */
 function BulletList({
   bullets, onChange, onCommit, disabled
 }: {
@@ -165,16 +166,14 @@ function BulletList({
               next[index] = event.target.value;
               onChange(next);
             }}
-            onBlur={() => onCommit(bullets)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
-                onCommit(bullets);
                 onChange([...clean(bullets), ""]);
               }
               if (event.key === "Backspace" && !line) {
                 event.preventDefault();
-                onCommit(bullets.filter((_, i) => i !== index));
+                onChange(bullets.filter((_, i) => i !== index));
               }
             }}
             className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-[11px] sm:text-xs text-neutral-800 dark:text-neutral-200 outline-none focus:ring-1 focus:ring-brand-maroon disabled:opacity-60"
@@ -182,7 +181,7 @@ function BulletList({
           <button
             type="button"
             disabled={disabled}
-            onClick={() => onCommit(bullets.filter((_, i) => i !== index))}
+            onClick={() => onChange(bullets.filter((_, i) => i !== index))}
             className="p-1.5 mt-0.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer shrink-0"
             aria-label={`Remove note ${index + 1}`}
             title="Remove this note"
@@ -195,9 +194,6 @@ function BulletList({
         <button
           type="button"
           disabled={disabled}
-          // Keep focus off the input so pressing this does not also fire its blur
-          // commit, which would write the same note list twice.
-          onMouseDown={(event) => event.preventDefault()}
           onClick={submit}
           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-maroon hover:bg-brand-maroon-dark text-white text-[10px] sm:text-[11px] font-bold cursor-pointer disabled:opacity-60 shrink-0"
         >
@@ -239,6 +235,9 @@ export default function IssueAssessment({
   // Rows are edited locally first, so a member can rate several pages before each
   // write lands; anything absent here falls back to what the board already holds.
   const [drafts, setDrafts] = useState<Record<string, IssueAssessmentEntry>>({});
+  // Comments are held apart from those drafts: typing must not reach the board
+  // until Submit is pressed, not even via a star rated on the same page.
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string[]>>({});
   // Which member's note list currently has an open reply box.
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
@@ -251,6 +250,9 @@ export default function IssueAssessment({
 
   const entryFor = (page: number): IssueAssessmentEntry =>
     drafts[`${activeIssue}:${page}`] || myPages[String(page)] || emptyEntry();
+
+  const commentsFor = (page: number): string[] =>
+    commentDrafts[`${activeIssue}:${page}`] ?? myPages[String(page)]?.bullets ?? [];
 
   useEffect(() => {
     let cancelled = false;
@@ -498,10 +500,10 @@ export default function IssueAssessment({
                     ))}
                     <td className="px-4 sm:px-6 py-3 border-l border-neutral-100 dark:border-neutral-800 align-top">
                       <BulletList
-                        bullets={entry.bullets.length ? entry.bullets : [""]}
-                        onChange={(next) => setDrafts((current) => ({
+                        bullets={commentsFor(page).length ? commentsFor(page) : [""]}
+                        onChange={(next) => setCommentDrafts((current) => ({
                           ...current,
-                          [`${activeIssue}:${page}`]: { ...entry, bullets: next }
+                          [`${activeIssue}:${page}`]: next
                         }))}
                         onCommit={(next) => commit(page, { ...entry, bullets: next })}
                       />
