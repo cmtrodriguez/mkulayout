@@ -10,7 +10,7 @@ import { getAllCanvaTemplates, extractHyperlinkDetails, extractDocInputDetails, 
 
 import { OFFICIAL_MEMBERS_MAP, getOfficialDisplayName, getPreferredFirstName, resolveLayoutAssignee } from "../lib/memberUtils";
 import { seededUuid } from "../lib/seededUuid";
-import { isPastDue, releaseDateLabel, toISOFormatDate } from "../lib/taskDate";
+import { effectiveTaskPriority, isPastDue, releaseDateLabel, toISOFormatDate } from "../lib/taskDate";
 
 interface AssignmentsListProps {
   tasks: Task[];
@@ -392,7 +392,7 @@ export default function AssignmentsList({
     const doneDelta = Number(isDoneTask(a)) - Number(isDoneTask(b));
     if (doneDelta !== 0) return doneDelta;
     if (sortBy === "priority") {
-      return (priorityWeights[b.priority] || 0) - (priorityWeights[a.priority] || 0);
+      return (priorityWeights[effectiveTaskPriority(b)] || 0) - (priorityWeights[effectiveTaskPriority(a)] || 0);
     } else {
       return a.releaseDate.localeCompare(b.releaseDate);
     }
@@ -996,6 +996,7 @@ export default function AssignmentsList({
           const isDone = isDoneTask(task);
           const isOverdue = !isDone && isPastDue(task.releaseDate);
           const postingDate = releaseDateLabel(task);
+          const shownPriority = effectiveTaskPriority(task);
           return (
             <div 
               key={task.id} 
@@ -1028,12 +1029,12 @@ export default function AssignmentsList({
                   
                   {/* Priority Pill */}
                   <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded ${
-                    task.priority === "Urgent" ? "bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800" :
-                    task.priority === "High" ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800" :
-                    task.priority === "Medium" ? "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800" : 
+                    shownPriority === "Urgent" ? "bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800" :
+                    shownPriority === "High" ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800" :
+                    shownPriority === "Medium" ? "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800" :
                     "bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 border border-gray-200 dark:border-neutral-700"
                   }`}>
-                    {task.priority} Priority
+                    {shownPriority} Priority
                   </span>
                 </div>
 

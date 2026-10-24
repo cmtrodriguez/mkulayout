@@ -9,7 +9,7 @@ import { isUserAssignedToTask, resolveLayoutAssignee } from "../lib/memberUtils"
 import { compressCommentImage, formatCommentDetails, handleBulletKeyDown, MAX_COMMENT_IMAGES, RenderFormattedComment } from "../lib/commentUtils";
 import { getPreferredFirstName } from "../lib/memberUtils";
 import { isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK, PRINT_ISSUE_DRIVE_LINK } from "../lib/canvaTemplates";
-import { toISOFormatDate, computePriorityFromISO, todayISODate } from "../lib/taskDate";
+import { toISOFormatDate, computePriorityFromISO, effectiveTaskPriority, todayISODate } from "../lib/taskDate";
 import { formatISOToDisplayDate } from "./AssignmentsList";
 import CommentImageAnnotator from "./CommentImageAnnotator";
 
@@ -58,6 +58,7 @@ export default function TaskDetailsModal({
   const isEditorOrDeputy = currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy" || currentUserRole === "Online Layout Head";
   const showIssueTemplate = isIssueArticleTask(task.typeOfRelease);
   const showMediumCanvaLink = isOnlinePubmatTask(task.typeOfRelease, task.title);
+  const shownPriority = effectiveTaskPriority(task);
 
   const isAssignedStaffer = (task.illusLayout || "").toLowerCase().includes((currentUserName || "").toLowerCase()) || 
     (currentUserName && currentUserName.toLowerCase().includes((task.illusLayout || "").toLowerCase())) ||
@@ -364,9 +365,10 @@ export default function TaskDetailsModal({
             <div>
               <label className="text-gray-400 dark:text-neutral-400 block font-semibold mb-1">Priority</label>
               <select
-                value={task.priority}
+                value={shownPriority}
                 disabled={!canEditCoreFields}
                 onChange={(e) => handlePriorityChange(e.target.value as TaskPriority)}
+                title="Priority follows the target date, so a task reads as Urgent on the day it is due"
                 className={`w-full px-2.5 py-1.5 sm:py-2 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg font-semibold text-gray-800 dark:text-neutral-200 outline-none focus:ring-2 focus:ring-brand-maroon ${canEditCoreFields ? "cursor-pointer" : "opacity-60 cursor-not-allowed"}`}
               >
                 <option value="Low">Low (&gt;5 days)</option>

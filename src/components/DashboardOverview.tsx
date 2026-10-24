@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Task, TeamMember, CalendarEvent, Poll } from "../types";
 import { getPreferredFirstName, isUserAssignedToTask, OFFICIAL_MEMBERS_MAP } from "../lib/memberUtils";
-import { byReleaseDateDesc, isPastDue, releaseDateTimestamp } from "../lib/taskDate";
+import { byReleaseDateDesc, effectiveTaskPriority, isPastDue, releaseDateTimestamp } from "../lib/taskDate";
 import { createPoll, updatePollOptionVotes, deletePoll, createAnnouncement, deleteAnnouncement } from "../lib/supabase";
 import CalendarView from "./CalendarView";
 import MeetingPolls from "./MeetingPolls";
@@ -1215,6 +1215,7 @@ export default function DashboardOverview({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
                   {activeList.map(task => {
                     const overdue = isPastDue(task.releaseDate);
+                    const shownPriority = effectiveTaskPriority(task);
                     return (
                       <div
                         key={task.id}
@@ -1249,7 +1250,7 @@ export default function DashboardOverview({
                         <div className="space-y-0.5 text-[9px] sm:text-[10px] text-neutral-500 dark:text-neutral-400">
                           <p>Assignee: <span className="font-bold text-neutral-700 dark:text-neutral-200">{task.illusLayout || "Unassigned"}</span></p>
                           <p>Category: <span className="font-bold text-neutral-700 dark:text-neutral-200">{resolveEditorialCategory(task.typeOfContent)}</span></p>
-                          <p>Priority: <span className="font-bold text-neutral-700 dark:text-neutral-200">{task.priority || "Medium"}</span></p>
+                          <p>Priority: <span className="font-bold text-neutral-700 dark:text-neutral-200">{shownPriority}</span></p>
                           <p>Target date: <span className={`font-bold ${overdue ? "text-rose-600 dark:text-rose-300" : "text-neutral-700 dark:text-neutral-200"}`}>{task.releaseDate || "No deadline"}</span></p>
                         </div>
                       </div>

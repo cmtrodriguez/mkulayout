@@ -5,6 +5,13 @@ const MONTH_NAMES = [
   "july", "august", "september", "october", "november", "december",
 ];
 
+const monthIndex = (token: string): number => {
+  const lower = token.toLowerCase();
+  return MONTH_NAMES.findIndex((name) => name === lower || name.slice(0, 3) === lower);
+};
+
+const pad2 = (value: number): string => String(value).padStart(2, "0");
+
 // Normalizes the releaseDate labels used across the app into "YYYY-MM-DD" so
 // they can drive <input type="date">. Labels arrive as "OCTOBER 3, 2026",
 // "2026-10-03" or a bare "OCTOBER 3"; anything without a real date (an
@@ -15,22 +22,19 @@ export function toISOFormatDate(dateStr: string): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     return trimmed;
   }
-  const monthDayYear = trimmed.match(/^([a-z]+)\s+(\d{1,2}),?\s+(\d{4})$/i);
-  if (monthDayYear) {
-    const month = MONTH_NAMES.findIndex((name) => name === monthDayYear[1].toLowerCase() || name.slice(0, 3) === monthDayYear[1].toLowerCase());
-    const year = Number(monthDayYear[3]);
-    const day = Number(monthDayYear[2]);
+  // A month name plus a day, with an optional year and an optional day range
+  // ("OCTOBER 3", "OCTOBER 3, 2026", "OCTOBER 3-4"). Anything else is left
+  // unparseable on purpose: handing labels to Date() directly turned "Issue
+  // Board" into January 1 and page ranges into spring dates, which made every
+  // undated task look past due.
+  const monthDay = trimmed.match(/^([a-z]+)\s+(\d{1,2})(?:\s*[-–]\s*\d{1,2})?(?:,?\s+(\d{4}))?$/i);
+  if (monthDay) {
+    const month = monthIndex(monthDay[1]);
+    const year = monthDay[3] ? Number(monthDay[3]) : new Date().getFullYear();
+    const day = Number(monthDay[2]);
     if (month !== -1 && day >= 1 && day <= new Date(year, month + 1, 0).getDate()) {
-      return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      return `${year}-${pad2(month + 1)}-${pad2(day)}`;
     }
-  }
-  const currentYear = new Date().getFullYear();
-  const parsed = new Date(`${trimmed} ${currentYear}`);
-  if (!isNaN(parsed.getTime())) {
-    const y = parsed.getFullYear();
-    const m = String(parsed.getMonth() + 1).padStart(2, "0");
-    const d = String(parsed.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
   }
   return "";
 }
@@ -93,6 +97,25 @@ export function isPastDue(dateStr?: string | null): boolean {
 export function todayISODate(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+const SETTLED_PROGRESS = ["Completed", "Approved", "Archived", "Shelved"];
+
+// Priority follows the deadline instead of the value chosen when the task was
+// made, so a piece reads as Urgent on the day it is due without anyone editing
+// it. Settled work keeps the label it finished with, and a release label that
+// holds no real date (an issue-sheet page number, "Issue Board") keeps its
+// stored priority rather than reading as overdue forever.
+export function effectiveTaskPriority(task: {
+  priority?: TaskPriority | "" | null;
+  releaseDate?: string | null;
+  progress?: string | null;
+}): TaskPriority {
+  if (task.progress && SETTLED_PROGRESS.includes(task.progress)) {
+    return (task.priority as TaskPriority) || "Medium";
+  }
+  const iso = task.releaseDate ? toISOFormatDate(task.releaseDate) : "";
+  return (iso ? computePriorityFromISO(iso) : undefined) || (task.priority as TaskPriority) || "Medium";
 }
 
 // Deadline-driven priority, same rule as the assignment creation form:

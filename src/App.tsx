@@ -24,7 +24,7 @@ import { OFFICIAL_MEMBERS_MAP, getPreferredFirstName, resolveLayoutAssignee, res
 import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
 import { applyTaskEditToPair } from "./lib/taskPairSync";
-import { toISOFormatDate } from "./lib/taskDate";
+import { effectiveTaskPriority, toISOFormatDate } from "./lib/taskDate";
 import { getCanvaLinkForContent, getPubmatCanvaTemplates, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
 import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, createPollOption, updatePollMemberOptions, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, fetchIssueAssessments, submitIssueAssessment, saveIssueAssessmentReply, type MemberLoginMap } from "./lib/supabase";
 import mkuleImg from "./mkule.png";
@@ -2204,6 +2204,7 @@ export default function App() {
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-2.5">
                       {issueTaskCards.map((task) => {
                         const isDone = isCompletedTask(task);
+                        const shownPriority = effectiveTaskPriority(task);
                         return (
                         <div
                           key={task.id}
@@ -2226,12 +2227,12 @@ export default function App() {
                                 )}
                               </div>
                               <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded ${
-                                task.priority === "Urgent" ? "bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800" :
-                                task.priority === "High" ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800" :
-                                task.priority === "Medium" ? "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800" :
+                                shownPriority === "Urgent" ? "bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800" :
+                                shownPriority === "High" ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800" :
+                                shownPriority === "Medium" ? "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800" :
                                 "bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 border border-gray-200 dark:border-neutral-700"
                               }`}>
-                                {task.priority || "Medium"} Priority
+                                {shownPriority} Priority
                               </span>
                             </div>
 
