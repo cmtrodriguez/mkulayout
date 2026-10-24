@@ -2226,6 +2226,7 @@ export default function App() {
                                   </span>
                                 )}
                               </div>
+                              {!isDone && (
                               <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded ${
                                 shownPriority === "Urgent" ? "bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800" :
                                 shownPriority === "High" ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800" :
@@ -2234,6 +2235,7 @@ export default function App() {
                               }`}>
                                 {shownPriority} Priority
                               </span>
+                              )}
                             </div>
 
                             <div>

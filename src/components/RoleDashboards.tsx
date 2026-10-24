@@ -9,7 +9,7 @@ import { Task, TeamMember, TaskComment, UserRole } from "../types";
 import { extractHyperlinkDetails, isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK, PRINT_ISSUE_DRIVE_LINK } from "../lib/canvaTemplates";
 import { compressCommentImage, formatCommentDetails, handleBulletKeyDown, MAX_COMMENT_IMAGES, RenderFormattedComment } from "../lib/commentUtils";
 import { isUserAssignedToTask, resolveMemberEmail, getEditorDeputyEmails } from "../lib/memberUtils";
-import { effectiveTaskPriority, isPastDue } from "../lib/taskDate";
+import { effectiveTaskPriority, isPastDue, isSettledTask } from "../lib/taskDate";
 import CommentImageAnnotator from "./CommentImageAnnotator";
 
 // ==========================================
@@ -227,7 +227,9 @@ export function LayoutStaffDashboard({
                             {task.sourceSheetTitle}
                           </span>
                         )}
-                        <span className="text-[11px] sm:text-xs text-gray-500 font-medium">Priority: <strong className="text-gray-800">{shownPriority}</strong></span>
+                        {!isSettledTask(task.progress) && (
+                          <span className="text-[11px] sm:text-xs text-gray-500 font-medium">Priority: <strong className="text-gray-800">{shownPriority}</strong></span>
+                        )}
                         <span className={`text-[11px] sm:text-xs font-medium ${isOverdue ? "text-red-600" : "text-gray-500"}`}>• Target: <strong className={isOverdue ? "text-red-700" : "text-gray-800"}>{task.releaseDate}</strong></span>
                         {isOverdue && (
                           <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-600 text-white">

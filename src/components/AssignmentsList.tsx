@@ -10,7 +10,7 @@ import { getAllCanvaTemplates, extractHyperlinkDetails, extractDocInputDetails, 
 
 import { OFFICIAL_MEMBERS_MAP, getOfficialDisplayName, getPreferredFirstName, resolveLayoutAssignee } from "../lib/memberUtils";
 import { seededUuid } from "../lib/seededUuid";
-import { effectiveTaskPriority, isPastDue, releaseDateLabel, toISOFormatDate } from "../lib/taskDate";
+import { effectiveTaskPriority, isPastDue, isSettledTask, releaseDateLabel, toISOFormatDate } from "../lib/taskDate";
 
 interface AssignmentsListProps {
   tasks: Task[];
@@ -1027,7 +1027,8 @@ export default function AssignmentsList({
                     )}
                   </div>
                   
-                  {/* Priority Pill */}
+                  {/* Priority Pill — finished work has nothing left to rank */}
+                  {!isSettledTask(task.progress) && (
                   <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded ${
                     shownPriority === "Urgent" ? "bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800" :
                     shownPriority === "High" ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800" :
@@ -1036,6 +1037,7 @@ export default function AssignmentsList({
                   }`}>
                     {shownPriority} Priority
                   </span>
+                  )}
                 </div>
 
                 <div>

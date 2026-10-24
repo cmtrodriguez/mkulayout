@@ -101,6 +101,11 @@ export function todayISODate(): string {
 
 const SETTLED_PROGRESS = ["Completed", "Approved", "Archived", "Shelved"];
 
+// A task that is finished in every sense: nothing left to rank by deadline, so
+// cards stop showing its priority.
+export const isSettledTask = (progress?: string | null): boolean =>
+  Boolean(progress) && SETTLED_PROGRESS.includes(progress as string);
+
 // Priority follows the deadline instead of the value chosen when the task was
 // made, so a piece reads as Urgent on the day it is due without anyone editing
 // it. Settled work keeps the label it finished with, and a release label that
@@ -111,7 +116,7 @@ export function effectiveTaskPriority(task: {
   releaseDate?: string | null;
   progress?: string | null;
 }): TaskPriority {
-  if (task.progress && SETTLED_PROGRESS.includes(task.progress)) {
+  if (isSettledTask(task.progress)) {
     return (task.priority as TaskPriority) || "Medium";
   }
   const iso = task.releaseDate ? toISOFormatDate(task.releaseDate) : "";
