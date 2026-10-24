@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Star, X, Loader2, AlertCircle, ExternalLink, BarChart3, Users, ListPlus, CornerDownRight, Trash2
+  Star, X, Loader2, AlertCircle, ExternalLink, BarChart3, Users, ListPlus, CornerDownRight, Trash2, Check
 } from "lucide-react";
 import {
   ASSESSMENT_QUESTIONS, AssessmentReply, IssueAssessmentEntry, IssueAssessments, TeamMember
@@ -136,6 +136,19 @@ function BulletList({
   disabled?: boolean;
 }) {
   const clean = (lines: string[]) => lines.map((line) => line.trim()).filter(Boolean);
+  const [submitted, setSubmitted] = useState(false);
+  const noticeTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+  }, []);
+
+  const submit = () => {
+    onCommit(bullets);
+    setSubmitted(true);
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setSubmitted(false), 3000);
+  };
 
   return (
     <div className="space-y-1.5">
@@ -178,14 +191,33 @@ function BulletList({
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onChange([...clean(bullets), ""])}
-        className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-brand-maroon dark:text-brand-maroon-light hover:underline cursor-pointer disabled:opacity-60"
-      >
-        <ListPlus className="w-3.5 h-3.5" /> Add bullet
-      </button>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-0.5">
+        <button
+          type="button"
+          disabled={disabled}
+          // Keep focus off the input so pressing this does not also fire its blur
+          // commit, which would write the same note list twice.
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={submit}
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-maroon hover:bg-brand-maroon-dark text-white text-[10px] sm:text-[11px] font-bold cursor-pointer disabled:opacity-60 shrink-0"
+        >
+          <Check className="w-3.5 h-3.5" /> Submit comments
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => onChange([...clean(bullets), ""])}
+          className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-brand-maroon dark:text-brand-maroon-light hover:underline cursor-pointer disabled:opacity-60"
+        >
+          <ListPlus className="w-3.5 h-3.5" /> Add bullet
+        </button>
+        {submitted && (
+          <span className="text-[10px] sm:text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+            Comments submitted
+          </span>
+        )}
+      </div>
     </div>
   );
 }
