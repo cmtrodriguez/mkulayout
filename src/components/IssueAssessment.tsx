@@ -452,10 +452,10 @@ export default function IssueAssessment({
                 const pageRatings = Object.values(board)
                   .map((byPage) => byPage?.[pageKey])
                   .filter(Boolean) as IssueAssessmentEntry[];
-                // Everyone else's notes for this page, oldest author first, so the
-                // leads read the page's feedback per page rather than per issue.
-                const others = Object.entries(board)
-                  .filter(([email]) => email !== myEmail)
+                // Leads read the page's feedback as a thread, oldest author first.
+                // Their own notes belong in it too, otherwise a comment they submit
+                // only ever lives in the box they typed it into.
+                const threads = Object.entries(board)
                   .map(([email, byPage]) => ({ email, entry: byPage?.[pageKey] }))
                   .filter((row) => (row.entry?.bullets?.length || 0) > 0 || row.entry?.reply)
                   .sort((a, b) => (a.email > b.email ? 1 : -1));
@@ -508,34 +508,39 @@ export default function IssueAssessment({
                         </div>
                       )}
 
-                      {canSeeSummaries && others.length > 0 && (
+                      {canSeeSummaries && threads.length > 0 && (
                         <div className="mt-3 space-y-2.5 pt-2.5 border-t border-neutral-200/70 dark:border-neutral-700">
-                          {others.map((other) => (
+                          {threads.map((other) => {
+                            const isSelf = other.email === myEmail;
+                            return (
                             <div key={other.email}>
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                                  {memberLabel(other.email, members)}
+                                  {isSelf ? "You" : memberLabel(other.email, members)}
                                 </span>
-                                <button
-                                  type="button"
-                                  onClick={() => setReplyingTo(replyingTo === `${page}:${other.email}` ? null : `${page}:${other.email}`)}
-                                  className="text-[9px] sm:text-[10px] font-bold text-brand-maroon dark:text-brand-maroon-light hover:underline cursor-pointer"
-                                >
-                                  {other.entry?.reply ? "Edit response" : "Respond"}
-                                </button>
+                                {!isSelf && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setReplyingTo(replyingTo === `${page}:${other.email}` ? null : `${page}:${other.email}`)}
+                                    className="text-[9px] sm:text-[10px] font-bold text-brand-maroon dark:text-brand-maroon-light hover:underline cursor-pointer"
+                                  >
+                                    {other.entry?.reply ? "Edit response" : "Respond"}
+                                  </button>
+                                )}
                               </div>
                               <ul className="mt-1 space-y-0.5 list-disc list-inside">
                                 {(other.entry?.bullets || []).map((line, i) => (
                                   <li key={i} className="text-[10px] sm:text-[11px] leading-snug text-neutral-700 dark:text-neutral-200">{line}</li>
                                 ))}
                               </ul>
-                              {other.entry?.reply && (
+                              {/* A lead's own reply already sits under their note list above. */}
+                              {!isSelf && other.entry?.reply && (
                                 <p className="mt-1 flex items-start gap-1 text-[10px] leading-snug text-brand-maroon dark:text-brand-maroon-light font-semibold">
                                   <CornerDownRight className="w-3 h-3 mt-0.5 shrink-0" />
                                   <span>You replied: {other.entry.reply.text}</span>
                                 </p>
                               )}
-                              {replyingTo === `${page}:${other.email}` && (
+                              {!isSelf && replyingTo === `${page}:${other.email}` && (
                                 <ReplyBox
                                   initial={other.entry?.reply?.text || ""}
                                   onCancel={() => setReplyingTo(null)}
@@ -553,7 +558,8 @@ export default function IssueAssessment({
                                 />
                               )}
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </td>
