@@ -6,7 +6,7 @@ import {
   FileText, CheckCircle2, Loader2, RefreshCw, Undo2, CalendarDays
 } from "lucide-react";
 import { Task, TeamMember } from "../types";
-import { getAllCanvaTemplates, extractHyperlinkDetails, extractDocInputDetails, getCanvaLinkForContent, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "../lib/canvaTemplates";
+import { getAllCanvaTemplates, contentSectionOf, extractHyperlinkDetails, extractDocInputDetails, getCanvaLinkForContent, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "../lib/canvaTemplates";
 
 import { OFFICIAL_MEMBERS_MAP, getOfficialDisplayName, getPreferredFirstName, resolveLayoutAssignee } from "../lib/memberUtils";
 import { seededUuid } from "../lib/seededUuid";
@@ -47,7 +47,7 @@ export default function AssignmentsList({
   onAddNotification,
 }: AssignmentsListProps) {
   const [search, setSearch] = useState("");
-  const [formatFilter, setFormatFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
   const [progressFilter, setProgressFilter] = useState("All");
   const [sortBy, setSortBy] = useState<"priority" | "date">("date");
 
@@ -367,6 +367,19 @@ export default function AssignmentsList({
     }
   };
 
+  // Sections are named by the Canva template list, which the desk edits, so the
+  // filter offers whatever the current tasks actually carry rather than a
+  // hardcoded set that would drift out of date. A chosen section that has no
+  // cards left falls back to All instead of showing an empty board.
+  const categoryOptions = Array.from(new Map(tasks
+    .map((t) => contentSectionOf(t.typeOfContent))
+    .filter(Boolean)
+    .map((label) => [label.toLowerCase(), label])
+  ).values()).sort((a, b) => a.localeCompare(b));
+  const activeCategory = categoryOptions.some((label) => label.toLowerCase() === categoryFilter.toLowerCase())
+    ? categoryFilter
+    : "All";
+
   const filteredTasks = tasks.filter(t => {
     // Hide tasks that are print issues from the general online pubmat list unless we filter specifically
     if (t.typeOfRelease === "Issue Article" && !t.isPendingConfirmation) return false;
@@ -376,9 +389,10 @@ export default function AssignmentsList({
     const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) ||
                           t.writer.toLowerCase().includes(search.toLowerCase()) ||
                           t.illusLayout.toLowerCase().includes(search.toLowerCase());
-    const matchesFormat = formatFilter === "All" || t.typeOfRelease === formatFilter;
+    const matchesCategory = activeCategory === "All" ||
+      contentSectionOf(t.typeOfContent).toLowerCase() === activeCategory.toLowerCase();
     const matchesProgress = progressFilter === "All" || t.progress === progressFilter;
-    return matchesSearch && matchesFormat && matchesProgress;
+    return matchesSearch && matchesCategory && matchesProgress;
   });
 
   const priorityWeights = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
@@ -927,16 +941,20 @@ export default function AssignmentsList({
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 w-full md:w-auto">
-          {/* Format */}
+          {/* Section / content category */}
           <div className="flex items-center gap-1 sm:gap-1.5 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11px] sm:text-xs text-gray-700 dark:text-neutral-200 font-semibold">
             <BookOpen className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400 dark:text-neutral-400" />
             <select
-              value={formatFilter}
-              onChange={(e) => setFormatFilter(e.target.value)}
+              value={activeCategory}
+              onChange={(e) => setCategoryFilter(e.target.value)}
               className="bg-transparent outline-none cursor-pointer text-gray-800 dark:text-neutral-200"
             >
-              <option value="All" className="dark:bg-neutral-800">All Formats</option>
-              <option value="Online Article" className="dark:bg-neutral-800">Online Article</option>
+              <option value="All" className="dark:bg-neutral-800">All Sections</option>
+              {categoryOptions.map((label) => (
+                <option key={label} value={label} className="dark:bg-neutral-800">
+                  {label}
+                </option>
+              ))}
             </select>
           </div>
 

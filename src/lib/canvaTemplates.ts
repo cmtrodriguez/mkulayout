@@ -39,6 +39,28 @@ export function normalizeContentCategory(category: string | undefined): string {
   return /^(?:cult|culture|cult\/culture)$/i.test(value) ? "Culture" : value;
 }
 
+// Older rows spell their section as a desk shorthand ("feats artx", "op artx"),
+// so the first word is looked up before the label is used as-is. Anything the
+// desk named itself — a custom template like Iskotistiks — passes through.
+const SECTION_ALIASES: Record<string, string> = {
+  news: "News",
+  feat: "Features", feats: "Features", feature: "Features", features: "Features",
+  op: "Opinion", opinion: "Opinion",
+  cult: "Culture", culture: "Culture",
+  editorial: "Editorial",
+  fta: "FTA",
+  mm: "Multimedia", multimedia: "Multimedia",
+  front: "Front",
+  graphics: "Graphics", graphic: "Graphics",
+};
+
+export function contentSectionOf(typeOfContent: string | undefined): string {
+  const value = (typeOfContent || "").trim();
+  if (!value) return "";
+  const token = value.toLowerCase().split(/[^a-z0-9]+/)[0];
+  return SECTION_ALIASES[token] || normalizeContentCategory(value);
+}
+
 export function isOnlinePubmatTask(typeOfRelease: string | undefined, title: string | undefined): boolean {
   return Boolean(typeOfRelease?.toLowerCase().includes("online") || /\(online pubmat\)$/i.test(title || ""));
 }
