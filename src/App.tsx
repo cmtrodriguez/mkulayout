@@ -1939,7 +1939,7 @@ export default function App() {
                           <h4 className="font-semibold text-neutral-800 dark:text-neutral-200">{n.title}</h4>
                           <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-normal">{n.message}</p>
                           <span className="text-[8px] text-neutral-400 block mt-1 font-mono">
-                            {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(n.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                       ))
