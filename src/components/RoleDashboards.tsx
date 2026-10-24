@@ -780,7 +780,6 @@ export function EicDashboard({
     };
     onUpdateTask(updated);
 
-    const isLayoutEditor = currentUserRole === "Layout Editor";
     const typedNote = revisionFeedback.trim();
     if (typedNote) {
       onAddComment(typedNote, task.id);
@@ -788,9 +787,11 @@ export function EicDashboard({
 
     if (onAddNotification) {
       const assigneeEmail = task.assigneeEmail || resolveMemberEmail(task.illusLayout);
+      // This review desk is only open to layout leads, so a staffer or probi
+      // should never read a paper-desk title in the notice they receive.
       onAddNotification(
         "Revision Requested",
-        `${isLayoutEditor ? "The layout editor" : "The EIC"} requested revisions on '${task.title}'. Check 'My Assignments'.`,
+        `The layout editor requested revisions on '${task.title}'. Check 'My Assignments'.`,
         "revision",
         assigneeEmail ? [assigneeEmail] : undefined
       );
