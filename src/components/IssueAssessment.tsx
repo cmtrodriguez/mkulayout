@@ -325,7 +325,7 @@ export default function IssueAssessment({
               Issue Assessment
             </h2>
             <p className="text-[10px] sm:text-[11px] text-stone-500 dark:text-neutral-400 font-medium">
-              Answer each question for every page of the issue — 5 is the strongest, 1 the weakest.
+              Assess each of this term's issue pages and spreads according to its layout, readability, and graphics.
             </p>
           </div>
         </div>
@@ -387,9 +387,16 @@ export default function IssueAssessment({
             ))}
           </div>
           {summary.raters.length > 0 && (
-            <p className="mt-2.5 text-[10px] text-neutral-500 dark:text-neutral-400 font-medium">
-              {summary.raters.map((rater) => `${memberLabel(rater.email, members)} (${rater.pages} pages)`).join(" · ")}
-            </p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              {summary.raters.map((rater) => (
+                <span
+                  key={rater.email}
+                  className="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-[10px] font-bold text-neutral-600 dark:text-neutral-300 whitespace-nowrap"
+                >
+                  {memberLabel(rater.email, members)}
+                </span>
+              ))}
+            </div>
           )}
         </div>
       )}
