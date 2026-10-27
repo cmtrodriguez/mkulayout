@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Task, TeamMember, CalendarEvent, Poll } from "../types";
 import { getPreferredFirstName, isUserAssignedToTask, OFFICIAL_MEMBERS_MAP } from "../lib/memberUtils";
+import { isOnlinePubmatTask } from "../lib/canvaTemplates";
 import { byReleaseDateDesc, effectiveTaskPriority, isPastDue, releaseDateTimestamp } from "../lib/taskDate";
 import { createPoll, updatePollOptionVotes, deletePoll, createAnnouncement, deleteAnnouncement } from "../lib/supabase";
 import CalendarView from "./CalendarView";
@@ -53,6 +54,7 @@ interface DashboardOverviewProps {
   announcements: { id: string; title: string; content: string; date: string; author: string }[];
   speechEnabled: boolean;
   onNavigate: (tab: string) => void;
+  onOpenTaskDetails?: (task: Task) => void;
   onAddTask: () => void;
   currentUserName?: string;
   currentUserEmail?: string;
@@ -70,6 +72,7 @@ export default function DashboardOverview({
   announcements,
   speechEnabled,
   onNavigate,
+  onOpenTaskDetails,
   onAddTask,
   currentUserName = "Rodriguez, Christian",
   currentUserEmail = "ctrodriguez2@up.edu.ph",
@@ -346,10 +349,13 @@ export default function DashboardOverview({
       title: e.title,
       dateLabel: e.start,
       type: e.type,
-      ts: Date.parse(e.start) || 0
+      ts: Date.parse(e.start) || 0,
+      task: null as Task | null
     }));
-    const seenTaskKeys = new Set<string>();
-    const fromTasks: Array<{ id: string; title: string; dateLabel: string; type: "deadline"; ts: number }> = [];
+    // A print piece and its "(Online Pubmat)" companion share base title and
+    // deadline, so they collapse into one row. The online one wins because it
+    // is the workspace this row opens.
+    const grouped = new Map<string, { task: Task; title: string; ts: number }>();
     (isStaffOrProbi ? staffAssignedTasks : tasks)
       .filter(t => !t.isPendingConfirmation && t.progress !== "Completed" && t.progress !== "Archived")
       .map(t => ({ task: t, ts: releaseDateTimestamp(t) }))
@@ -358,16 +364,19 @@ export default function DashboardOverview({
       .forEach(x => {
         const base = x.task.title.replace(/\s*\(Online Pubmat\)$/i, "").trim();
         const key = `${base.toLowerCase()}|${x.ts}`;
-        if (seenTaskKeys.has(key)) return;
-        seenTaskKeys.add(key);
-        fromTasks.push({
-          id: `task-${x.task.id}`,
-          title: base,
-          dateLabel: x.task.releaseDate || "",
-          type: "deadline",
-          ts: x.ts
-        });
+        const kept = grouped.get(key);
+        if (!kept || (!isOnlinePubmatTask(kept.task.typeOfRelease, kept.task.title) && isOnlinePubmatTask(x.task.typeOfRelease, x.task.title))) {
+          grouped.set(key, { task: x.task, title: base, ts: x.ts });
+        }
       });
+    const fromTasks = Array.from(grouped.values()).map(g => ({
+      id: `task-${g.task.id}`,
+      title: g.title,
+      dateLabel: g.task.releaseDate || "",
+      type: "deadline" as const,
+      ts: g.ts,
+      task: g.task
+    }));
     return [...fromEvents, ...fromTasks].sort((a, b) => a.ts - b.ts).slice(0, 3);
   })();
 
@@ -689,9 +698,12 @@ export default function DashboardOverview({
                     </div>
                   ) : (
                     timelineEntries.map((e) => (
-                      <div 
-                        key={e.id} 
-                        className="flex items-center justify-between gap-2 sm:gap-3 p-1.5 sm:p-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 rounded-xl sm:rounded-2xl transition-all border border-neutral-100/50 dark:border-neutral-800"
+                      <button
+                        key={e.id}
+                        type="button"
+                        onClick={() => e.task && onOpenTaskDetails ? onOpenTaskDetails(e.task) : setOverviewTab("calendar")}
+                        title={e.task ? "Open this task's workspace" : "View on calendar"}
+                        className="w-full flex items-center justify-between gap-2 sm:gap-3 p-1.5 sm:p-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 rounded-xl sm:rounded-2xl transition-all border border-neutral-100/50 dark:border-neutral-800 text-left cursor-pointer"
                       >
                         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl shrink-0 ${
@@ -710,14 +722,10 @@ export default function DashboardOverview({
                           </div>
                         </div>
 
-                        <button 
-                          onClick={() => setOverviewTab("calendar")}
-                          className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-all cursor-pointer"
-                          title="View on calendar"
-                        >
+                        <span className="p-1 text-neutral-400 shrink-0">
                           <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                        </button>
-                      </div>
+                        </span>
+                      </button>
                     ))
                   )}
                 </div>

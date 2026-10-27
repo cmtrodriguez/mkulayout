@@ -1953,6 +1953,7 @@ export default function App() {
                 announcements={announcements}
                 speechEnabled={speechEnabled}
                 onNavigate={setActiveTab}
+                onOpenTaskDetails={setSelectedTask}
                 onAddTask={() => setShowTaskForm(true)}
                 currentUserName={userName}
                 currentUserEmail={userEmail}
