@@ -10,7 +10,9 @@ import { getAllCanvaTemplates, contentSectionOf, extractHyperlinkDetails, extrac
 
 import { OFFICIAL_MEMBERS_MAP, getOfficialDisplayName, getPreferredFirstName, resolveLayoutAssignee } from "../lib/memberUtils";
 import { seededUuid } from "../lib/seededUuid";
-import { effectiveTaskPriority, isPastDue, isSettledTask, releaseDateLabel, toISOFormatDate } from "../lib/taskDate";
+import { effectiveTaskPriority, isPastDue, isSettledTask, releaseDateLabel, releaseDateTimestamp, toISOFormatDate } from "../lib/taskDate";
+
+type SortMode = "date" | "priority" | "alphabetical" | "reverse";
 
 interface AssignmentsListProps {
   tasks: Task[];
@@ -49,7 +51,7 @@ export default function AssignmentsList({
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [progressFilter, setProgressFilter] = useState("All");
-  const [sortBy, setSortBy] = useState<"priority" | "date">("date");
+  const [sortBy, setSortBy] = useState<SortMode>("date");
 
   // State for pending tasks inline editing
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -407,9 +409,21 @@ export default function AssignmentsList({
     if (doneDelta !== 0) return doneDelta;
     if (sortBy === "priority") {
       return (priorityWeights[effectiveTaskPriority(b)] || 0) - (priorityWeights[effectiveTaskPriority(a)] || 0);
-    } else {
-      return a.releaseDate.localeCompare(b.releaseDate);
     }
+    if (sortBy === "alphabetical" || sortBy === "reverse") {
+      const byTitle = a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+      return sortBy === "reverse" ? -byTitle : byTitle;
+    }
+    // Soonest target posting date first. Cards whose label holds no real date (a
+    // page number, "Issue Board") drop to the end instead of scattering through
+    // the dated ones, and comparing the parsed date rather than the label keeps
+    // December from outranking January.
+    const dateA = releaseDateTimestamp(a);
+    const dateB = releaseDateTimestamp(b);
+    if (isNaN(dateA) || isNaN(dateB)) {
+      return isNaN(dateA) === isNaN(dateB) ? 0 : isNaN(dateA) ? 1 : -1;
+    }
+    return dateA - dateB;
   });
 
   const pendingConfirmTasks = tasks.filter(t => t.isPendingConfirmation === true);
@@ -975,18 +989,25 @@ export default function AssignmentsList({
             </select>
           </div>
 
-          {/* Sort button */}
-          <button
-            onClick={() => {
-              const next = sortBy === "date" ? "priority" : "date";
-              setSortBy(next);
-              speakText(`Sorted tasks by ${next}`);
-            }}
-            className="px-2.5 sm:px-3 py-1 sm:py-1.5 border border-gray-200 dark:border-neutral-700 rounded-lg text-[11px] sm:text-xs font-semibold flex items-center gap-1 sm:gap-1.5 bg-gray-50 dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-750 transition-all text-gray-700 dark:text-neutral-200 cursor-pointer"
-          >
+          {/* Sort */}
+          <div className="flex items-center gap-1 sm:gap-1.5 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11px] sm:text-xs text-gray-700 dark:text-neutral-200 font-semibold">
             <ArrowUpDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400 dark:text-neutral-400" />
-            Sort: {sortBy === "date" ? "Target Date" : "Priority"}
-          </button>
+            <span className="text-gray-500 dark:text-neutral-400">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                const next = e.target.value as SortMode;
+                setSortBy(next);
+                speakText(`Sorted tasks by ${next}`);
+              }}
+              className="bg-transparent outline-none cursor-pointer text-gray-800 dark:text-neutral-200"
+            >
+              <option value="date" className="dark:bg-neutral-800">Target Posting Date</option>
+              <option value="priority" className="dark:bg-neutral-800">Priority (Urgent first)</option>
+              <option value="alphabetical" className="dark:bg-neutral-800">Alphabetical (A-Z)</option>
+              <option value="reverse" className="dark:bg-neutral-800">Alphabetical (Z-A)</option>
+            </select>
+          </div>
 
           {isAdmin && (
             <button
