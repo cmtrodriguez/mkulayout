@@ -12,7 +12,7 @@ import { OFFICIAL_MEMBERS_MAP, getOfficialDisplayName, getPreferredFirstName, re
 import { seededUuid } from "../lib/seededUuid";
 import { effectiveTaskPriority, isPastDue, isSettledTask, releaseDateLabel, releaseDateTimestamp, toISOFormatDate } from "../lib/taskDate";
 
-type SortMode = "date" | "priority" | "alphabetical" | "reverse";
+type SortMode = "dateOldest" | "dateNewest" | "priority" | "alphabetical" | "reverse";
 
 interface AssignmentsListProps {
   tasks: Task[];
@@ -51,7 +51,7 @@ export default function AssignmentsList({
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [progressFilter, setProgressFilter] = useState("All");
-  const [sortBy, setSortBy] = useState<SortMode>("date");
+  const [sortBy, setSortBy] = useState<SortMode>("dateOldest");
 
   // State for pending tasks inline editing
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -414,16 +414,16 @@ export default function AssignmentsList({
       const byTitle = a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
       return sortBy === "reverse" ? -byTitle : byTitle;
     }
-    // Soonest target posting date first. Cards whose label holds no real date (a
-    // page number, "Issue Board") drop to the end instead of scattering through
-    // the dated ones, and comparing the parsed date rather than the label keeps
-    // December from outranking January.
+    // Target posting date, either way round. Cards whose label holds no real
+    // date (a page number, "Issue Board") stay at the end whichever direction is
+    // picked, and comparing the parsed date rather than the label keeps December
+    // from outranking January.
     const dateA = releaseDateTimestamp(a);
     const dateB = releaseDateTimestamp(b);
     if (isNaN(dateA) || isNaN(dateB)) {
       return isNaN(dateA) === isNaN(dateB) ? 0 : isNaN(dateA) ? 1 : -1;
     }
-    return dateA - dateB;
+    return sortBy === "dateNewest" ? dateB - dateA : dateA - dateB;
   });
 
   const pendingConfirmTasks = tasks.filter(t => t.isPendingConfirmation === true);
@@ -998,11 +998,12 @@ export default function AssignmentsList({
               onChange={(e) => {
                 const next = e.target.value as SortMode;
                 setSortBy(next);
-                speakText(`Sorted tasks by ${next}`);
+                speakText(`Sorted tasks by ${e.target.options[e.target.selectedIndex].text}`);
               }}
               className="bg-transparent outline-none cursor-pointer text-gray-800 dark:text-neutral-200"
             >
-              <option value="date" className="dark:bg-neutral-800">Target Posting Date</option>
+              <option value="dateOldest" className="dark:bg-neutral-800">Target Posting Date (oldest first)</option>
+              <option value="dateNewest" className="dark:bg-neutral-800">Target Posting Date (latest first)</option>
               <option value="priority" className="dark:bg-neutral-800">Priority (Urgent first)</option>
               <option value="alphabetical" className="dark:bg-neutral-800">Alphabetical (A-Z)</option>
               <option value="reverse" className="dark:bg-neutral-800">Alphabetical (Z-A)</option>
