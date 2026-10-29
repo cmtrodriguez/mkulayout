@@ -51,7 +51,7 @@ export default function AssignmentsList({
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [progressFilter, setProgressFilter] = useState("All");
-  const [sortBy, setSortBy] = useState<SortMode>("dateOldest");
+  const [sortBy, setSortBy] = useState<SortMode>("dateNewest");
 
   // State for pending tasks inline editing
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
