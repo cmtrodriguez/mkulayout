@@ -9,7 +9,7 @@ import {
 import { Task, TeamMember, CalendarEvent, Poll } from "../types";
 import { getPreferredFirstName, isUserAssignedToTask, OFFICIAL_MEMBERS_MAP } from "../lib/memberUtils";
 import { isOnlinePubmatTask } from "../lib/canvaTemplates";
-import { byReleaseDateDesc, effectiveTaskPriority, isPastDue, releaseDateTimestamp } from "../lib/taskDate";
+import { byReleaseDateDesc, effectiveTaskPriority, isPastDue, releaseDateLabel, releaseDateTimestamp } from "../lib/taskDate";
 import { createPoll, updatePollOptionVotes, deletePoll, createAnnouncement, deleteAnnouncement } from "../lib/supabase";
 import CalendarView from "./CalendarView";
 import MeetingPolls from "./MeetingPolls";
@@ -347,7 +347,9 @@ export default function DashboardOverview({
     const fromEvents = events.map((e) => ({
       id: e.id,
       title: e.title,
-      dateLabel: e.start,
+      // Cards and calendar rows store their own label spellings ("NOVEMBER 3",
+      // "2026-11-02"); this list shows one readable form of either.
+      dateLabel: releaseDateLabel({ releaseDate: e.start }) || e.start,
       type: e.type,
       ts: Date.parse(e.start) || 0,
       task: null as Task | null
@@ -372,7 +374,7 @@ export default function DashboardOverview({
     const fromTasks = Array.from(grouped.values()).map(g => ({
       id: `task-${g.task.id}`,
       title: g.title,
-      dateLabel: g.task.releaseDate || "",
+      dateLabel: releaseDateLabel(g.task),
       type: "deadline" as const,
       ts: g.ts,
       task: g.task
