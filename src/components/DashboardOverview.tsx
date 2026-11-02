@@ -56,6 +56,7 @@ interface DashboardOverviewProps {
   onNavigate: (tab: string) => void;
   onOpenTaskDetails?: (task: Task) => void;
   onAddTask: () => void;
+  onAssignArtist?: (name: string) => void;
   currentUserName?: string;
   currentUserEmail?: string;
   currentUserRole?: string;
@@ -74,6 +75,7 @@ export default function DashboardOverview({
   onNavigate,
   onOpenTaskDetails,
   onAddTask,
+  onAssignArtist,
   currentUserName = "Rodriguez, Christian",
   currentUserEmail = "ctrodriguez2@up.edu.ph",
   currentUserRole = "Layout Editor",
@@ -476,7 +478,7 @@ export default function DashboardOverview({
       {overviewTab === "desk" && (currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy") && (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-3 sm:gap-4">
           <div className="min-w-0">
-            <AvailableTodayCard members={members} compact />
+            <AvailableTodayCard members={members} tasks={tasks} onAssignArtist={onAssignArtist} compact />
           </div>
           {/* The roster decides how tall this row is, so the carousel is lifted out of
               the flow and scaled to that height instead of stretching the row. */}

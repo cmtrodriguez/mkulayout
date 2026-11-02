@@ -1965,7 +1965,15 @@ export default function App() {
                 speechEnabled={speechEnabled}
                 onNavigate={setActiveTab}
                 onOpenTaskDetails={setSelectedTask}
-                onAddTask={() => setShowTaskForm(true)}
+                onAddTask={() => {
+                  setTaskFormOrigin("general");
+                  setShowTaskForm(true);
+                }}
+                onAssignArtist={(name) => {
+                  setFormArtist(name);
+                  setTaskFormOrigin("general");
+                  setShowTaskForm(true);
+                }}
                 currentUserName={userName}
                 currentUserEmail={userEmail}
                 currentUserRole={userRole}

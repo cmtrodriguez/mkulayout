@@ -1,7 +1,8 @@
-import React from "react";
-import { CalendarCheck, UserCheck, UserX } from "lucide-react";
-import { TeamMember, MemberSchedule } from "../types";
+import React, { useState } from "react";
+import { CalendarCheck, Sparkles, UserCheck, UserX } from "lucide-react";
+import { TeamMember, MemberSchedule, Task } from "../types";
 import { OFFICIAL_MEMBERS_MAP, getPreferredFirstName } from "../lib/memberUtils";
+import { isSettledTask } from "../lib/taskDate";
 
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -71,7 +72,17 @@ export function getAvailabilityRoster(
 
 // `compact` is for the home desk, where the roster shares its row with the issue
 // cover carousel and so gets a narrower column than the directory page.
-export default function AvailableTodayCard({ members, compact = false }: { members: TeamMember[]; compact?: boolean }) {
+export default function AvailableTodayCard({
+  members,
+  compact = false,
+  tasks = [],
+  onAssignArtist,
+}: {
+  members: TeamMember[];
+  compact?: boolean;
+  tasks?: Task[];
+  onAssignArtist?: (name: string) => void;
+}) {
   const today = getTodayKey();
   const dateLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -81,6 +92,26 @@ export default function AvailableTodayCard({ members, compact = false }: { membe
   const roster = getAvailabilityRoster(members, today);
   const available = roster.filter((r) => r.available);
   const unavailable = roster.filter((r) => !r.available);
+
+  // Leads can roll for the staffer or probi carrying the fewest finished tasks.
+  const candidates = onAssignArtist
+    ? available.filter((r) => /staffer|probi/i.test(r.role))
+    : [];
+  const doneCount = (name: string) =>
+    tasks.filter((t) => isSettledTask(t.progress) && (t.illusLayout || "").toLowerCase() === name.toLowerCase()).length;
+  const [picked, setPicked] = useState<{ entry: AvailabilityEntry; done: number } | null>(null);
+
+  const rollPick = () => {
+    if (!candidates.length) return;
+    const scored = candidates.map((entry) => ({ entry, done: doneCount(entry.firstName) }));
+    const fewest = Math.min(...scored.map((s) => s.done));
+    const tied = scored.filter((s) => s.done === fewest);
+    // Re-rolling should surface somebody else whenever the least-loaded group
+    // has more than one name in it.
+    const fresh = tied.filter((s) => s.entry.id !== picked?.entry.id);
+    const pool = fresh.length ? fresh : tied;
+    setPicked(pool[Math.floor(Math.random() * pool.length)]);
+  };
 
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl border border-emerald-200/70 dark:border-emerald-800/50 shadow-sm overflow-hidden">
@@ -134,6 +165,45 @@ export default function AvailableTodayCard({ members, compact = false }: { membe
                 </div>
               </div>
             ))}
+
+            {candidates.length > 0 && (
+              <div className="col-span-2 flex items-center gap-2 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-700/70 bg-emerald-50/40 dark:bg-emerald-950/20 px-2.5 py-1.5 sm:px-3 sm:py-2">
+                {picked ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onAssignArtist?.(picked.entry.firstName)}
+                      title="Open the assignment form with this artist pre-filled"
+                      className="flex-1 min-w-0 text-left cursor-pointer"
+                    >
+                      <p className="text-base sm:text-xl font-black text-emerald-800 dark:text-emerald-200 leading-tight truncate flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        {picked.entry.firstName}
+                      </p>
+                      <p className="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-emerald-700/80 dark:text-emerald-400/80 truncate">
+                        {picked.entry.role.replace("Layout ", "")} • {picked.done} done • tap to assign
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={rollPick}
+                      className="shrink-0 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-[11px] font-bold cursor-pointer transition-all"
+                    >
+                      Re-roll
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={rollPick}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-[10px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-300 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                    Randomize least-loaded pick
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-xs text-neutral-500 dark:text-neutral-400 italic py-2 text-center">
