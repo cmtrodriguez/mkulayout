@@ -119,10 +119,11 @@ export default function AvailableTodayCard({
   };
 
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl border border-emerald-200/70 dark:border-emerald-800/50 shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+    <div className="@container bg-white dark:bg-neutral-900 rounded-2xl sm:rounded-3xl border border-emerald-200/70 dark:border-emerald-800/50 shadow-sm overflow-hidden">
+      {/* Header: the picker drops to its own header line whenever the card itself
+          is too narrow to seat it between the title and the counter. */}
+      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-4 sm:px-6 py-3.5 sm:py-4 flex flex-wrap items-center gap-x-3 gap-y-2.5">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 order-1">
           <div className="p-2 sm:p-2.5 bg-white/15 rounded-xl sm:rounded-2xl text-white shrink-0">
             <CalendarCheck className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
@@ -135,45 +136,7 @@ export default function AvailableTodayCard({
             </p>
           </div>
         </div>
-        {candidates.length > 0 && (
-          <div className="flex-1 min-w-0 flex items-center justify-end gap-1.5 sm:gap-2">
-            {picked ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onAssignArtist?.(picked.entry.firstName)}
-                  title="Open the assignment form with this artist pre-filled"
-                  className="min-w-0 text-left cursor-pointer"
-                >
-                  <p className="text-sm sm:text-xl font-black text-white leading-tight truncate flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-emerald-200" />
-                    {picked.entry.firstName}
-                  </p>
-                  <p className="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-emerald-100/90 truncate">
-                    {picked.entry.role.replace("Layout ", "")} • {picked.done} done • tap to assign
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  onClick={rollPick}
-                  className="shrink-0 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[10px] sm:text-[11px] font-bold cursor-pointer transition-all"
-                >
-                  Re-roll
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={rollPick}
-                className="shrink-0 flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[10px] sm:text-[11px] font-bold cursor-pointer transition-all"
-              >
-                <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                Randomize
-              </button>
-            )}
-          </div>
-        )}
-        <div className="text-right shrink-0">
+        <div className="text-right shrink-0 order-2 @lg:order-3">
           <span className="block text-2xl sm:text-4xl font-black text-white leading-none">
             {available.length}
             <span className="text-sm sm:text-xl text-emerald-200 font-bold">/{roster.length}</span>
@@ -182,6 +145,44 @@ export default function AvailableTodayCard({
             Free today
           </span>
         </div>
+        {candidates.length > 0 && (
+          <div className="order-3 @lg:order-2 basis-full @lg:basis-0 @lg:flex-1 @lg:max-w-[15rem] min-w-0 flex items-center gap-1.5 sm:gap-2 rounded-xl bg-white dark:bg-neutral-900 ring-1 ring-black/5 dark:ring-emerald-50/15 shadow-sm px-2 sm:px-2.5 py-1 sm:py-1.5">
+            {picked ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onAssignArtist?.(picked.entry.firstName)}
+                  title="Open the assignment form with this artist pre-filled"
+                  className="flex-1 min-w-0 text-left cursor-pointer"
+                >
+                  <p className="text-sm sm:text-base font-black text-emerald-800 dark:text-emerald-200 leading-tight truncate flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    {picked.entry.firstName}
+                  </p>
+                  <p className="text-[9px] uppercase tracking-wider font-bold text-emerald-700/70 dark:text-emerald-400/70 truncate">
+                    {picked.entry.role.replace("Layout ", "")} • {picked.done} done • tap to assign
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={rollPick}
+                  className="shrink-0 px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-[11px] font-bold cursor-pointer transition-all"
+                >
+                  Re-roll
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={rollPick}
+                className="flex-1 flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-300 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                Randomize
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Available members grid */}
