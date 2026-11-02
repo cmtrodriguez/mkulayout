@@ -146,7 +146,7 @@ export default function AvailableTodayCard({
           </span>
         </div>
         {candidates.length > 0 && (
-          <div className="order-3 @lg:order-2 basis-full @lg:basis-0 @lg:flex-1 @lg:max-w-[15rem] min-w-0 flex items-center gap-1.5 sm:gap-2 rounded-xl bg-white dark:bg-neutral-900 ring-1 ring-black/5 dark:ring-emerald-50/15 shadow-sm px-2 sm:px-2.5 py-1 sm:py-1.5">
+          <div className="order-3 @lg:order-2 basis-full @lg:basis-[15rem] @lg:grow-0 @lg:shrink-0 min-w-0 min-h-[2.5rem] flex items-center gap-1.5 sm:gap-2 rounded-xl bg-white dark:bg-neutral-900 ring-1 ring-black/5 dark:ring-emerald-50/15 shadow-sm px-2 sm:px-2.5 py-1 sm:py-1.5">
             {picked ? (
               <>
                 <button
@@ -175,10 +175,9 @@ export default function AvailableTodayCard({
               <button
                 type="button"
                 onClick={rollPick}
-                className="flex-1 flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-300 cursor-pointer"
+                className="flex-1 flex items-center justify-center text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-300 cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                Randomize
+                Randomize Layout Staffer/Probi
               </button>
             )}
           </div>
