@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import type { Task } from "../types";
-import { extractHyperlinkDetails } from "./canvaTemplates";
+import { contentSectionOf, extractHyperlinkDetails, getCanvaLinkForContent } from "./canvaTemplates";
 import { byReleaseDateDesc, releaseDateTimestamp } from "./taskDate";
 import { isOnlineTask, isPrintTask } from "./taskRelease";
 
@@ -10,9 +10,7 @@ const RELEASE_TRACKER_COLUMNS = [
   "TYPE",
   "LAYOUT ARTIST (PRINT)",
   "LAYOUT ARTIST (ONLINE)",
-  "ILLUSTRATOR",
   "POSTING DATE",
-  "CAPTION",
   "ARTX LINK",
   "PUB LINK",
   "STATUS",
@@ -42,6 +40,12 @@ function getLinkValue(link?: string): string {
   return extractHyperlinkDetails(link).url || link;
 }
 
+// PUB LINK is the section's own pubmat template — News, Features, Culture and so
+// on — not the ad-hoc drive link pasted into the task's pubmat field.
+function getPubLink(task: Task): string {
+  return getCanvaLinkForContent(contentSectionOf(task.typeOfContent)) || getLinkValue(task.canvaLink);
+}
+
 export function buildReleaseTrackerRows(tasks: Task[]): string[][] {
   const printTasks = tasks.filter(isPrintIssue);
   const onlineTasks = tasks.filter(isOnlineRelease);
@@ -63,11 +67,6 @@ export function buildReleaseTrackerRows(tasks: Task[]): string[][] {
 
     if (onlineTask) matchedOnlineIds.add(onlineTask.id);
     const sourceTask = onlineTask || printTask;
-    const illustrators = Array.from(new Set([
-      printTask.graphicsIllus || printTask.graphics || "",
-      onlineTask?.graphicsIllus || onlineTask?.graphics || "",
-    ].map((name) => name.trim()).filter(Boolean))).join(", ");
-
     const dateSource = onlineTask?.releaseDate ? onlineTask : printTask;
     datedRows.push({
       dateSource,
@@ -77,11 +76,9 @@ export function buildReleaseTrackerRows(tasks: Task[]): string[][] {
         "Issue",
         printTask.illusLayout,
         onlineTask?.illusLayout || "",
-        illustrators,
         formatPostingDate(dateSource),
-        onlineTask?.writeup || printTask.writeup,
         getLinkValue(onlineTask?.draftLink || printTask.draftLink || onlineTask?.addedToLayout || printTask.addedToLayout),
-        getLinkValue(onlineTask?.pubmatLink || printTask.pubmatLink),
+        getPubLink(sourceTask),
         onlineTask?.progress || printTask.progress,
       ],
     });
@@ -96,11 +93,9 @@ export function buildReleaseTrackerRows(tasks: Task[]): string[][] {
         "Online",
         "",
         task.illusLayout,
-        task.graphicsIllus || task.graphics || "",
         formatPostingDate(task),
-        task.writeup,
         getLinkValue(task.draftLink || task.addedToLayout),
-        getLinkValue(task.pubmatLink),
+        getPubLink(task),
         task.progress,
       ],
     });
@@ -129,9 +124,7 @@ export async function buildReleaseTrackerWorkbook(tasks: Task[]): Promise<ArrayB
     { width: 12 },
     { width: 28 },
     { width: 28 },
-    { width: 24 },
     { width: 20 },
-    { width: 42 },
     { width: 34 },
     { width: 26 },
     { width: 20 },
