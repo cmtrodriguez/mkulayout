@@ -101,16 +101,21 @@ export default function AvailableTodayCard({
     tasks.filter((t) => isSettledTask(t.progress) && (t.illusLayout || "").toLowerCase() === name.toLowerCase()).length;
   const [picked, setPicked] = useState<{ entry: AvailabilityEntry; done: number } | null>(null);
 
+  // Rolling draws from the six lightest-loaded staffers/probis, not just the single
+  // least-loaded name — otherwise every re-roll returns the same person.
+  const rollPool = () => {
+    const scored = candidates
+      .map((entry) => ({ entry, done: doneCount(entry.firstName) }))
+      .sort((a, b) => a.done - b.done);
+    return scored.slice(0, 6);
+  };
+
   const rollPick = () => {
-    if (!candidates.length) return;
-    const scored = candidates.map((entry) => ({ entry, done: doneCount(entry.firstName) }));
-    const fewest = Math.min(...scored.map((s) => s.done));
-    const tied = scored.filter((s) => s.done === fewest);
-    // Re-rolling should surface somebody else whenever the least-loaded group
-    // has more than one name in it.
-    const fresh = tied.filter((s) => s.entry.id !== picked?.entry.id);
-    const pool = fresh.length ? fresh : tied;
-    setPicked(pool[Math.floor(Math.random() * pool.length)]);
+    const pool = rollPool();
+    if (!pool.length) return;
+    const fresh = pool.filter((s) => s.entry.id !== picked?.entry.id);
+    const choices = fresh.length ? fresh : pool;
+    setPicked(choices[Math.floor(Math.random() * choices.length)]);
   };
 
   return (
@@ -130,6 +135,44 @@ export default function AvailableTodayCard({
             </p>
           </div>
         </div>
+        {candidates.length > 0 && (
+          <div className="flex-1 min-w-0 flex items-center justify-end gap-1.5 sm:gap-2">
+            {picked ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onAssignArtist?.(picked.entry.firstName)}
+                  title="Open the assignment form with this artist pre-filled"
+                  className="min-w-0 text-left cursor-pointer"
+                >
+                  <p className="text-sm sm:text-xl font-black text-white leading-tight truncate flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-emerald-200" />
+                    {picked.entry.firstName}
+                  </p>
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-emerald-100/90 truncate">
+                    {picked.entry.role.replace("Layout ", "")} • {picked.done} done • tap to assign
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={rollPick}
+                  className="shrink-0 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[10px] sm:text-[11px] font-bold cursor-pointer transition-all"
+                >
+                  Re-roll
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={rollPick}
+                className="shrink-0 flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[10px] sm:text-[11px] font-bold cursor-pointer transition-all"
+              >
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                Randomize
+              </button>
+            )}
+          </div>
+        )}
         <div className="text-right shrink-0">
           <span className="block text-2xl sm:text-4xl font-black text-white leading-none">
             {available.length}
@@ -165,45 +208,6 @@ export default function AvailableTodayCard({
                 </div>
               </div>
             ))}
-
-            {candidates.length > 0 && (
-              <div className="col-span-2 flex items-center gap-2 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-700/70 bg-emerald-50/40 dark:bg-emerald-950/20 px-2.5 py-1.5 sm:px-3 sm:py-2">
-                {picked ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => onAssignArtist?.(picked.entry.firstName)}
-                      title="Open the assignment form with this artist pre-filled"
-                      className="flex-1 min-w-0 text-left cursor-pointer"
-                    >
-                      <p className="text-base sm:text-xl font-black text-emerald-800 dark:text-emerald-200 leading-tight truncate flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                        {picked.entry.firstName}
-                      </p>
-                      <p className="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-emerald-700/80 dark:text-emerald-400/80 truncate">
-                        {picked.entry.role.replace("Layout ", "")} • {picked.done} done • tap to assign
-                      </p>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={rollPick}
-                      className="shrink-0 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] sm:text-[11px] font-bold cursor-pointer transition-all"
-                    >
-                      Re-roll
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={rollPick}
-                    className="flex-1 flex items-center justify-center gap-1.5 text-[10px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-300 cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                    Randomize least-loaded pick
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         ) : (
           <p className="text-xs text-neutral-500 dark:text-neutral-400 italic py-2 text-center">
