@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CalendarCheck, Sparkles, UserCheck, UserX } from "lucide-react";
+import { CalendarCheck, UserCheck, UserX } from "lucide-react";
 import { TeamMember, MemberSchedule, Task } from "../types";
 import { OFFICIAL_MEMBERS_MAP, getPreferredFirstName } from "../lib/memberUtils";
 import { isSettledTask } from "../lib/taskDate";
@@ -136,7 +136,7 @@ export default function AvailableTodayCard({
             </p>
           </div>
         </div>
-        <div className="text-right shrink-0 order-2 @lg:order-3">
+        <div className="text-right shrink-0 order-2 @3xl:order-3">
           <span className="block text-2xl sm:text-4xl font-black text-white leading-none">
             {available.length}
             <span className="text-sm sm:text-xl text-emerald-200 font-bold">/{roster.length}</span>
@@ -146,7 +146,7 @@ export default function AvailableTodayCard({
           </span>
         </div>
         {candidates.length > 0 && (
-          <div className="order-3 @lg:order-2 basis-full @lg:basis-[15rem] @lg:grow-0 @lg:shrink-0 min-w-0 min-h-[2.5rem] flex items-center gap-1.5 sm:gap-2 rounded-xl bg-white dark:bg-neutral-900 ring-1 ring-black/5 dark:ring-emerald-50/15 shadow-sm px-2 sm:px-2.5 py-1 sm:py-1.5">
+          <div className="order-3 @3xl:order-2 basis-full @3xl:basis-[20rem] @3xl:grow-0 @3xl:shrink-0 min-w-0 min-h-[2.5rem] flex items-center gap-1.5 sm:gap-2 rounded-xl bg-white dark:bg-neutral-900 ring-1 ring-black/5 dark:ring-emerald-50/15 shadow-sm px-2 sm:px-2.5 py-1 sm:py-1.5">
             {picked ? (
               <>
                 <button
@@ -155,12 +155,11 @@ export default function AvailableTodayCard({
                   title="Open the assignment form with this artist pre-filled"
                   className="flex-1 min-w-0 text-left cursor-pointer"
                 >
-                  <p className="text-sm sm:text-base font-black text-emerald-800 dark:text-emerald-200 leading-tight truncate flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    {picked.entry.firstName}
+                  <p className="text-sm sm:text-base font-black text-emerald-800 dark:text-emerald-200 leading-tight truncate">
+                    {picked.entry.name}
                   </p>
                   <p className="text-[9px] uppercase tracking-wider font-bold text-emerald-700/70 dark:text-emerald-400/70 truncate">
-                    {picked.entry.role.replace("Layout ", "")} • {picked.done} done • tap to assign
+                    {picked.entry.role.replace("Layout ", "")} • tap to assign online pubmat
                   </p>
                 </button>
                 <button
