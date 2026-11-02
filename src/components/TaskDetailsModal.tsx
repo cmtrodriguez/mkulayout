@@ -8,7 +8,8 @@ import { extractHyperlinkDetails } from "../lib/canvaTemplates";
 import { isUserAssignedToTask, resolveLayoutAssignee } from "../lib/memberUtils";
 import { compressCommentImage, formatCommentDetails, handleBulletKeyDown, MAX_COMMENT_IMAGES, RenderFormattedComment } from "../lib/commentUtils";
 import { getPreferredFirstName } from "../lib/memberUtils";
-import { isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK, PRINT_ISSUE_DRIVE_LINK } from "../lib/canvaTemplates";
+import { ISSUE_TEMPLATE_LINK, PRINT_ISSUE_DRIVE_LINK } from "../lib/canvaTemplates";
+import { isOnlineTask, isPrintTask, releaseFormatLabel } from "../lib/taskRelease";
 import { toISOFormatDate, computePriorityFromISO, effectiveTaskPriority, todayISODate } from "../lib/taskDate";
 import { formatISOToDisplayDate } from "./AssignmentsList";
 import CommentImageAnnotator from "./CommentImageAnnotator";
@@ -56,8 +57,8 @@ export default function TaskDetailsModal({
   const [savingCommentId, setSavingCommentId] = useState<string | null>(null);
   const [commentActionError, setCommentActionError] = useState("");
   const isEditorOrDeputy = currentUserRole === "Layout Editor" || currentUserRole === "Layout Deputy" || currentUserRole === "Online Layout Head";
-  const showIssueTemplate = isIssueArticleTask(task.typeOfRelease);
-  const showMediumCanvaLink = isOnlinePubmatTask(task.typeOfRelease, task.title);
+  const showIssueTemplate = isPrintTask(task);
+  const showMediumCanvaLink = isOnlineTask(task);
   const shownPriority = effectiveTaskPriority(task);
 
   const isAssignedStaffer = (task.illusLayout || "").toLowerCase().includes((currentUserName || "").toLowerCase()) || 
@@ -277,7 +278,7 @@ export default function TaskDetailsModal({
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1 min-w-0 flex-1">
               <span className="text-[10px] font-bold text-brand-maroon dark:text-brand-maroon-light uppercase tracking-wider block truncate">
-                {task.typeOfRelease} • {task.typeOfContent}
+                {releaseFormatLabel(task)} • {task.typeOfContent}
               </span>
               {task.sourceSheetTitle && (
                 <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">

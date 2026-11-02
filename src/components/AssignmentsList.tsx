@@ -6,7 +6,8 @@ import {
   FileText, CheckCircle2, Loader2, RefreshCw, Undo2, CalendarDays
 } from "lucide-react";
 import { Task, TeamMember } from "../types";
-import { getAllCanvaTemplates, contentSectionOf, extractHyperlinkDetails, extractDocInputDetails, getCanvaLinkForContent, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "../lib/canvaTemplates";
+import { getAllCanvaTemplates, contentSectionOf, extractHyperlinkDetails, extractDocInputDetails, getCanvaLinkForContent, MEDIUM_CANVA_LINK, normalizeContentCategory } from "../lib/canvaTemplates";
+import { ISSUE_TASK, ONLINE_TASK, isOnlineTask, isPrintTask, releaseFormatLabel, stripPubmatSuffix, taskKindOf, withPubmatSuffix } from "../lib/taskRelease";
 
 import { OFFICIAL_MEMBERS_MAP, getOfficialDisplayName, getPreferredFirstName, resolveLayoutAssignee } from "../lib/memberUtils";
 import { seededUuid } from "../lib/seededUuid";
@@ -119,7 +120,7 @@ export default function AssignmentsList({
       ...activeForm,
       typeOfContent: normalizedContentType,
       canvaLink: resolvedCanvaLink || activeForm.canvaLink || "",
-      mediumCanvaLink: isOnlinePubmatTask(activeForm.typeOfRelease, activeForm.title) ? activeForm.mediumCanvaLink || MEDIUM_CANVA_LINK : undefined,
+      mediumCanvaLink: isOnlineTask(activeForm) ? activeForm.mediumCanvaLink || MEDIUM_CANVA_LINK : undefined,
       pubmatLink: activeForm.pubmatLink || "",
       draftLink: activeForm.draftLink || "",
       writeup: activeForm.writeup || "",
@@ -135,15 +136,15 @@ export default function AssignmentsList({
     const issueAssignee = resolveLayoutAssignee(finalData.illusLayout || "", members);
     const onlineAssignee = resolveLayoutAssignee(finalData.onlineHandler || "", members);
     const dispatchProgress = issueAssignee.name !== "Unassigned" || onlineAssignee.name !== "Unassigned" ? "Assigned" : "Not Started";
-    const fromIssueSheet = !!sourceRowId || finalData.typeOfRelease === "Issue Article" || task.typeOfRelease === "Issue Article";
+    const fromIssueSheet = !!sourceRowId || isPrintTask(finalData) || isPrintTask(task);
 
     if (fromIssueSheet) {
-      const baseTitle = finalData.title.replace(/\s*\(Online Pubmat\)$/i, "").trim();
+      const baseTitle = stripPubmatSuffix(finalData.title);
       // UUID-shaped ids (seeded from the source row) so the dual tasks persist and
       // can be re-derived after a refresh. Fall back to fresh UUIDs for manual rows.
       const issueTaskId = sourceRowId
         ? seededUuid(`issue-task-${sourceRowId}`)
-        : (task.typeOfRelease === "Issue Article" ? task.id : crypto.randomUUID());
+        : (isPrintTask(task) ? task.id : crypto.randomUUID());
       const onlineTaskId = sourceRowId
         ? seededUuid(`online-task-${sourceRowId}`)
         : crypto.randomUUID();
@@ -158,12 +159,16 @@ export default function AssignmentsList({
       };
 
       const dispatchedTasks: Task[] = [];
+      // One issue-sheet row splits into two cards that read the same way — the
+      // "(Online Pubmat)" twin is still an issue article, just on the online board.
+      const issueFormat = releaseFormatLabel(finalData);
       if (issueAssignee.name !== "Unassigned") {
         dispatchedTasks.push({
           ...sharedFields,
           id: issueTaskId,
           title: baseTitle,
-          typeOfRelease: "Issue Article",
+          typeOfRelease: issueFormat,
+          taskKind: ISSUE_TASK,
           illusLayout: issueAssignee.name,
           mediumCanvaLink: undefined,
           assigneeEmail: issueAssignee.email,
@@ -175,8 +180,9 @@ export default function AssignmentsList({
         dispatchedTasks.push({
           ...sharedFields,
           id: onlineTaskId,
-          title: `${baseTitle} (Online Pubmat)`,
-          typeOfRelease: "Online Article",
+          title: withPubmatSuffix(baseTitle),
+          typeOfRelease: issueFormat,
+          taskKind: ONLINE_TASK,
           mediumCanvaLink: MEDIUM_CANVA_LINK,
           illusLayout: onlineAssignee.name,
           assigneeEmail: onlineAssignee.email,
@@ -338,11 +344,12 @@ export default function AssignmentsList({
         lastUpdated: new Date().toISOString()
       } : t);
 
-      // If updating an Issue Article task, sync its companion Online Article task as well
-      if (editForm.typeOfRelease === "Issue Article" || editForm.illusLayout) {
-        const baseTitle = (editForm.title || "").replace(/\s*\(Online Pubmat\)$/i, "").trim();
+      // A change on either half of a pair carries over to its companion card
+      if (isPrintTask(editForm) || editForm.illusLayout) {
+        const baseTitle = stripPubmatSuffix(editForm.title || "");
+        const companionKind = isOnlineTask(editForm) ? ISSUE_TASK : ONLINE_TASK;
         updated = updated.map(t => {
-          if (t.id === `${taskId}-online` || (t.typeOfRelease === "Online Article" && t.title.replace(/\s*\(Online Pubmat\)$/i, "").trim() === baseTitle)) {
+          if (t.id === `${taskId}-online` || (taskKindOf(t) === companionKind && stripPubmatSuffix(t.title) === baseTitle)) {
             return {
               ...t,
               writer: editForm.writer || t.writer,
@@ -383,8 +390,9 @@ export default function AssignmentsList({
     : "All";
 
   const filteredTasks = tasks.filter(t => {
-    // Hide tasks that are print issues from the general online pubmat list unless we filter specifically
-    if (t.typeOfRelease === "Issue Article" && !t.isPendingConfirmation) return false;
+    // The board is the online desk: print cards stay on the issue sheet no matter
+    // which release format their label carries.
+    if (isPrintTask(t) && !t.isPendingConfirmation) return false;
     // Exclude tasks pending confirmation from the main list so they only show in the confirmation deck
     if (t.isPendingConfirmation) return false;
 
@@ -739,14 +747,14 @@ export default function AssignmentsList({
 
                         {/* Row 4: Format Destination | Assignment Priority | Release Target/Date */}
                         <div className="space-y-1">
-                          <label className="font-bold text-gray-700 dark:text-neutral-300 block">Format Destination</label>
+                          <label className="font-bold text-gray-700 dark:text-neutral-300 block">Release Format</label>
                           <select
-                            value={editForm.typeOfRelease || "Issue Article"}
+                            value={releaseFormatLabel(editForm)}
                             onChange={(e) => handleFieldChange("typeOfRelease", e.target.value)}
                             className="w-full px-3 py-2 border border-gray-250 dark:border-neutral-700 rounded-lg outline-none focus:ring-1 focus:ring-brand-maroon bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-100 cursor-pointer"
                           >
-                            <option value="Issue Article">Issue Article (Print Issue)</option>
-                            <option value="Online Article">Online Article (Pubmat Dashboard)</option>
+                            <option value="Issue Article">Issue Article</option>
+                            <option value="Online Article">Online Article</option>
 
                           </select>
                         </div>
@@ -1053,7 +1061,7 @@ export default function AssignmentsList({
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                     <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-brand-maroon/5 dark:bg-brand-maroon/20 text-brand-maroon dark:text-brand-maroon-light border border-brand-maroon/10 dark:border-brand-maroon/30">
-                      {task.typeOfRelease}
+                      {releaseFormatLabel(task)}
                     </span>
                     {task.sourceSheetTitle && (
                       <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">

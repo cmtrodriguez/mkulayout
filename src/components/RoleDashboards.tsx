@@ -6,7 +6,8 @@ import {
   Lock, ShieldAlert, ImagePlus, X, Pencil, Trash2, Undo2
 } from "lucide-react";
 import { Task, TeamMember, TaskComment, UserRole } from "../types";
-import { extractHyperlinkDetails, isIssueArticleTask, isOnlinePubmatTask, ISSUE_TEMPLATE_LINK, PRINT_ISSUE_DRIVE_LINK } from "../lib/canvaTemplates";
+import { extractHyperlinkDetails, ISSUE_TEMPLATE_LINK, PRINT_ISSUE_DRIVE_LINK } from "../lib/canvaTemplates";
+import { isOnlineTask, isPrintTask, releaseFormatLabel } from "../lib/taskRelease";
 import { compressCommentImage, formatCommentDetails, handleBulletKeyDown, MAX_COMMENT_IMAGES, RenderFormattedComment } from "../lib/commentUtils";
 import { isUserAssignedToTask, resolveMemberEmail, getEditorDeputyEmails } from "../lib/memberUtils";
 import { effectiveTaskPriority, isPastDue, isSettledTask } from "../lib/taskDate";
@@ -134,9 +135,7 @@ export function LayoutStaffDashboard({
   const myTasks = tasks.filter(t =>
     !t.isPendingConfirmation && !isDoneTask(t) && isUserAssignedToTask(t, currentUserName, currentUserEmail)
   );
-  const issueTasks = myTasks.filter(t =>
-    t.typeOfRelease === "Issue Article" || (!!t.sourceIssueRowId && t.typeOfRelease !== "Online Article" && !/\(Online Pubmat\)$/i.test(t.title))
-  );
+  const issueTasks = myTasks.filter(t => isPrintTask(t));
   const onlineTasks = myTasks.filter(t => !issueTasks.some(issue => issue.id === t.id));
 
   return (
@@ -220,7 +219,7 @@ export function LayoutStaffDashboard({
                     <div className="space-y-0.5 sm:space-y-1 text-left">
                       <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-brand-maroon/10 text-brand-maroon">
-                          {task.typeOfRelease}
+                          {releaseFormatLabel(task)}
                         </span>
                         {task.sourceSheetTitle && (
                           <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200">
@@ -329,7 +328,7 @@ export function LayoutStaffDashboard({
                     })()}
 
                     {/* 2. Assigned Canva Design Link */}
-                    {isIssueArticleTask(task.typeOfRelease) ? (
+                    {isPrintTask(task) ? (
                       <a
                         href={ISSUE_TEMPLATE_LINK}
                         onClick={() => markTaskDesigning(task)}
@@ -377,7 +376,7 @@ export function LayoutStaffDashboard({
                     })()}
 
                     {/* Medium Canva Design Link */}
-                    {isOnlinePubmatTask(task.typeOfRelease, task.title) && (() => {
+                    {isOnlineTask(task) && (() => {
                       const mediumCanva = extractHyperlinkDetails(task.mediumCanvaLink || "");
                       const hasMediumCanva = mediumCanva.url && mediumCanva.url.startsWith("http");
 
@@ -407,7 +406,7 @@ export function LayoutStaffDashboard({
                     })()}
 
                     {/* 3. Pubmat / Drive Link — issue tasks package progress in the Print Issue Drive */}
-                    {isIssueArticleTask(task.typeOfRelease) ? (
+                    {isPrintTask(task) ? (
                       <a
                         href={PRINT_ISSUE_DRIVE_LINK}
                         onClick={() => markTaskDesigning(task)}
@@ -927,7 +926,7 @@ export function EicDashboard({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                             <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon">
-                              {task.typeOfRelease}
+                              {releaseFormatLabel(task)}
                             </span>
                             {task.sourceSheetTitle && (
                               <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200">
@@ -953,8 +952,8 @@ export function EicDashboard({
                       {/* Links review section */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 bg-neutral-50 p-2 sm:p-3 rounded-lg sm:rounded-xl border border-gray-150">
                         <div>
-                          <span className="text-[9px] sm:text-[9px] uppercase font-bold text-gray-400 block mb-0.5 sm:mb-1">{isIssueArticleTask(task.typeOfRelease) ? "Print Issue Drive" : "Canva Link"}</span>
-                          {isIssueArticleTask(task.typeOfRelease) ? (
+                          <span className="text-[9px] sm:text-[9px] uppercase font-bold text-gray-400 block mb-0.5 sm:mb-1">{isPrintTask(task) ? "Print Issue Drive" : "Canva Link"}</span>
+                          {isPrintTask(task) ? (
                             <a
                               href={PRINT_ISSUE_DRIVE_LINK}
                               target="_blank"
@@ -1099,7 +1098,7 @@ export function EicDashboard({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                             <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon">
-                              {task.typeOfRelease}
+                              {releaseFormatLabel(task)}
                             </span>
                             {task.sourceSheetTitle && (
                               <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200">
@@ -1192,7 +1191,7 @@ export function EicDashboard({
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon border border-brand-maroon/10">
-                          {task.typeOfRelease}
+                          {releaseFormatLabel(task)}
                         </span>
                         {task.sourceSheetTitle && (
                           <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200">
@@ -1217,7 +1216,7 @@ export function EicDashboard({
                           <Undo2 className="w-3.5 h-3.5" /> Undo
                         </button>
                       )}
-                      {isOnlinePubmatTask(task.typeOfRelease, task.title) && task.canvaLink ? (
+                      {isOnlineTask(task) && task.canvaLink ? (
                         <a
                           href={task.canvaLink}
                           target="_blank"
@@ -1226,7 +1225,7 @@ export function EicDashboard({
                         >
                           Launch Canva <ExternalLink className="w-3.5 h-3.5" />
                         </a>
-                      ) : isIssueArticleTask(task.typeOfRelease) ? (
+                      ) : isPrintTask(task) ? (
                         <a
                           href={PRINT_ISSUE_DRIVE_LINK}
                           target="_blank"

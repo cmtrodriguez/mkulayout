@@ -1,10 +1,8 @@
 import { Task } from "../types";
 import { MEDIUM_CANVA_LINK } from "./canvaTemplates";
+import { ISSUE_TASK, ONLINE_TASK, isOnlineTask, isPrintTask, releaseFormatLabel, stripPubmatSuffix, taskKindOf, withPubmatSuffix } from "./taskRelease";
 
-const stripPubmat = (title: string) => title.replace(/\s*\(Online Pubmat\)$/i, "").trim();
-
-const isOnline = (task: Task) =>
-  task.typeOfRelease === "Online Article" || (task.title || "").includes("(Online Pubmat)");
+const ARTICLE_FORMATS = ["Issue Article", "Online Article"];
 
 // Only the article's content mirrors across the pair — an issue-sheet row can name a
 // different person for the print layout and the online pubmat, so each card keeps its
@@ -22,7 +20,7 @@ export function applyTaskEditToPair(currentTasks: Task[], updatedTask: Task): Ta
   const previousTask = currentTasks.find((task) => task.id === updatedTask.id);
   const updatedList = currentTasks.map((task) => task.id === updatedTask.id ? updatedTask : task);
 
-  if (updatedTask.typeOfRelease !== "Issue Article" && !isOnline(updatedTask)) return updatedList;
+  if (!ARTICLE_FORMATS.includes(releaseFormatLabel(updatedTask))) return updatedList;
 
   // Mirror exactly the fields this edit changed, copied as-is. An `||` fallback would
   // revive the companion's old value and make a cleared link look like it was ignored.
@@ -30,11 +28,14 @@ export function applyTaskEditToPair(currentTasks: Task[], updatedTask: Task): Ta
     previousTask ? previousTask[key] !== updatedTask[key] : Boolean(updatedTask[key])
   );
 
-  const baseTitle = stripPubmat(updatedTask.title || "");
+  const baseTitle = stripPubmatSuffix(updatedTask.title || "");
+  // The twin is whichever card holds the other half of the same piece: the print
+  // card for an online edit, the pubmat card for a print edit.
+  const companionKind = isOnlineTask(updatedTask) ? ISSUE_TASK : ONLINE_TASK;
   const companionIndex = updatedList.findIndex((task) =>
     task.id !== updatedTask.id &&
-    task.typeOfRelease === (isOnline(updatedTask) ? "Issue Article" : "Online Article") &&
-    stripPubmat(task.title || "") === baseTitle
+    taskKindOf(task) === companionKind &&
+    stripPubmatSuffix(task.title || "") === baseTitle
   );
 
   if (companionIndex !== -1) {
@@ -46,14 +47,15 @@ export function applyTaskEditToPair(currentTasks: Task[], updatedTask: Task): Ta
     return updatedList;
   }
 
-  if (updatedTask.typeOfRelease === "Issue Article" && updatedTask.illusLayout && updatedTask.illusLayout !== "Unassigned") {
+  if (isPrintTask(updatedTask) && updatedTask.illusLayout && updatedTask.illusLayout !== "Unassigned") {
     // Create online companion if missing — every online task must carry the medium
     // Canva link, so never inherit the issue task's (intentionally empty) one.
     const onlineTask: Task = {
       ...updatedTask,
       id: crypto.randomUUID(),
-      title: `${baseTitle} (Online Pubmat)`,
-      typeOfRelease: "Online Article",
+      title: withPubmatSuffix(baseTitle),
+      typeOfRelease: releaseFormatLabel(updatedTask),
+      taskKind: ONLINE_TASK,
       mediumCanvaLink: updatedTask.mediumCanvaLink || MEDIUM_CANVA_LINK,
       isPendingConfirmation: false
     };

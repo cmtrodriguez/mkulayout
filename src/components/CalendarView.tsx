@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { CalendarEvent, Task, PersonalCalendarEvent } from "../types";
 import { fetchPersonalEvents, upsertPersonalEvent, deletePersonalEvent } from "../lib/supabase";
-import { isIssueArticleTask, isOnlinePubmatTask } from "../lib/canvaTemplates";
+import { releaseFormatLabel } from "../lib/taskRelease";
 
 interface CalendarViewProps {
   events: CalendarEvent[];
@@ -178,7 +178,7 @@ export default function CalendarView({
 
   const taskEntries = tasks
     .filter(t => !isDoneTask(t))
-    .map(t => ({ id: `task-${t.id}`, title: t.title, start: toTaskISO(t.releaseDate || "") || "", type: "deadline", isTask: true, isPersonal: false, description: "", category: t.typeOfContent || "", assignee: t.illusLayout || "Unassigned", taskKind: (isIssueArticleTask(t.typeOfRelease) ? "Issue" : isOnlinePubmatTask(t.typeOfRelease, t.title) ? "Online" : undefined) as "Issue" | "Online" | undefined }))
+    .map(t => ({ id: `task-${t.id}`, title: t.title, start: toTaskISO(t.releaseDate || "") || "", type: "deadline", isTask: true, isPersonal: false, description: "", category: t.typeOfContent || "", assignee: t.illusLayout || "Unassigned", taskKind: (/issue/i.test(releaseFormatLabel(t)) ? "Issue" : "Online") as "Issue" | "Online" }))
     .filter(e => e.start);
 
   const eventEntries = events.map(e => ({ id: e.id, title: e.title, start: e.start, type: e.type, isTask: false, isPersonal: false, description: e.description || "", category: e.type }));

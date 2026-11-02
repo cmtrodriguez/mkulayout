@@ -87,7 +87,8 @@ export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
 export interface Task {
   id: string;
   title: string;
-  typeOfRelease: string; // e.g. "Online Article", "Issue Article", "Multimedia", "From the Archives"
+  typeOfRelease: string; // member-facing format label: "Online Article", "Issue Article", "Multimedia", ...
+  taskKind?: string; // hidden pipeline marker: "Issue Task" | "Online Task"
   typeOfContent: string; // e.g. "feats artx", "op artx", "cult artx", "editorial", "illustration", "photo essay"
   writer: string;
   illusLayout: string; // E.g., "Christian", "Leyan"

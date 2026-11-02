@@ -20,7 +20,8 @@ import {
   DEFAULT_PROBI_CONGRATS_MESSAGE
 } from "../types";
 import { getOfficialDisplayName, resolveMemberEmail } from "./memberUtils";
-import { isOnlinePubmatTask, MEDIUM_CANVA_LINK } from "./canvaTemplates";
+import { MEDIUM_CANVA_LINK } from "./canvaTemplates";
+import { isOnlineTask, taskKindOf } from "./taskRelease";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -207,10 +208,14 @@ export function taskFromDb(row: any): Task {
   const illusLayout = row.illus_layout || "Unassigned";
   const title = row.title || "";
   const typeOfRelease = row.type_of_release || "Online Article";
+  // Rows saved before task_kind existed carry no pipeline marker, so the kind is
+  // resolved here once and every screen reads the same answer.
+  const taskKind = row.task_kind || taskKindOf({ title, typeOfRelease });
   return {
     id: row.id,
     title,
     typeOfRelease,
+    taskKind,
     typeOfContent: row.type_of_content || "feats artx",
     writer: row.writer || "",
     illusLayout,
@@ -233,7 +238,7 @@ export function taskFromDb(row: any): Task {
     canvaLink: row.canva_link || undefined,
     // ?? so a link the editors cleared stays cleared; NULL (never set) still
     // falls back to the standard Medium template for pubmat tasks.
-    mediumCanvaLink: row.medium_canva_link ?? (isOnlinePubmatTask(typeOfRelease, title) ? MEDIUM_CANVA_LINK : undefined),
+    mediumCanvaLink: row.medium_canva_link ?? (isOnlineTask({ title, typeOfRelease, taskKind }) ? MEDIUM_CANVA_LINK : undefined),
     pubmatLink: row.pubmat_link || undefined,
     draftLink: row.draft_link || undefined,
     addedToLayout: row.added_to_layout || undefined,
@@ -258,6 +263,7 @@ export function taskToDb(task: Partial<Task>): any {
     id,
     title: task.title ?? "Untitled Task",
     type_of_release: task.typeOfRelease ?? "Online Article",
+    task_kind: task.taskKind ?? null,
     type_of_content: task.typeOfContent ?? "feats artx",
     writer: task.writer ?? "",
     illus_layout: assigneeLabel,

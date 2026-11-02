@@ -25,7 +25,8 @@ import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
 import { applyTaskEditToPair } from "./lib/taskPairSync";
 import { effectiveTaskPriority, toISOFormatDate } from "./lib/taskDate";
-import { getCanvaLinkForContent, getPubmatCanvaTemplates, isOnlinePubmatTask, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
+import { getCanvaLinkForContent, getPubmatCanvaTemplates, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
+import { ISSUE_TASK, ONLINE_TASK, isPrintTask, isOnlineTask, releaseFormatLabel, stripPubmatSuffix, taskKindOf, withPubmatSuffix } from "./lib/taskRelease";
 import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, createPollOption, updatePollMemberOptions, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, fetchIssueAssessments, submitIssueAssessment, saveIssueAssessmentReply, type MemberLoginMap } from "./lib/supabase";
 import mkuleImg from "./mkule.png";
 
@@ -196,8 +197,7 @@ export default function App() {
     task.progress === "Completed" || task.progress === "Approved" || task.progress === "Archived" || task.progress === "Shelved";
   const issueTaskCards = tasks
     .filter((task) => {
-      const isOnlineOnlyCompanion = task.title.includes("(Online Pubmat)") || task.typeOfRelease === "Online Article";
-      if (isOnlineOnlyCompanion) return false;
+      if (!isPrintTask(task)) return false;
       const rowId = (task as any).sourceIssueRowId;
       return !!rowId && currentSheetRowIds.has(rowId);
     })
@@ -292,7 +292,7 @@ export default function App() {
         canvaLink: task.canvaLink || (isCultCategory || isCultureCategory ? getCanvaLinkForContent("Culture") : ""),
         // ?? keeps an intentionally cleared link cleared instead of restoring the
         // standard Medium template on every fetch.
-        mediumCanvaLink: isOnlinePubmatTask(task.typeOfRelease, task.title) ? task.mediumCanvaLink ?? MEDIUM_CANVA_LINK : undefined,
+        mediumCanvaLink: isOnlineTask(task) ? task.mediumCanvaLink ?? MEDIUM_CANVA_LINK : undefined,
       };
     });
 
@@ -563,13 +563,12 @@ export default function App() {
     // (issue-row re-dispatch, sheet re-import, row edit regenerating ids), move its
     // messages onto the successor so workspace chats keep every comment unless the
     // message itself was deleted.
-    const normalizeTaskTitle = (title: string) =>
-      title.replace(/\s*\(Online Pubmat\)$/i, "").trim().toLowerCase();
+    const normalizeTaskTitle = (title: string) => stripPubmatSuffix(title).toLowerCase();
     const findSuccessorTask = (prev: Task): Task | undefined => {
       if (prev.sourceIssueRowId) {
         const sameRow = nextTasks.filter(t => t.id !== prev.id && t.sourceIssueRowId === prev.sourceIssueRowId);
         if (sameRow.length) {
-          return sameRow.find(t => t.typeOfRelease === prev.typeOfRelease && !t.isPendingConfirmation)
+          return sameRow.find(t => taskKindOf(t) === taskKindOf(prev) && !t.isPendingConfirmation)
             || sameRow.find(t => !t.isPendingConfirmation)
             || sameRow[0];
         }
@@ -578,7 +577,7 @@ export default function App() {
       return nextTasks.find(t =>
         t.id !== prev.id &&
         !prevById.has(t.id) &&
-        t.typeOfRelease === prev.typeOfRelease &&
+        taskKindOf(t) === taskKindOf(prev) &&
         normalizeTaskTitle(t.title) === baseTitle
       );
     };
@@ -1199,6 +1198,7 @@ export default function App() {
       id: `issue-task-${row.id}`,
       title: rowTitle,
       typeOfRelease: "Issue Article",
+      taskKind: ISSUE_TASK,
       typeOfContent: normalizeContentCategory(row.section || "News"),
       writer: row.writer || "Unspecified Writer",
       illusLayout: assignee,
@@ -1270,7 +1270,10 @@ export default function App() {
     const newPendingTask: Task = {
       id: pendingId,
       title: rowTitle,
-      typeOfRelease: "Online Article",
+      // The review stub stands for the whole issue piece, so it reads "Issue
+      // Article" while living in the pubmat confirmation deck.
+      typeOfRelease: "Issue Article",
+      taskKind: ONLINE_TASK,
       typeOfContent: normalizeContentCategory(issueRowDraft.section || "News"),
       writer: issueRowDraft.writer || "Unspecified Writer",
       illusLayout: resolved.name,
@@ -1333,7 +1336,7 @@ export default function App() {
       })));
     }
     commitTasks((prev) => prev.filter((item) =>
-      item.id !== task.id && !(sourceRowId && item.sourceIssueRowId === sourceRowId && item.typeOfRelease === "Issue Article")
+      item.id !== task.id && !(sourceRowId && item.sourceIssueRowId === sourceRowId && isPrintTask(item))
     ));
   };
 
@@ -1483,10 +1486,17 @@ export default function App() {
     // match is the template whose link gets attached to the new task.
     const normalizedContentType = normalizeContentCategory(formContentType);
     const autoCanvaLink = getCanvaLinkForContent(normalizedContentType);
+    // Which board the form was opened from decides the hidden pipeline marker; the
+    // release format is only the label members see. So a task created in Online
+    // Pubmat stays on that board even when it is labelled "Issue Article".
+    const createdKind = taskFormOrigin === "online-pubmat" || formReleaseType !== "Issue Article"
+      ? ONLINE_TASK
+      : ISSUE_TASK;
     const created: Task = {
       id: crypto.randomUUID(),
       title: formTitle,
       typeOfRelease: formReleaseType,
+      taskKind: createdKind,
       typeOfContent: normalizedContentType,
       writer: formWriter || "Unspecified Writer",
       illusLayout: resolvedFormArtist,
@@ -1501,22 +1511,23 @@ export default function App() {
       revisionCount: 0,
       lastUpdated: new Date().toISOString(),
       canvaLink: autoCanvaLink,
-      mediumCanvaLink: formReleaseType === "Online Article" ? MEDIUM_CANVA_LINK : undefined,
+      mediumCanvaLink: createdKind === ONLINE_TASK ? MEDIUM_CANVA_LINK : undefined,
       pubmatLink: formPubmatLink || "",
       draftLink: formDocLink || "",
       addedToLayout: finalAddedToLayout,
-      onlineHandler: formReleaseType === "Online Article" && resolvedFormArtist !== "Unassigned" ? resolvedFormArtist : ""
+      onlineHandler: createdKind === ONLINE_TASK && resolvedFormArtist !== "Unassigned" ? resolvedFormArtist : ""
     };
 
     let nextTasks = [created, ...tasks];
 
     // Whenever assigning for an Issue Layout, also automatically give the assigned person the companion Online Pubmat assignment
-    if (formReleaseType === "Issue Article") {
+    if (createdKind === ISSUE_TASK) {
       const onlineCompanion: Task = {
         ...created,
         id: crypto.randomUUID(),
-        title: `${formTitle} (Online Pubmat)`,
-        typeOfRelease: "Online Article",
+        title: withPubmatSuffix(formTitle),
+        typeOfRelease: releaseFormatLabel(created),
+        taskKind: ONLINE_TASK,
         mediumCanvaLink: MEDIUM_CANVA_LINK,
         isPendingConfirmation: false
       };
@@ -2219,7 +2230,7 @@ export default function App() {
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                                 <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-brand-maroon/5 dark:bg-brand-maroon/20 text-brand-maroon dark:text-brand-maroon-light border border-brand-maroon/10 dark:border-brand-maroon/30">
-                                  {task.typeOfRelease || "Issue Article"}
+                                  {releaseFormatLabel(task)}
                                 </span>
                                 {task.sourceSheetTitle && (
                                   <span className="text-[9px] sm:text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
@@ -2754,7 +2765,7 @@ export default function App() {
         currentUserRole={userRole}
         onClose={() => setSelectedTask(null)}
         onDeleteTask={(taskToDelete) => {
-          if (taskToDelete.typeOfRelease === "Issue Article") {
+          if (isPrintTask(taskToDelete)) {
             removeIssueTask(taskToDelete);
           } else {
             commitTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id));

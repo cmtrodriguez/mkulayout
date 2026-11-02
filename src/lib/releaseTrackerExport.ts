@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import type { Task } from "../types";
 import { extractHyperlinkDetails } from "./canvaTemplates";
 import { byReleaseDateDesc, releaseDateTimestamp } from "./taskDate";
+import { isOnlineTask, isPrintTask } from "./taskRelease";
 
 const RELEASE_TRACKER_COLUMNS = [
   "SECTION",
@@ -32,8 +33,8 @@ function formatPostingDate(task: Task): string {
   return `${MONTH_NAMES[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
 }
 
-const isPrintIssue = (task: Task) => task.typeOfRelease === "Issue Article" || task.typeOfRelease === "Newspaper Issue";
-const isOnlineRelease = (task: Task) => task.typeOfRelease.toLowerCase().includes("online") || /\(online pubmat\)$/i.test(task.title);
+const isPrintIssue = (task: Task) => isPrintTask(task);
+const isOnlineRelease = (task: Task) => isOnlineTask(task);
 const getBaseTitle = (title: string) => title.replace(/\s*\(online pubmat\)$/i, "").trim();
 
 function getLinkValue(link?: string): string {

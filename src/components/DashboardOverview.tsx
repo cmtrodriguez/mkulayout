@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Task, TeamMember, CalendarEvent, Poll } from "../types";
 import { getPreferredFirstName, isUserAssignedToTask, OFFICIAL_MEMBERS_MAP } from "../lib/memberUtils";
-import { isOnlinePubmatTask } from "../lib/canvaTemplates";
+import { isOnlineTask, isPrintTask, releaseFormatLabel } from "../lib/taskRelease";
 import { byReleaseDateDesc, effectiveTaskPriority, isPastDue, releaseDateLabel, releaseDateTimestamp } from "../lib/taskDate";
 import { createPoll, updatePollOptionVotes, deletePoll, createAnnouncement, deleteAnnouncement } from "../lib/supabase";
 import CalendarView from "./CalendarView";
@@ -279,13 +279,8 @@ export default function DashboardOverview({
       });
     }
 
-    const onlineTasks = filtered.filter(
-      (t) => t.typeOfRelease === "Online Article" || t.title.toLowerCase().includes("online")
-    );
-
-    const issueTasks = filtered.filter(
-      (t) => t.typeOfRelease === "Issue Article" || t.typeOfRelease === "Newspaper Issue" || t.title.toLowerCase().includes("issue")
-    );
+    const onlineTasks = filtered.filter(isOnlineTask);
+    const issueTasks = filtered.filter(isPrintTask);
 
     return {
       id: m.id,
@@ -367,7 +362,7 @@ export default function DashboardOverview({
         const base = x.task.title.replace(/\s*\(Online Pubmat\)$/i, "").trim();
         const key = `${base.toLowerCase()}|${x.ts}`;
         const kept = grouped.get(key);
-        if (!kept || (!isOnlinePubmatTask(kept.task.typeOfRelease, kept.task.title) && isOnlinePubmatTask(x.task.typeOfRelease, x.task.title))) {
+        if (!kept || (!isOnlineTask(kept.task) && isOnlineTask(x.task))) {
           grouped.set(key, { task: x.task, title: base, ts: x.ts });
         }
       });
@@ -623,7 +618,7 @@ export default function DashboardOverview({
                       >
                         <div>
                           <span className={`${theme.tagBg} ${theme.tagText} text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block`}>
-                            {task.typeOfRelease || "Online Article"}
+                            {releaseFormatLabel(task)}
                           </span>
                           {isOverdue && (
                             <span className="bg-red-600 text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block ml-1">
@@ -1237,7 +1232,7 @@ export default function DashboardOverview({
                       >
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[9px] sm:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon dark:bg-brand-maroon/15 dark:text-brand-maroon-light">
-                            {task.typeOfRelease}
+                            {releaseFormatLabel(task)}
                           </span>
                           <span className={`text-[9px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${
                             task.progress === "Revision Needed"
@@ -1326,7 +1321,7 @@ export default function DashboardOverview({
                       >
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[9px] sm:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon dark:bg-brand-maroon/15 dark:text-brand-maroon-light">
-                            {task.typeOfRelease}
+                            {releaseFormatLabel(task)}
                           </span>
                           <span className={`text-[9px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${
                             task.progress === "Approved"
@@ -1409,7 +1404,7 @@ export default function DashboardOverview({
                       >
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[9px] sm:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-brand-maroon/5 text-brand-maroon dark:bg-brand-maroon/15 dark:text-brand-maroon-light">
-                            {task.typeOfRelease}
+                            {releaseFormatLabel(task)}
                           </span>
                           <span className={`text-[9px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${
                             task.progress === "Approved"

@@ -11,6 +11,7 @@ import { OFFICIAL_ACCOUNTS } from "./LoginPage";
 import { OFFICIAL_MEMBERS_MAP, getOfficialFullName, getPreferredFirstName } from "../lib/memberUtils";
 import { AccentTheme, ACCENT_OPTIONS } from "../lib/accentTheme";
 import { byReleaseDateDesc } from "../lib/taskDate";
+import { releaseFormatLabel } from "../lib/taskRelease";
 
 interface ProfileSettingsProps {
   currentUserRole: UserRole;
@@ -970,7 +971,7 @@ export default function ProfileSettings({
                   <div className="min-w-0">
                     <p className="font-bold text-gray-800 dark:text-neutral-200 truncate">{task.title}</p>
                     <p className="text-[10px] text-gray-400 dark:text-neutral-500 truncate">
-                      {task.typeOfRelease} • {task.typeOfContent}
+                      {releaseFormatLabel(task)} • {task.typeOfContent}
                       {task.sourceSheetTitle ? ` • Sheet: ${task.sourceSheetTitle}` : ""} • Target: {task.releaseDate || "—"}
                     </p>
                   </div>
