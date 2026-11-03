@@ -413,8 +413,9 @@ export default function TaskDetailsModal({
               </div>
             )}
 
-            {/* Canva Workspace Link Editor — every task type, so a link attached to an
-                issue layout reaches the artist too. */}
+            {/* Canva Workspace Link Editor — online workspaces only; an issue task
+                works out of the Issue Template and the Print Issue Drive instead. */}
+            {isOnlineTask(task) && (
             <div className="bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-800/60 p-3 sm:p-3.5 rounded-xl space-y-2 text-xs">
               <span className="font-bold text-cyan-800 dark:text-cyan-400 uppercase tracking-wide flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
@@ -463,6 +464,7 @@ export default function TaskDetailsModal({
                 </div>
               )}
             </div>
+            )}
 
             {/* Print Issue Drive — where the assignee packages their progress */}
             {showIssueTemplate && (
