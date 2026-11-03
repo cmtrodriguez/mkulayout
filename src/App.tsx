@@ -1464,8 +1464,6 @@ export default function App() {
     return false;
   });
 
-  const canAssignOnlineOnly = userRole === "Layout Deputy";
-
   useEffect(() => {
     const validTabs = [...getTabsForRole(), ...getSectionMatterTabs()].map(t => t.id);
     if (!validTabs.includes(activeTab)) {
@@ -1559,9 +1557,6 @@ export default function App() {
   // Create Assignment Trigger
   const handleCreateAssignment = () => {
     if (!formTitle.trim()) return;
-    if (canAssignOnlineOnly && formReleaseType !== "Online Article") {
-      setFormReleaseType("Online Article");
-    }
     executeCreateAssignment();
   };
 
@@ -2609,14 +2604,12 @@ export default function App() {
               <div>
                 <label className="text-neutral-600 font-semibold block mb-1">Release Format</label>
                 <select
-                  value={canAssignOnlineOnly ? "Online Article" : formReleaseType}
+                  value={formReleaseType}
                   onChange={(e) => setFormReleaseType(e.target.value)}
-                  disabled={canAssignOnlineOnly}
-                  className="w-full px-2.5 py-2 border border-neutral-200 rounded-xl bg-neutral-50 outline-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full px-2.5 py-2 border border-neutral-200 rounded-xl bg-neutral-50 outline-none cursor-pointer"
                 >
                   <option value="Online Article">Online Article</option>
-                  {!canAssignOnlineOnly && <option value="Issue Article">Issue Article</option>}
-
+                  <option value="Issue Article">Issue Article</option>
                 </select>
               </div>
 
