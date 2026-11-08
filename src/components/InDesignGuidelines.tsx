@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BookOpen, ExternalLink, ImageOff, X, ZoomIn } from "lucide-react";
+import { ExternalLink, ImageOff, Monitor, X, ZoomIn } from "lucide-react";
 import { GUIDELINE_SECTIONS } from "../lib/indesignGuidelines";
 import { ISSUE_TEMPLATE_LINK } from "../lib/canvaTemplates";
 
@@ -60,7 +60,7 @@ export default function InDesignGuidelines() {
       <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-neutral-50 to-neutral-100/50 dark:from-neutral-800 dark:to-neutral-800/60 border-b border-neutral-150 dark:border-neutral-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-start gap-2.5 min-w-0">
           <div className="p-1.5 bg-brand-maroon/10 rounded-xl text-brand-maroon shrink-0">
-            <BookOpen className="w-4.5 h-4.5" />
+            <Monitor className="w-4.5 h-4.5" />
           </div>
           <div className="min-w-0">
             <h2 className="font-sans font-black text-sm sm:text-base text-stone-900 dark:text-neutral-100 tracking-tight">

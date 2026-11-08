@@ -4,7 +4,7 @@ import {
   LayoutGrid, FileSpreadsheet, Kanban, GraduationCap, Calendar, 
   HelpCircle, Bot, Users, Bell, AlertOctagon, Plus, X, Shield, Ban, Trash2,
   Sparkles, ShieldCheck, HeartPulse, CheckSquare, RefreshCw, BookOpen,
-  Menu, LogOut, Link2, Sun, Moon, FileText, CheckCircle2, ExternalLink, Loader2, User, ArrowRight, BarChart3
+  Menu, LogOut, Link2, Sun, Moon, FileText, CheckCircle2, ExternalLink, Loader2, User, ArrowRight, BarChart3, Monitor
 } from "lucide-react";
 
 // Sub Components
@@ -1452,7 +1452,7 @@ export default function App() {
     return isLayoutMember
       ? [
         { id: "issue-assessment", label: "Issue Assessment", icon: BarChart3 },
-        { id: "indesign-guidelines", label: "MKule InDesign Guidelines", icon: BookOpen },
+        { id: "indesign-guidelines", label: "MKule InDesign Guidelines", icon: Monitor },
       ]
       : [];
   };
