@@ -5,12 +5,13 @@
 
 import { Readable } from "node:stream";
 
-// Only these three issues may be proxied: an open Drive proxy would let any
+// Only these four issues may be proxied: an open Drive proxy would let any
 // caller pull arbitrary files through the app.
 export const ALLOWED_ISSUE_FILES = {
   "1eHUhpqFtPEj07uCG9Hoc47sweVbzc59y": "1K1-2",
   "1z8baF1AbGRy9T2wh6my6zfH9ooWO4uO1": "1K3-4",
   "1oDTnQQ2oJmv9OwAOzOmpZVdABh2FUq8v": "1K5",
+  "163A9Ym3bbZ1UZb8JLMybyVi53KA3D199": "1K6",
 };
 
 const MAX_BYTES = 80 * 1024 * 1024;

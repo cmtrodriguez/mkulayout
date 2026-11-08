@@ -27,6 +27,12 @@ export const ISSUES: IssueFile[] = [
     fileId: "1oDTnQQ2oJmv9OwAOzOmpZVdABh2FUq8v",
     url: "https://drive.google.com/file/d/1oDTnQQ2oJmv9OwAOzOmpZVdABh2FUq8v/view?usp=drive_link",
   },
+  {
+    key: "1k6",
+    label: "1K6",
+    fileId: "163A9Ym3bbZ1UZb8JLMybyVi53KA3D199",
+    url: "https://drive.google.com/file/d/163A9Ym3bbZ1UZb8JLMybyVi53KA3D199/view?usp=sharing",
+  },
 ];
 
 export const ISSUE_FILES: Record<string, IssueFile> = Object.fromEntries(
