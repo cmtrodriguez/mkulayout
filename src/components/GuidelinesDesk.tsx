@@ -18,6 +18,8 @@ export interface GuidelinesDeskProps {
   blurb: string;
   icon: LucideIcon;
   sections: GuidelineSection[];
+  /** Set false for a desk whose screenshots do not exist yet, e.g. online pubs. */
+  showPictures?: boolean;
   footerNote?: string;
   footerLink?: FooterLink;
 }
@@ -55,7 +57,7 @@ function PictureCell({
 }
 
 export default function GuidelinesDesk({
-  title, blurb, icon: Icon, sections, footerNote = DEFAULT_FOOTER_NOTE, footerLink
+  title, blurb, icon: Icon, sections, showPictures = true, footerNote, footerLink
 }: GuidelinesDeskProps) {
   const [zoomed, setZoomed] = useState<ZoomedPicture | null>(null);
 
@@ -67,6 +69,9 @@ export default function GuidelinesDesk({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [zoomed]);
+
+  const note = footerNote ?? (showPictures ? DEFAULT_FOOTER_NOTE : "");
+  const columns = showPictures ? 3 : 2;
 
   const jumpTo = (id: string) => {
     document.getElementById(`guideline-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -111,16 +116,21 @@ export default function GuidelinesDesk({
           // Steps are numbered across the whole section, so a lettered part
           // carries the count on from the part before it.
           let stepNumber = 0;
+          // A single-section desk is already named by the header, so its title
+          // would only repeat itself above the table.
+          const showTitle = sections.length > 1;
           return (
             <div key={section.id} id={`guideline-${section.id}`} className="scroll-mt-20">
-              <h3 className="font-sans font-black text-xs sm:text-sm text-stone-900 dark:text-neutral-100 uppercase tracking-tight">
-                {section.title}
-              </h3>
+              {showTitle && (
+                <h3 className="font-sans font-black text-xs sm:text-sm text-stone-900 dark:text-neutral-100 uppercase tracking-tight">
+                  {section.title}
+                </h3>
+              )}
               {section.intro && (
-                <p className="mt-1 text-[11px] sm:text-xs text-neutral-600 dark:text-neutral-300 font-medium">{section.intro}</p>
+                <p className={`text-[11px] sm:text-xs text-neutral-600 dark:text-neutral-300 font-medium ${showTitle ? "mt-1" : ""}`}>{section.intro}</p>
               )}
 
-              <div className="mt-2 overflow-x-auto">
+              <div className={`overflow-x-auto ${showTitle ? "mt-2" : ""}`}>
                 <table className="w-full table-fixed border-collapse text-left">
                   <thead>
                     <tr className="bg-neutral-50 dark:bg-neutral-800/60 border-y border-neutral-150 dark:border-neutral-800">
@@ -130,9 +140,11 @@ export default function GuidelinesDesk({
                       <th scope="col" className="px-2 sm:px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 align-middle">
                         Guidelines and Instructions
                       </th>
-                      <th scope="col" className="px-2 sm:px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-maroon dark:text-brand-maroon-light border-l border-neutral-150 dark:border-neutral-800 w-[84px] sm:w-[132px] align-middle">
-                        Picture
-                      </th>
+                      {showPictures && (
+                        <th scope="col" className="px-2 sm:px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-maroon dark:text-brand-maroon-light border-l border-neutral-150 dark:border-neutral-800 w-[84px] sm:w-[132px] align-middle">
+                          Picture
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -140,7 +152,7 @@ export default function GuidelinesDesk({
                       <React.Fragment key={part.heading || `part-${partIndex}`}>
                         {part.heading && (
                           <tr>
-                            <th colSpan={3} scope="colgroup" className="px-3 py-1.5 bg-brand-maroon/5 dark:bg-brand-maroon/10 text-left text-[10px] sm:text-[11px] font-black text-brand-maroon dark:text-brand-maroon-light uppercase tracking-wide border-y border-brand-maroon/10">
+                            <th colSpan={columns} scope="colgroup" className="px-3 py-1.5 bg-brand-maroon/5 dark:bg-brand-maroon/10 text-left text-[10px] sm:text-[11px] font-black text-brand-maroon dark:text-brand-maroon-light uppercase tracking-wide border-y border-brand-maroon/10">
                               {part.heading}
                             </th>
                           </tr>
@@ -167,25 +179,27 @@ export default function GuidelinesDesk({
                                   </ul>
                                 )}
                               </td>
-                              <td className="px-2 sm:px-3 py-2.5 border-l border-neutral-100 dark:border-neutral-800">
-                                <div className="space-y-1.5">
-                                  <PictureCell
-                                    src={step.image}
-                                    caption={`${section.title} — step ${stepNumber}`}
-                                    onZoom={setZoomed}
-                                  />
-                                  {step.sub
-                                    ?.filter((child) => child.image)
-                                    .map((child, childIndex) => (
-                                      <PictureCell
-                                        key={childIndex}
-                                        src={child.image}
-                                        caption={`${section.title} — step ${stepNumber}${LETTERS[childIndex] || ""}`}
-                                        onZoom={setZoomed}
-                                      />
-                                    ))}
-                                </div>
-                              </td>
+                              {showPictures && (
+                                <td className="px-2 sm:px-3 py-2.5 border-l border-neutral-100 dark:border-neutral-800">
+                                  <div className="space-y-1.5">
+                                    <PictureCell
+                                      src={step.image}
+                                      caption={`${section.title} — step ${stepNumber}`}
+                                      onZoom={setZoomed}
+                                    />
+                                    {step.sub
+                                      ?.filter((child) => child.image)
+                                      .map((child, childIndex) => (
+                                        <PictureCell
+                                          key={childIndex}
+                                          src={child.image}
+                                          caption={`${section.title} — step ${stepNumber}${LETTERS[childIndex] || ""}`}
+                                          onZoom={setZoomed}
+                                        />
+                                      ))}
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           );
                         })}
@@ -200,21 +214,25 @@ export default function GuidelinesDesk({
       </div>
 
       {/* Footer */}
-      <div className="px-4 sm:px-6 py-3 bg-neutral-50/70 dark:bg-neutral-800/40 border-t border-neutral-150 dark:border-neutral-700 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[10px] sm:text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
-          {footerNote}
-        </p>
-        {footerLink && (
-          <a
-            href={footerLink.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-brand-maroon dark:text-brand-maroon-light hover:underline cursor-pointer"
-          >
-            {footerLink.label} <ExternalLink className="w-3 h-3" />
-          </a>
-        )}
-      </div>
+      {(note || footerLink) && (
+        <div className="px-4 sm:px-6 py-3 bg-neutral-50/70 dark:bg-neutral-800/40 border-t border-neutral-150 dark:border-neutral-700 flex flex-wrap items-center justify-between gap-2">
+          {note && (
+            <p className="text-[10px] sm:text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
+              {note}
+            </p>
+          )}
+          {footerLink && (
+            <a
+              href={footerLink.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-brand-maroon dark:text-brand-maroon-light hover:underline cursor-pointer"
+            >
+              {footerLink.label} <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
+      )}
 
       {zoomed && (
         <div

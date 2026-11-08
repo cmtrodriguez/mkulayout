@@ -2404,6 +2404,7 @@ export default function App() {
                 blurb="Standards for every assigned online pub, from reading the artx to the credits on the final graphic."
                 icon={Globe}
                 sections={ONLINE_LAYOUT_SECTIONS}
+                showPictures={false}
               />
             )}
 
