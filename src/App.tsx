@@ -4,7 +4,7 @@ import {
   LayoutGrid, FileSpreadsheet, Kanban, GraduationCap, Calendar, 
   HelpCircle, Bot, Users, Bell, AlertOctagon, Plus, X, Shield, Ban, Trash2,
   Sparkles, ShieldCheck, HeartPulse, CheckSquare, RefreshCw, BookOpen,
-  Menu, LogOut, Link2, Sun, Moon, FileText, CheckCircle2, ExternalLink, Loader2, User, ArrowRight, BarChart3, Monitor
+  Menu, LogOut, Link2, Sun, Moon, FileText, CheckCircle2, ExternalLink, Loader2, User, ArrowRight, BarChart3, Monitor, Globe
 } from "lucide-react";
 
 // Sub Components
@@ -20,13 +20,15 @@ import ProfileSettings from "./components/ProfileSettings";
 import { LayoutStaffDashboard, EicDashboard } from "./components/RoleDashboards";
 import { CanvaDirectory } from "./components/CanvaDirectory";
 import IssueAssessment from "./components/IssueAssessment";
-import InDesignGuidelines from "./components/InDesignGuidelines";
+import GuidelinesDesk from "./components/GuidelinesDesk";
 import { OFFICIAL_MEMBERS_MAP, getPreferredFirstName, resolveLayoutAssignee, resolveMemberEmail, getEditorDeputyEmails } from "./lib/memberUtils";
 import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
 import { applyTaskEditToPair } from "./lib/taskPairSync";
 import { effectiveTaskPriority, toISOFormatDate } from "./lib/taskDate";
-import { getCanvaLinkForContent, getPubmatCanvaTemplates, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
+import { getCanvaLinkForContent, getPubmatCanvaTemplates, ISSUE_TEMPLATE_LINK, MEDIUM_CANVA_LINK, normalizeContentCategory } from "./lib/canvaTemplates";
+import { GUIDELINE_SECTIONS } from "./lib/indesignGuidelines";
+import { ONLINE_LAYOUT_SECTIONS } from "./lib/onlineLayoutGuidelines";
 import { ISSUE_TASK, ONLINE_TASK, isPrintTask, isOnlineTask, releaseFormatLabel, stripPubmatSuffix, taskKindOf, withPubmatSuffix } from "./lib/taskRelease";
 import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, createPollOption, updatePollMemberOptions, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, fetchIssueAssessments, submitIssueAssessment, saveIssueAssessmentReply, type MemberLoginMap } from "./lib/supabase";
 import mkuleImg from "./mkule.png";
@@ -1453,6 +1455,7 @@ export default function App() {
       ? [
         { id: "issue-assessment", label: "Issue Assessment", icon: BarChart3 },
         { id: "indesign-guidelines", label: "MKule InDesign Guidelines", icon: Monitor },
+        { id: "online-layout-guidelines", label: "Online Layout Guidelines", icon: Globe },
       ]
       : [];
   };
@@ -2385,7 +2388,24 @@ export default function App() {
               />
             )}
 
-            {activeTab === "indesign-guidelines" && <InDesignGuidelines />}
+            {activeTab === "indesign-guidelines" && (
+              <GuidelinesDesk
+                title="MKule InDesign Guidelines"
+                blurb="Adobe InDesign step-by-step guide for every assigned issue page, from the template to the final upload."
+                icon={Monitor}
+                sections={GUIDELINE_SECTIONS}
+                footerLink={{ label: "MKule Issue Template in Drive", href: ISSUE_TEMPLATE_LINK }}
+              />
+            )}
+
+            {activeTab === "online-layout-guidelines" && (
+              <GuidelinesDesk
+                title="Online Layout Guidelines"
+                blurb="Standards for every assigned online pub, from reading the artx to the credits on the final graphic."
+                icon={Globe}
+                sections={ONLINE_LAYOUT_SECTIONS}
+              />
+            )}
 
             {activeTab === "shortcuts" && (
               <QuickAccessHub

@@ -1,15 +1,31 @@
 import React, { useEffect, useState } from "react";
-import { ExternalLink, ImageOff, Monitor, X, ZoomIn } from "lucide-react";
-import { GUIDELINE_SECTIONS } from "../lib/indesignGuidelines";
-import { ISSUE_TEMPLATE_LINK } from "../lib/canvaTemplates";
+import { ExternalLink, ImageOff, X, ZoomIn } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { GuidelineSection } from "../lib/indesignGuidelines";
 
 interface ZoomedPicture {
   src: string;
   caption: string;
 }
 
+interface FooterLink {
+  label: string;
+  href: string;
+}
+
+export interface GuidelinesDeskProps {
+  title: string;
+  blurb: string;
+  icon: LucideIcon;
+  sections: GuidelineSection[];
+  footerNote?: string;
+  footerLink?: FooterLink;
+}
+
 /** Sub-points are lettered so a step that only introduces a list is not counted twice. */
 const LETTERS = ["a.", "b.", "c.", "d.", "e."];
+
+const DEFAULT_FOOTER_NOTE = "Screenshots for each step are added over time. Click a picture to view it full screen.";
 
 /** One step's picture cell: a zoomable thumbnail, or the slot waiting for one. */
 function PictureCell({
@@ -38,7 +54,9 @@ function PictureCell({
   );
 }
 
-export default function InDesignGuidelines() {
+export default function GuidelinesDesk({
+  title, blurb, icon: Icon, sections, footerNote = DEFAULT_FOOTER_NOTE, footerLink
+}: GuidelinesDeskProps) {
   const [zoomed, setZoomed] = useState<ZoomedPicture | null>(null);
 
   useEffect(() => {
@@ -60,34 +78,36 @@ export default function InDesignGuidelines() {
       <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-neutral-50 to-neutral-100/50 dark:from-neutral-800 dark:to-neutral-800/60 border-b border-neutral-150 dark:border-neutral-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-start gap-2.5 min-w-0">
           <div className="p-1.5 bg-brand-maroon/10 rounded-xl text-brand-maroon shrink-0">
-            <Monitor className="w-4.5 h-4.5" />
+            <Icon className="w-4.5 h-4.5" />
           </div>
           <div className="min-w-0">
             <h2 className="font-sans font-black text-sm sm:text-base text-stone-900 dark:text-neutral-100 tracking-tight">
-              MKule InDesign Guidelines
+              {title}
             </h2>
             <p className="text-[10px] sm:text-[11px] text-stone-500 dark:text-neutral-400 font-medium">
-              Adobe InDesign step-by-step guide for every assigned issue page, from the template to the final upload.
+              {blurb}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {GUIDELINE_SECTIONS.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              onClick={() => jumpTo(section.id)}
-              title={section.title}
-              className="px-2 sm:px-2.5 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold cursor-pointer border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:border-brand-maroon/40 transition-all"
-            >
-              {section.title.split(".")[0]}
-            </button>
-          ))}
-        </div>
+        {sections.length > 1 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                onClick={() => jumpTo(section.id)}
+                title={section.title}
+                className="px-2 sm:px-2.5 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold cursor-pointer border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:border-brand-maroon/40 transition-all"
+              >
+                {section.title.split(".")[0]}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="px-4 sm:px-6 py-4 space-y-6">
-        {GUIDELINE_SECTIONS.map((section) => {
+        {sections.map((section) => {
           // Steps are numbered across the whole section, so a lettered part
           // carries the count on from the part before it.
           let stepNumber = 0;
@@ -182,16 +202,18 @@ export default function InDesignGuidelines() {
       {/* Footer */}
       <div className="px-4 sm:px-6 py-3 bg-neutral-50/70 dark:bg-neutral-800/40 border-t border-neutral-150 dark:border-neutral-700 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[10px] sm:text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
-          Screenshots for each step are added over time. Click a picture to view it full screen.
+          {footerNote}
         </p>
-        <a
-          href={ISSUE_TEMPLATE_LINK}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-brand-maroon dark:text-brand-maroon-light hover:underline cursor-pointer"
-        >
-          MKule Issue Template in Drive <ExternalLink className="w-3 h-3" />
-        </a>
+        {footerLink && (
+          <a
+            href={footerLink.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-brand-maroon dark:text-brand-maroon-light hover:underline cursor-pointer"
+          >
+            {footerLink.label} <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
       </div>
 
       {zoomed && (
