@@ -25,21 +25,6 @@ export interface GuidelineSection {
 
 export const GUIDELINE_SECTIONS: GuidelineSection[] = [
   {
-    id: "install",
-    title: "0. Getting InDesign",
-    parts: [
-      {
-        steps: [
-          { text: "InDesign is a licensed Adobe Creative Cloud app, so install it from Adobe itself: go to adobe.com, open Products > InDesign, and choose Free trial to download the official installer and your Creative Cloud desktop app." },
-          { text: "If the school already covers Adobe for your student account, sign in to Creative Cloud with that account instead of starting a trial. A campus licence does not expire in the middle of a deadline." },
-          { text: "Keep the Creative Cloud desktop app signed in to the same Adobe account while you work, because InDesign checks that licence every time it opens." },
-          { text: "Before taking a task, open a previous issue PDF and the MKule Issue Template in the copy you installed, and confirm both load without missing-font or missing-link errors." },
-          { text: "If neither a trial nor a campus licence works on your machine, message the layout editor before starting the task instead of installing InDesign from anywhere else." },
-        ],
-      },
-    ],
-  },
-  {
     id: "preparation",
     title: "I. Preparation and accessing the template",
     parts: [
