@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { BookOpen, ExternalLink, ImageOff, X, ZoomIn } from "lucide-react";
-import { GUIDELINE_REMINDERS, GUIDELINE_SECTIONS } from "../lib/indesignGuidelines";
+import { GUIDELINE_SECTIONS } from "../lib/indesignGuidelines";
 import { ISSUE_TEMPLATE_LINK } from "../lib/canvaTemplates";
 
 interface ZoomedPicture {
@@ -177,39 +177,6 @@ export default function InDesignGuidelines() {
             </div>
           );
         })}
-
-        {/* The standing reminders every staffer is held to */}
-        <div id="guideline-reminders" className="scroll-mt-20">
-          <h3 className="font-sans font-black text-xs sm:text-sm text-stone-900 dark:text-neutral-100 uppercase tracking-tight">
-            Additional reminders for all staffers
-          </h3>
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full table-fixed border-collapse text-left">
-              <thead>
-                <tr className="bg-neutral-50 dark:bg-neutral-800/60 border-y border-neutral-150 dark:border-neutral-800">
-                  <th scope="col" className="px-2 sm:px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-brand-maroon dark:text-brand-maroon-light w-[38%] align-middle">
-                    Reminder
-                  </th>
-                  <th scope="col" className="px-2 sm:px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 align-middle">
-                    Instruction
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {GUIDELINE_REMINDERS.map((reminder) => (
-                  <tr key={reminder.label} className="border-b border-neutral-100 dark:border-neutral-800 align-top">
-                    <th scope="row" className="px-2 sm:px-3 py-2.5 text-[11px] sm:text-xs font-black text-neutral-800 dark:text-neutral-100">
-                      {reminder.label}
-                    </th>
-                    <td className="px-2 sm:px-3 py-2.5 text-[11px] sm:text-xs leading-relaxed text-neutral-700 dark:text-neutral-200">
-                      {reminder.instruction}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
 
       {/* Footer */}

@@ -295,21 +295,3 @@ export const GUIDELINE_SECTIONS: GuidelineSection[] = [
     ],
   },
 ];
-
-export interface GuidelineReminder {
-  label: string;
-  instruction: string;
-}
-
-export const GUIDELINE_REMINDERS: GuidelineReminder[] = [
-  { label: "Read before designing", instruction: "Never start laying out an article without reading and understanding its entire content." },
-  { label: "Follow the template", instruction: "Do not unnecessarily change the standard layout structure, especially on news pages." },
-  { label: "Readability comes first", instruction: "A creative design is only effective if readers can comfortably read the article." },
-  { label: "Check alignment", instruction: "Make sure your article textbox, title, byline, and other elements are properly aligned with the other pages." },
-  { label: "Preserve article integrity", instruction: "Never delete, rewrite, or shorten article content without the assigned editor's approval." },
-  { label: "Check image quality", instruction: "Use high-resolution images and avoid disproportionate scaling or unnecessary cropping." },
-  { label: "Never forget the credits", instruction: "All photographs, illustrations, and design contributions must be credited properly." },
-  { label: "Check your files before uploading", instruction: "Always include the INDD, IDML, PDF, Document fonts, and Links folders." },
-  { label: "Inspect your PDF", instruction: "Always open and review the exported PDF before submitting it." },
-  { label: "Complete the task properly", instruction: "Do not click Mark as Accomplished until the entire folder has been uploaded and checked." },
-];
