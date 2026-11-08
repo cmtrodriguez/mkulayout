@@ -2,10 +2,12 @@
 // Kept as data so the desk stays presentational and adding a step is a one-line
 // change. `image` is a URL to a screenshot in public/guidelines/ — for example
 // "/guidelines/first-line-indent.png" — and every step renders a picture slot
-// whether or not that file exists yet.
+// whether or not that file exists yet. A step that only introduces a list is not
+// numbered twice: its `sub` items are lettered bullets inside the same row.
 export interface GuidelineStep {
   text: string;
   image?: string;
+  sub?: GuidelineStep[];
 }
 
 export interface GuidelinePart {
@@ -37,7 +39,14 @@ export const GUIDELINE_SECTIONS: GuidelineSection[] = [
           { text: "Check the page size, orientation, margins, and page arrangement. Do not change the existing document settings unless instructed by the layout editor." },
           { text: "IMPORTANT: Read the entire article assigned to you. Understand its content, structure, and intended message before beginning the layout. This will help you determine the appropriate visual direction and placement of elements." },
           { text: "Scroll down to the template of your assigned page and begin the layout design process. Make sure all necessary details and credits are properly placed." },
-          { text: "Observe the appropriate design style for your assigned page: News pages should be as formal, clean, and simple as possible. Culture, Features, MM, and Grafx pages may be as creative as you want, provided that readability remains the top priority. Standalone illustration pages should follow the separate instructions under Section IV." },
+          {
+            text: "Observe the appropriate design style for your assigned page:",
+            sub: [
+              { text: "News pages should be as formal, clean, and simple as possible." },
+              { text: "Culture, Features, MM, and Grafx pages may be as creative as you want, provided that readability remains the top priority." },
+              { text: "Standalone illustration pages should follow the separate instructions under Section IV." },
+            ],
+          },
         ],
       },
     ],
@@ -106,9 +115,13 @@ export const GUIDELINE_SECTIONS: GuidelineSection[] = [
       {
         heading: "B. Understanding the Selection Tools",
         steps: [
-          { text: "InDesign has two selection tools that serve different purposes:" },
-          { text: "Selection Tool (black arrow): Use this to select, move, resize, and adjust the image frame. You can also reposition the image and crop it within its frame. The selected frame's border usually appears in the color assigned to its layer, commonly blue." },
-          { text: "Direct Selection Tool (white arrow): Use this to select and adjust the actual image inside its frame. You can reposition, resize, and crop the image within the existing frame. The image itself and its frame controls become visible when selected." },
+          {
+            text: "InDesign has two selection tools that serve different purposes:",
+            sub: [
+              { text: "Selection Tool (black arrow): Use this to select, move, resize, and adjust the image frame. You can also reposition the image and crop it within its frame. The selected frame's border usually appears in the color assigned to its layer, commonly blue." },
+              { text: "Direct Selection Tool (white arrow): Use this to select and adjust the actual image inside its frame. You can reposition, resize, and crop the image within the existing frame. The image itself and its frame controls become visible when selected." },
+            ],
+          },
           { text: "Remember: The Selection Tool adjusts the frame, while the Direct Selection Tool adjusts the image inside that frame." },
         ],
       },
@@ -215,18 +228,37 @@ export const GUIDELINE_SECTIONS: GuidelineSection[] = [
           { text: "Save your InDesign document (.indd) inside this folder. Press Ctrl + S regularly to save your progress, especially after major changes." },
           { text: "Save a separate copy of the document in InDesign Markup Language (.idml) format. This allows compatibility with other InDesign versions." },
           { text: "Export your completed design as a PDF." },
-          { text: "Make sure the PDF is exported in color and follows its designated page format: Single page – Export as one page. Spread – Export as a spread." },
+          {
+            text: "Make sure the PDF is exported in color and follows its designated page format:",
+            sub: [
+              { text: "Single page – Export as one page." },
+              { text: "Spread – Export as a spread." },
+            ],
+          },
           { text: "Before exporting, use the PDF export preset designated by the publication. Do not change the document's color settings or export settings without consulting the layout editor." },
           { text: "If the design requires bleed, make sure the document's existing bleed settings are followed. Do not change the bleed settings unless instructed." },
           { text: "After exporting, open the PDF and inspect the entire page. Check for missing images, incorrect colors, unexpected white spaces, cut-off text, and other formatting changes. Never assume that the exported PDF is correct simply because the InDesign file looks correct." },
-          { text: "Your completed folder must contain the following three main files: INDD – Editable InDesign document; IDML – InDesign-compatible document copy; PDF – Final exported page design." },
+          {
+            text: "Your completed folder must contain the following three main files:",
+            sub: [
+              { text: "INDD – Editable InDesign document." },
+              { text: "IDML – InDesign-compatible document copy." },
+              { text: "PDF – Final exported page design." },
+            ],
+          },
         ],
       },
       {
         heading: "B. Organizing fonts and linked files",
         steps: [
           { text: "Make sure all fonts and linked files used in your document are included in the completed page folder." },
-          { text: "Create the following two subfolders inside your page folder: Document fonts – Contains the fonts used in your InDesign document, subject to font licensing restrictions. Links – Contains all linked images, illustrations, photographs, and other graphics used in the design." },
+          {
+            text: "Create the following two subfolders inside your page folder:",
+            sub: [
+              { text: "Document fonts – Contains the fonts used in your InDesign document, subject to font licensing restrictions." },
+              { text: "Links – Contains all linked images, illustrations, photographs, and other graphics used in the design." },
+            ],
+          },
           { text: "You may use File > Package to collect the InDesign document, linked graphics, and eligible fonts into one organized folder. Follow the packaging instructions and verify that the collected files are complete. Some fonts cannot be packaged because of licensing restrictions. If this happens, inform the layout editor instead of attempting to bypass the restrictions." },
           { text: "Double-check that all necessary fonts and linked files are included and properly organized before submission." },
         ],

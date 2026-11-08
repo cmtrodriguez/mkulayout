@@ -8,6 +8,9 @@ interface ZoomedPicture {
   caption: string;
 }
 
+/** Sub-points are lettered so a step that only introduces a list is not counted twice. */
+const LETTERS = ["a.", "b.", "c.", "d.", "e."];
+
 /** One step's picture cell: a zoomable thumbnail, or the slot waiting for one. */
 function PictureCell({
   src, caption, onZoom
@@ -131,13 +134,37 @@ export default function InDesignGuidelines() {
                               </th>
                               <td className="px-2 sm:px-3 py-2.5 text-[11px] sm:text-xs leading-relaxed text-neutral-700 dark:text-neutral-200">
                                 {step.text}
+                                {(step.sub?.length || 0) > 0 && (
+                                  <ul className="mt-1.5 space-y-1">
+                                    {step.sub?.map((child, childIndex) => (
+                                      <li key={childIndex} className="flex gap-1.5">
+                                        <span className="text-[10px] sm:text-[11px] font-black text-neutral-400 dark:text-neutral-500 tabular-nums shrink-0">
+                                          {LETTERS[childIndex] || `${childIndex + 1}.`}
+                                        </span>
+                                        <span>{child.text}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
                               </td>
                               <td className="px-2 sm:px-3 py-2.5 border-l border-neutral-100 dark:border-neutral-800">
-                                <PictureCell
-                                  src={step.image}
-                                  caption={`${section.title} — step ${stepNumber}`}
-                                  onZoom={setZoomed}
-                                />
+                                <div className="space-y-1.5">
+                                  <PictureCell
+                                    src={step.image}
+                                    caption={`${section.title} — step ${stepNumber}`}
+                                    onZoom={setZoomed}
+                                  />
+                                  {step.sub
+                                    ?.filter((child) => child.image)
+                                    .map((child, childIndex) => (
+                                      <PictureCell
+                                        key={childIndex}
+                                        src={child.image}
+                                        caption={`${section.title} — step ${stepNumber}${LETTERS[childIndex] || ""}`}
+                                        onZoom={setZoomed}
+                                      />
+                                    ))}
+                                </div>
                               </td>
                             </tr>
                           );
