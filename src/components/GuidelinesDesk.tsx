@@ -15,7 +15,7 @@ interface FooterLink {
 
 export interface GuidelinesDeskProps {
   title: string;
-  blurb: string;
+  blurb?: string;
   icon: LucideIcon;
   sections: GuidelineSection[];
   /** Set false for a desk whose screenshots do not exist yet, e.g. online pubs. */
@@ -89,9 +89,11 @@ export default function GuidelinesDesk({
             <h2 className="font-sans font-black text-sm sm:text-base text-stone-900 dark:text-neutral-100 tracking-tight">
               {title}
             </h2>
-            <p className="text-[10px] sm:text-[11px] text-stone-500 dark:text-neutral-400 font-medium">
-              {blurb}
-            </p>
+            {blurb && (
+              <p className="text-[10px] sm:text-[11px] text-stone-500 dark:text-neutral-400 font-medium">
+                {blurb}
+              </p>
+            )}
           </div>
         </div>
         {sections.length > 1 && (

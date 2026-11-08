@@ -2391,7 +2391,6 @@ export default function App() {
             {activeTab === "indesign-guidelines" && (
               <GuidelinesDesk
                 title="MKule InDesign Guidelines"
-                blurb="Adobe InDesign step-by-step guide for every assigned issue page, from the template to the final upload."
                 icon={Monitor}
                 sections={GUIDELINE_SECTIONS}
                 footerLink={{ label: "MKule Issue Template in Drive", href: ISSUE_TEMPLATE_LINK }}
@@ -2401,7 +2400,6 @@ export default function App() {
             {activeTab === "online-layout-guidelines" && (
               <GuidelinesDesk
                 title="Online Layout Guidelines"
-                blurb="Standards for every assigned online pub, from reading the artx to the credits on the final graphic."
                 icon={Globe}
                 sections={ONLINE_LAYOUT_SECTIONS}
                 showPictures={false}
