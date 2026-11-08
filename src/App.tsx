@@ -20,6 +20,7 @@ import ProfileSettings from "./components/ProfileSettings";
 import { LayoutStaffDashboard, EicDashboard } from "./components/RoleDashboards";
 import { CanvaDirectory } from "./components/CanvaDirectory";
 import IssueAssessment from "./components/IssueAssessment";
+import InDesignGuidelines from "./components/InDesignGuidelines";
 import { OFFICIAL_MEMBERS_MAP, getPreferredFirstName, resolveLayoutAssignee, resolveMemberEmail, getEditorDeputyEmails } from "./lib/memberUtils";
 import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
@@ -1449,7 +1450,10 @@ export default function App() {
       || userRole === "Layout Probi"
       || userRole === "Layout Staff Member";
     return isLayoutMember
-      ? [{ id: "issue-assessment", label: "Issue Assessment", icon: BarChart3 }]
+      ? [
+        { id: "issue-assessment", label: "Issue Assessment", icon: BarChart3 },
+        { id: "indesign-guidelines", label: "MKule InDesign Guidelines", icon: BookOpen },
+      ]
       : [];
   };
 
@@ -2380,6 +2384,8 @@ export default function App() {
                 onReply={handleIssueAssessmentReply}
               />
             )}
+
+            {activeTab === "indesign-guidelines" && <InDesignGuidelines />}
 
             {activeTab === "shortcuts" && (
               <QuickAccessHub
