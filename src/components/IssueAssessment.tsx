@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Star, X, Loader2, AlertCircle, ExternalLink, BarChart3, Users, ListPlus, CornerDownRight, Trash2, Check
+  Star, X, Loader2, AlertCircle, ExternalLink, BarChart3, Users, ListPlus, CornerDownRight, Trash2, Check, RefreshCw
 } from "lucide-react";
 import {
   ASSESSMENT_QUESTIONS, AssessmentReply, IssueAssessmentEntry, IssueAssessments, TeamMember
 } from "../types";
 import { ISSUES } from "../lib/issues";
-import { getIssuePageImage, getIssuePageSpans, pageSpanLabel, IssuePageSpan } from "../lib/issuePages";
+import { getIssuePageImage, getIssuePageSpans, pageSpanLabel, IssuePageSpan, onIssueDownloadProgress, formatIssueBytes } from "../lib/issuePages";
 import { getPreferredFirstName } from "../lib/memberUtils";
 
 interface IssueAssessmentProps {
@@ -82,11 +82,13 @@ function PagePicture({
   const holder = useRef<HTMLDivElement>(null);
   const [url, setUrl] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     const node = holder.current;
     if (!node) return;
+    setError("");
 
     const draw = () => {
       getIssuePageImage(issueKey, page, width)
@@ -102,7 +104,7 @@ function PagePicture({
     }, { rootMargin: "300px" });
     observer.observe(node);
     return () => { observer.disconnect(); cancelled = true; };
-  }, [issueKey, page, width]);
+  }, [issueKey, page, width, attempt]);
 
   return (
     <div ref={holder} className="relative w-[64px] sm:w-[86px] shrink-0">
@@ -121,7 +123,15 @@ function PagePicture({
           <span className="w-full h-full flex items-center justify-center text-neutral-400"><Loader2 className="w-4 h-4 animate-spin" /></span>
         )}
       </button>
-      {error && <p className="mt-1 text-[9px] text-rose-600 dark:text-rose-400 leading-tight">{error}</p>}
+      {error && (
+        <button
+          type="button"
+          onClick={() => setAttempt((current) => current + 1)}
+          className="mt-1 text-[9px] font-bold text-rose-600 dark:text-rose-400 leading-tight text-left cursor-pointer"
+        >
+          {error} Retry
+        </button>
+      )}
     </div>
   );
 }
@@ -229,6 +239,8 @@ export default function IssueAssessment({
   const [activeIssue, setActiveIssue] = useState(ISSUES[0].key);
   const [spans, setSpans] = useState<IssuePageSpan[] | null>(null);
   const [loadError, setLoadError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [fullscreen, setFullscreen] = useState<{ span: IssuePageSpan; url: string } | null>(null);
   const overlay = useRef<HTMLDivElement>(null);
 
@@ -258,13 +270,18 @@ export default function IssueAssessment({
     let cancelled = false;
     setSpans(null);
     setLoadError("");
+    setProgress(null);
     setFullscreen(null);
     setReplyingTo(null);
     getIssuePageSpans(activeIssue)
       .then((list) => { if (!cancelled) setSpans(list); })
       .catch((err) => { if (!cancelled) setLoadError(err?.message || "The issue pages could not be loaded."); });
     return () => { cancelled = true; };
-  }, [activeIssue]);
+  }, [activeIssue, reloadKey]);
+
+  useEffect(() => onIssueDownloadProgress((update) => {
+    if (update.issueKey === activeIssue) setProgress({ loaded: update.loaded, total: update.total });
+  }), [activeIssue]);
 
   useEffect(() => {
     if (!fullscreen) return;
@@ -408,14 +425,23 @@ export default function IssueAssessment({
           <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
           <div className="min-w-0">
             <p className="text-[11px] sm:text-xs font-bold text-rose-700 dark:text-rose-300">{loadError}</p>
-            <a
-              href={issue.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-rose-700 dark:text-rose-300 underline cursor-pointer"
-            >
-              Open issue {issue.label} in Drive <ExternalLink className="w-3 h-3" />
-            </a>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <button
+                type="button"
+                onClick={() => setReloadKey((current) => current + 1)}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold cursor-pointer"
+              >
+                <RefreshCw className="w-3 h-3" /> Retry download
+              </button>
+              <a
+                href={issue.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 dark:text-rose-300 underline cursor-pointer"
+              >
+                Open issue {issue.label} in Drive <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           </div>
         </div>
       )}
@@ -426,8 +452,15 @@ export default function IssueAssessment({
           <div className="px-6 py-14 flex flex-col items-center gap-2 text-center">
             <Loader2 className="w-6 h-6 animate-spin text-brand-maroon" />
             <p className="text-xs font-bold text-neutral-600 dark:text-neutral-300">Loading issue {issue.label}</p>
-            <p className="text-[10px] text-neutral-400 dark:text-neutral-500">
-              The published PDF is downloaded once, then every page is drawn from it.
+            <p className="text-[10px] text-neutral-500 dark:text-neutral-400 font-semibold">
+              {progress
+                ? progress.total
+                  ? `${formatIssueBytes(progress.loaded)} of ${formatIssueBytes(progress.total)} (${Math.min(100, Math.round((progress.loaded / progress.total) * 100))}%)`
+                  : `${formatIssueBytes(progress.loaded)} downloaded`
+                : "Starting the download…"}
+            </p>
+            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 max-w-[16rem]">
+              The published PDF is downloaded once and kept on this device, so the next visit opens instantly.
             </p>
           </div>
         ) : (
