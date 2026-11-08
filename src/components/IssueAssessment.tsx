@@ -396,11 +396,6 @@ export default function IssueAssessment({
                     {question.count ? question.score.toFixed(2) : "Not rated yet"}
                     {question.count > 0 && <span className="text-[10px] font-semibold text-neutral-400 ml-1">/ 5</span>}
                   </span>
-                  {question.count > 0 && (
-                    <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400">
-                      {question.count} rating{question.count === 1 ? "" : "s"}
-                    </span>
-                  )}
                 </div>
               </div>
             ))}
