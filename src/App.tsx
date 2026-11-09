@@ -2393,6 +2393,7 @@ export default function App() {
                 title="MKule InDesign Guidelines"
                 icon={Monitor}
                 sections={GUIDELINE_SECTIONS}
+                showPictures={false}
                 footerLink={{ label: "MKule Issue Template in Drive", href: ISSUE_TEMPLATE_LINK }}
               />
             )}
