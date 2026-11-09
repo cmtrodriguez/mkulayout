@@ -1,5 +1,7 @@
 -- MKule News — run this in the News Supabase project only.
--- Dashboard → SQL Editor → New query → paste → Run. Then refresh the API cache (last line).
+-- Dashboard → SQL Editor → New query → paste → Run. Safe to run twice.
+-- The notify near the end reloads the API cache; the last three queries only report
+-- what is already there, they change nothing.
 --
 -- Nothing here belongs to MKuLayout: the layout tool keeps its own project, its own
 -- tables and its own keys. Both tables below are reachable only by a signed-in user, and
@@ -98,7 +100,22 @@ end $$;
 -- automatic reload.
 notify pgrst, 'reload schema';
 
--- Check the work landed:
-select table_name, row_level_security_enabled
+-- Check the work landed. These are the raw catalog columns (tablename, rowsecurity) —
+-- the names the dashboard's own table list shows are different and do not exist here.
+select tablename, rowsecurity
 from pg_tables
-where schemaname = 'public' and table_name in ('news_board', 'news_assessments');
+where schemaname = 'public'
+  and tablename in ('news_board', 'news_assessments')
+order by tablename;
+
+-- Expect six policies, all with roles = {authenticated}.
+select tablename, policyname, cmd
+from pg_policies
+where schemaname = 'public'
+order by tablename, policyname;
+
+-- Expect news_board in the list.
+select tablename
+from pg_publication_tables
+where pubname = 'supabase_realtime' and schemaname = 'public'
+  and tablename in ('news_board', 'news_assessments');
