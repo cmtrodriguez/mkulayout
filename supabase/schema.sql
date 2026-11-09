@@ -1,7 +1,9 @@
 -- MKule News — run this in the News Supabase project only.
 -- Dashboard → SQL Editor → New query → paste → Run. Safe to run twice.
--- The notify near the end reloads the API cache; the last three queries only report
--- what is already there, they change nothing.
+--
+-- This file deliberately contains no plain SELECT of app data: the editor submits the
+-- whole paste as one query, so a single bad statement rolls back everything above it.
+-- The read-only checks are at the bottom, meant for a SEPARATE query.
 --
 -- Nothing here belongs to MKuLayout: the layout tool keeps its own project, its own
 -- tables and its own keys. Both tables below are reachable only by a signed-in user, and
@@ -86,22 +88,31 @@ create policy news_assessments_update on public.news_assessments
 -- ---------------------------------------------------------------------------
 do $$
 begin
-  if not exists (
-    select 1 from pg_publication_tables
-    where pubname = 'supabase_realtime'
-      and schemaname = 'public'
-      and tablename = 'news_board'
-  ) then
+  -- Guarded on the publication existing: a project without one would otherwise abort
+  -- the whole paste after the tables were already built.
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (
+       select 1 from pg_publication_tables
+       where pubname = 'supabase_realtime'
+         and schemaname = 'public'
+         and tablename = 'news_board'
+     ) then
     execute 'alter publication supabase_realtime add table public.news_board';
   end if;
 end $$;
 
--- PostgREST caches the schema; without this the new tables answer 404 until the next
--- automatic reload.
+-- PostgREST caches the schema; without this the new tables answer PGRST205 until the
+-- next automatic reload.
 notify pgrst, 'reload schema';
 
--- Check the work landed. These are the raw catalog columns (tablename, rowsecurity) —
--- the names the dashboard's own table list shows are different and do not exist here.
+-- ===========================================================================
+-- STOP. Everything above is the migration and it is now applied.
+-- Paste the block below into a SEPARATE query — it only reports, and keeping it
+-- apart means a typo in a report cannot roll the migration back.
+-- ===========================================================================
+
+-- Expect two rows, both rowsecurity = true. (pg_tables uses tablename/rowsecurity;
+-- the friendlier names the dashboard shows are not real columns.)
 select tablename, rowsecurity
 from pg_tables
 where schemaname = 'public'
@@ -109,7 +120,7 @@ where schemaname = 'public'
 order by tablename;
 
 -- Expect six policies, all with roles = {authenticated}.
-select tablename, policyname, cmd
+select tablename, policyname, cmd, roles
 from pg_policies
 where schemaname = 'public'
 order by tablename, policyname;

@@ -43,7 +43,10 @@ person who filled it in and the person it is about.
    URLs*.
 3. **Dashboard → SQL Editor**: run [`supabase/schema.sql`](supabase/schema.sql). It creates
    `news_board` and `news_assessments`, turns on row-level security for both, adds the
-   realtime publication and reloads the API cache.
+   realtime publication and reloads the API cache. The migration is the top block; the
+   checks below the `STOP` line only report, and they belong in a **separate** query,
+   because the editor submits one paste as a single transaction and a bad statement would
+   roll the migration back.
 4. Copy `.env.example` to `.env.local` and fill in the project URL and the **publishable**
    key. A secret/service key never belongs in that file: every `VITE_` variable is compiled
    into the public bundle, and only RLS protects the rows.
