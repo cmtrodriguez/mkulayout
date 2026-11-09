@@ -25,12 +25,16 @@ on conflict (id) do nothing;
 
 alter table public.news_board enable row level security;
 
+-- Dropped before creating so running this file twice is a refresh, not an error.
+drop policy if exists news_board_read on public.news_board;
 create policy news_board_read on public.news_board
   for select to authenticated using (true);
 
+drop policy if exists news_board_insert on public.news_board;
 create policy news_board_insert on public.news_board
   for insert to authenticated with check (true);
 
+drop policy if exists news_board_write on public.news_board;
 create policy news_board_write on public.news_board
   for update to authenticated using (true) with check (true);
 
@@ -55,6 +59,7 @@ create index if not exists news_assessments_subject on public.news_assessments (
 
 alter table public.news_assessments enable row level security;
 
+drop policy if exists news_assessments_read on public.news_assessments;
 create policy news_assessments_read on public.news_assessments
   for select to authenticated
   using (
@@ -63,10 +68,12 @@ create policy news_assessments_read on public.news_assessments
   );
 
 -- Only the rater may file their own sheet; the subject reads it, never rewrites it.
+drop policy if exists news_assessments_insert on public.news_assessments;
 create policy news_assessments_insert on public.news_assessments
   for insert to authenticated
   with check (lower(rater_email) = lower(coalesce(auth.email(), '')));
 
+drop policy if exists news_assessments_update on public.news_assessments;
 create policy news_assessments_update on public.news_assessments
   for update to authenticated
   using (lower(rater_email) = lower(coalesce(auth.email(), '')))
