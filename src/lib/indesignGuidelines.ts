@@ -1,9 +1,10 @@
 // The MKule InDesign guidelines, transcribed from the section's shared document.
 // Kept as data so the desk stays presentational and adding a step is a one-line
 // change. `image` is a URL to a screenshot in public/guidelines/ — for example
-// "/guidelines/first-line-indent.png" — and every step renders a picture slot
-// whether or not that file exists yet. A step that only introduces a list is not
-// numbered twice: its `sub` items are lettered bullets inside the same row.
+// "/guidelines/first-line-left-indent-field.png" — and every step renders a
+// picture slot whether or not that file exists yet. A step that only introduces
+// a list is not numbered twice: its `sub` items are lettered bullets inside the
+// same row.
 export interface GuidelineStep {
   text: string;
   image?: string;
@@ -38,7 +39,7 @@ export const GUIDELINE_SECTIONS: GuidelineSection[] = [
           { text: "Familiarize yourself with the basic InDesign workspace, particularly the Tools panel, Properties panel, Layers panel, and other panels you will frequently use. If you cannot select or edit an element, check whether its layer or object is locked." },
           { text: "Check the page size, orientation, margins, and page arrangement. Do not change the existing document settings unless instructed by the layout editor." },
           { text: "IMPORTANT: Read the entire article assigned to you. Understand its content, structure, and intended message before beginning the layout. This will help you determine the appropriate visual direction and placement of elements." },
-          { text: "Scroll down to the template of your assigned page and begin the layout design process. Make sure all necessary details and credits are properly placed." },
+          { text: "Scroll down to the template of your assigned page and begin the layout design process. Make sure all necessary details and credits are properly placed.", image: "/guidelines/page-template-rulers.png" },
           {
             text: "Observe the appropriate design style for your assigned page:",
             sub: [
@@ -58,36 +59,36 @@ export const GUIDELINE_SECTIONS: GuidelineSection[] = [
       {
         heading: "A. Inserting the article text",
         steps: [
-          { text: "From the text template, click the article textbox and highlight all the existing black placeholder text before pressing Backspace to delete it. Repeat the process until only the red placeholder text remains. Make sure not to accidentally delete other template elements." },
+          { text: "From the text template, click the article textbox and highlight all the existing black placeholder text before pressing Backspace to delete it. Repeat the process until only the red placeholder text remains. Make sure not to accidentally delete other template elements.", image: "/guidelines/placeholder-text-highlighted.png" },
           { text: "Access the Google Docs link of your assigned article (artx). Under the 4EIC tab, copy the entire article." },
-          { text: "Return to the InDesign template file, click inside the article textbox, and paste the entire article. Make sure that no part of the article is missing." },
-          { text: "Locate the red placeholder text. Replace it with the first three to four words of the article, making sure that these words occupy only the first line and do not extend to the second line." },
+          { text: "Return to the InDesign template file, click inside the article textbox, and paste the entire article. Make sure that no part of the article is missing.", image: "/guidelines/article-pasted-in-columns.png" },
+          { text: "Locate the red placeholder text. Replace it with the first three to four words of the article, making sure that these words occupy only the first line and do not extend to the second line.", image: "/guidelines/red-placeholder-first-line.png" },
           { text: "Press Space after the inserted words, then delete the red placeholder text. This preserves the intended starting position of the article." },
         ],
       },
       {
         heading: "B. Formatting paragraph indentations",
         steps: [
-          { text: "Go to the beginning of the second paragraph and press Backspace until the unnecessary indentation and blank line separating it from the first paragraph are removed. Be careful not to delete any actual article content." },
-          { text: "Open the Properties panel (usually located on the right side of the InDesign workspace). Scroll down until you reach the Paragraph section." },
-          { text: "Click anywhere inside the second paragraph. Under First Line Left Indent, enter 0.1875 in." },
-          { text: "Repeat this process for all succeeding paragraphs. Make sure that every paragraph has the correct first-line indentation and that all indentations are consistent throughout the article." },
+          { text: "Go to the beginning of the second paragraph and press Backspace until the unnecessary indentation and blank line separating it from the first paragraph are removed. Be careful not to delete any actual article content.", image: "/guidelines/second-paragraph-beginning.png" },
+          { text: "Open the Properties panel (usually located on the right side of the InDesign workspace). Scroll down until you reach the Paragraph section.", image: "/guidelines/properties-paragraph-panel.png" },
+          { text: "Click anywhere inside the second paragraph. Under First Line Left Indent, enter 0.1875 in.", image: "/guidelines/first-line-left-indent-field.png" },
+          { text: "Repeat this process for all succeeding paragraphs. Make sure that every paragraph has the correct first-line indentation and that all indentations are consistent throughout the article.", image: "/guidelines/paragraph-indent-repeat.png" },
         ],
       },
       {
         heading: "C. Adjusting the article textbox",
         steps: [
-          { text: "Check the overall spacing of the article. If there is excessive white space within the page, adjust the height of the article textbox vertically to make better use of the available space. Adjust the textbox frame itself, not the actual text or its proportions." },
+          { text: "Check the overall spacing of the article. If there is excessive white space within the page, adjust the height of the article textbox vertically to make better use of the available space. Adjust the textbox frame itself, not the actual text or its proportions.", image: "/guidelines/article-textbox-frame.png" },
           { text: "Make sure that when the textboxes are adjusted, each line remains properly aligned with the rest of the article and the corresponding textboxes on the other pages." },
-          { text: "To check alignment, go to View > Show Rulers. Click and drag from the ruler area toward the article to create a guide. Use the guide to check whether the article lines are properly aligned with the template." },
-          { text: "Once you are done checking, right-click on the gray blank space outside the page while making sure you are not selecting any element. Go to Grids and Guides > Hide Guides to hide the template line guides." },
+          { text: "To check alignment, go to View > Show Rulers. Click and drag from the ruler area toward the article to create a guide. Use the guide to check whether the article lines are properly aligned with the template.", image: "/guidelines/view-show-rulers.png" },
+          { text: "Once you are done checking, right-click on the gray blank space outside the page while making sure you are not selecting any element. Go to Grids and Guides > Hide Guides to hide the template line guides.", image: "/guidelines/hide-guides-menu.png" },
           { text: "Check the bottom-right corner of the article textbox for a red square containing a plus sign (+). This indicates overset text, meaning some of the article is not being displayed. If this appears, enlarge the textbox, adjust the layout, or reposition design elements to accommodate the remaining text. Never submit a page with missing or cut-off article content. If the article still does not fit, consult the layout editor before making major adjustments to the font size or spacing." },
         ],
       },
       {
         heading: "D. Adding the title, subtitle, and byline",
         steps: [
-          { text: "You may position the title, subtitle, and byline at either the top or bottom part of the page, depending on the layout." },
+          { text: "You may position the title, subtitle, and byline at either the top or bottom part of the page, depending on the layout.", image: "/guidelines/title-byline-at-bottom.png" },
           { text: "Make sure the article textbox remains aligned with the corresponding article textboxes on the other pages. Leave sufficient spacing between the title, byline, and article text. Avoid placing these elements too close together." },
           { text: "Customize the title design according to the page theme. However, maintain consistent spacing between the title and byline even when repositioning them. Do not change the original font of the byline." },
           { text: "Maintain consistency in the article's font family, font size, leading, and paragraph formatting. Do not randomly change the article's font or font size just to accommodate the layout." },
@@ -105,7 +106,7 @@ export const GUIDELINE_SECTIONS: GuidelineSection[] = [
       {
         heading: "A. Placing images",
         steps: [
-          { text: "Go to File > Place. Select the image or graphic you want to insert, then click Open. You may also double-click the selected file." },
+          { text: "Go to File > Place. Select the image or graphic you want to insert, then click Open. You may also double-click the selected file.", image: "/guidelines/file-place-menu.png" },
           { text: "Once your cursor is holding the image, click on an empty area of the page to place it. Avoid clicking directly on existing text or other elements." },
           { text: "Always use the original, highest-quality image available from the designated Google Drive folder. Avoid screenshots, compressed images, or low-resolution copies whenever a higher-quality version is available." },
           { text: "Do not stretch images disproportionately. Always maintain their original aspect ratio. If an image appears pixelated or blurry, replace it with a higher-resolution version instead of enlarging it further." },
@@ -117,6 +118,7 @@ export const GUIDELINE_SECTIONS: GuidelineSection[] = [
         steps: [
           {
             text: "InDesign has two selection tools that serve different purposes:",
+            image: "/guidelines/selection-tools.png",
             sub: [
               { text: "Selection Tool (black arrow): Use this to select, move, resize, and adjust the image frame. You can also reposition the image and crop it within its frame. The selected frame's border usually appears in the color assigned to its layer, commonly blue." },
               { text: "Direct Selection Tool (white arrow): Use this to select and adjust the actual image inside its frame. You can reposition, resize, and crop the image within the existing frame. The image itself and its frame controls become visible when selected." },
@@ -130,10 +132,10 @@ export const GUIDELINE_SECTIONS: GuidelineSection[] = [
         steps: [
           { text: "To activate Text Wrap, go to Edit > Preferences > Composition and check Text Wrap Only Affects Text Beneath. This ensures that Text Wrap only affects text positioned beneath the selected object." },
           { text: "Make sure your image has a transparent background whenever possible. If you have both a version with a background and a version without one, you may layer and align them accordingly to achieve the desired effect." },
-          { text: "Go to Window > Text Wrap to open the Text Wrap panel. Select your image, then click Wrap Around Object Shape." },
+          { text: "Go to Window > Text Wrap to open the Text Wrap panel. Select your image, then click Wrap Around Object Shape.", image: "/guidelines/window-text-wrap-menu.png" },
           { text: "Do not panic if the whole article temporarily disappears. The text has not been deleted; it is simply being pushed away by the Text Wrap." },
-          { text: "Under Contour Options, select Alpha Channel. Adjust the Top Offset to your desired spacing, usually 0.4375 in." },
-          { text: "To access the article textbox again, use the Selection Tool to adjust the image frame and crop out unnecessary blank areas around the image." },
+          { text: "Under Contour Options, select Alpha Channel. Adjust the Top Offset to your desired spacing, usually 0.4375 in.", image: "/guidelines/text-wrap-contour-options.png" },
+          { text: "To access the article textbox again, use the Selection Tool to adjust the image frame and crop out unnecessary blank areas around the image.", image: "/guidelines/image-frame-crop-wrap.png" },
           { text: "If the full article is cut off or does not fit properly because of the spacing, go to Window > Type & Tables > Character and adjust the Tracking. The usual adjustment range is between -15 and -40. Avoid excessive tracking adjustments, as the text must remain readable. Consult the layout editor if the article still does not fit." },
           { text: "To adjust the spacing path created by Text Wrap, select the Direct Selection Tool. This will reveal the image's text-wrap boundary and its anchor points. Adjust the points carefully until the article text is properly displayed and follows the intended shape of the image." },
         ],
