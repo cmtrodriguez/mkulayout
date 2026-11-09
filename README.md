@@ -4,8 +4,9 @@ Task organizer for the MKule **News** section: pitches, artx cards, the editing 
 (1stSE → 4AE → 4EIC), the handoff to Layout, shortform records, workload and assessments.
 
 It is a sibling of MKuLayout, not a part of it. This code lives on the `MKule-News` branch,
-has its own build, its own storage and no writes to MKuLayout's database. The only link
-between the two is the URL a published article is handed off to (`VITE_MKULAYOUT_URL`).
+has its own build, and talks to the News section's **own Supabase project** — no table, key
+or query path is shared with MKuLayout. The only link between the two is the URL a published
+article is handed off to (`VITE_MKULAYOUT_URL`).
 
 ## Run
 
@@ -19,21 +20,44 @@ npm run build    # outputs to dist/
 
 ## Where the data lives
 
-The whole board is one JSON document in `localStorage` under `mkule-news:state:v1`, with
-`mkule-news:session` holding the signed-in email and `mkule-news:tab` the last desk open.
-A `storage` listener keeps two open tabs in sync. Nothing leaves the browser, so clearing
-site data resets the section — Settings has a "Reset local board" button for the same thing.
+The board is shared: one JSON document in the Supabase table `news_board`, written with a
+compare-and-set on its `rev` column. A mutation applies locally at once and is queued; if
+the cloud rejects it because someone else moved the board first, the desk re-reads their
+document, replays the queued edits on top of it, and writes again. Realtime updates from
+other members arrive without a reload.
 
-## Google Sign-In
+`localStorage["mkule-news:state:v1"]` stays as the offline cache, and it is the only storage
+in use when the env vars are absent — a clone with no backend behaves exactly as it did
+before, in one browser.
 
-1. Google Cloud Console → APIs & Services → Credentials → **Create credentials → OAuth client ID**,
-   type **Web application**.
-2. Add every origin the site is served from to *Authorized JavaScript origins*:
-   `http://localhost:5173` for local runs and the deployed `https://…` origin.
-3. Put the client ID in `.env` (copy `.env.example`) as `VITE_GOOGLE_CLIENT_ID`.
+Assessments are the exception: they live in `news_assessments`, one row per sheet, and are
+deliberately never part of the shared document. Row-level security hands a sheet only to the
+person who filled it in and the person it is about.
 
-A Google account only gets in if its email matches a roster entry. The seeded roster uses
-placeholder addresses:
+## Supabase setup
+
+1. **Dashboard → Authentication → Providers → Google**: enable it and paste a Google OAuth
+   client ID and secret (create them in Google Cloud Console, type *Web application*).
+2. **Dashboard → Authentication → URL Configuration**: set *Site URL* to where the desk is
+   served (`http://localhost:5173` while developing) and add the same value to *Redirect
+   URLs*.
+3. **Dashboard → SQL Editor**: run [`supabase/schema.sql`](supabase/schema.sql). It creates
+   `news_board` and `news_assessments`, turns on row-level security for both, adds the
+   realtime publication and reloads the API cache.
+4. Copy `.env.example` to `.env.local` and fill in the project URL and the **publishable**
+   key. A secret/service key never belongs in that file: every `VITE_` variable is compiled
+   into the public bundle, and only RLS protects the rows.
+
+### Sign-in
+
+There is no password path. The desk shows **Continue with Google**, Supabase issues the
+session, and every read and write this tab makes afterwards carries its access token — which
+is what the policies in `schema.sql` judge.
+
+A Google address only opens a desk if it matches a roster entry, and the roster lives inside
+the shared board itself. That is a chicken-and-egg problem only once: while no roster address
+is confirmed, the first member to sign in takes the Editor-In-Chief seat and maps everybody
+else under **Settings → Section roster**. The seeded addresses are patterns, not people:
 
 | Name | Role | Placeholder email |
 | --- | --- | --- |
@@ -43,11 +67,16 @@ placeholder addresses:
 | Anicka Ponce | News Probi | `anicka.ponce@up.edu.ph` |
 | Jomig Dave | News Staffer | `jomig.dave@up.edu.ph` |
 
-Replace each with the member's real Gmail under **Settings → Section roster** (leads only).
-An unrecognised address is refused with the email named on screen.
+With no Supabase env configured **and** a localhost origin, the login screen falls back to
+that roster list so the desks can still be exercised. A configured or deployed build never
+gets that path.
 
-With no client ID configured **and** a localhost origin, the login screen falls back to the
-roster list so the desks can be exercised. Deployed origins never get that path.
+### Deploy
+
+Point a **separate** Vercel project at this repo with Root Directory `mkule-news` and
+Production Branch `MKule-News`. MKuLayout keeps its own project on `main`; both settings are
+per-project, so neither build sees the other. Give that project the same `VITE_SUPABASE_*`
+variables, and add its public origin to Supabase's Site URL and Redirect URLs.
 
 ## Shortform → Google Sheets
 

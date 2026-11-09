@@ -1,14 +1,13 @@
 // Settings: the roster's Google addresses, the Layout-side contacts News hands work to,
 // and the template URLs. Leads only.
 //
-// Sign-in matches on the email inside the Google credential, so an account stays
-// unreachable until its real address is entered here — the seeded addresses are patterns,
-// not people.
+// Sign-in matches on the email in the Supabase session, so an account stays unreachable
+// until its real address is entered here — the seeded addresses are patterns, not people.
 import { useState } from "react";
 import { AlertTriangle, Link2, Plus, RotateCcw, ShieldCheck, Users } from "lucide-react";
 import { Account, NEWS_EMAIL_DOMAIN, NewsRole } from "../types";
 import { NewsState, mutate, resetDesk } from "../lib/store";
-import { CLIENT_ID } from "../lib/auth";
+import { CLOUD_ENABLED } from "../lib/supabase";
 import { MKULAYOUT_URL, SHEETS_URL, isEditorial } from "../lib/workflow";
 import { Button, Desk, Empty, Field, INPUT, LABEL, Panel, Pill } from "./ui";
 
@@ -172,8 +171,8 @@ export default function SettingsDesk({ viewer, state }: { viewer: Account; state
       <Panel title="This build">
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
           <div className="flex items-center justify-between gap-2 rounded-xl border border-gray-100 dark:border-neutral-800 p-2.5">
-            <dt className="text-gray-500 dark:text-neutral-400">Google Sign-In</dt>
-            <dd>{CLIENT_ID ? <Pill tone="green">Client configured</Pill> : <Pill tone="amber">No VITE_GOOGLE_CLIENT_ID</Pill>}</dd>
+            <dt className="text-gray-500 dark:text-neutral-400">Shared board</dt>
+            <dd>{CLOUD_ENABLED ? <Pill tone="green">Supabase connected</Pill> : <Pill tone="amber">No VITE_SUPABASE_URL</Pill>}</dd>
           </div>
           <div className="flex items-center justify-between gap-2 rounded-xl border border-gray-100 dark:border-neutral-800 p-2.5">
             <dt className="text-gray-500 dark:text-neutral-400">Shortform sheet sync</dt>
@@ -185,18 +184,21 @@ export default function SettingsDesk({ viewer, state }: { viewer: Account; state
           </div>
         </dl>
         <p className="text-[10px] text-gray-400 dark:text-neutral-500">
-          MKule News keeps its board in this browser only — it does not read or write the MKuLayout database. Resetting
-          clears every article, pitch and shortform row recorded here.
+          {CLOUD_ENABLED
+            ? "The board is shared with the section through the News Supabase project — never MKuLayout's database. Resetting discards this browser's unsent edits and reloads what everyone else sees."
+            : "This build keeps its board in this browser only, so nothing here is shared with the rest of the section. Resetting clears every article, pitch and shortform row recorded on this machine."}
         </p>
         <Button
           tone="warn"
-          onClick={() => {
-            if (!window.confirm("Clear this browser's MKule News board?")) return;
-            resetDesk();
+          onClick={async () => {
+            if (!window.confirm(CLOUD_ENABLED
+              ? "Discard this browser's unsent edits and reload the shared board?"
+              : "Clear this browser's MKule News board?")) return;
+            await resetDesk();
             window.location.reload();
           }}
         >
-          <RotateCcw className="w-3.5 h-3.5" /> Reset local board
+          <RotateCcw className="w-3.5 h-3.5" /> {CLOUD_ENABLED ? "Reload shared board" : "Reset local board"}
         </Button>
       </Panel>
     </Desk>

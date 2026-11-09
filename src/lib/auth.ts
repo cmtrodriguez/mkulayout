@@ -1,116 +1,40 @@
-// Google Sign-In via Google Identity Services, plus the session record it leaves behind.
+// Who is at the desk, and how they got there.
 //
-// The credential is read client-side (GIS hands back an ID token; we decode the payload
-// for name/email/picture). That is enough to decide which desk a member sees, and nothing
-// in this app is trusted beyond that: the state it writes stays in the browser until the
-// desk gets a backend, at which point the same token should be verified server-side
-// against the Google certificates instead of decoded here.
-
+// With a Supabase project configured, Google sign-in runs through Supabase Auth: the
+// provider hands the code back to this origin, Supabase returns the session, and every
+// read and write this tab makes afterwards carries its access token — which is what the
+// row-level security policies in schema.sql judge. The old client-side Google Identity
+// path is gone because a token decoded in the browser proves nothing to a database.
+//
+// With no project configured the desk stays where it started: one localStorage board and,
+// on localhost only, a roster list to sign in as.
 import { useCallback, useEffect, useState } from "react";
 import { SEED_ACCOUNTS } from "../types";
 import { NewsState, accountByEmail } from "./store";
+import { CLOUD_ENABLED, supabase } from "./supabase";
 
-export const CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) || "";
 export const SESSION_KEY = "mkule-news:session";
 
-const GSI_SRC = "https://accounts.google.com/gsi/client";
-
-export interface GoogleProfile {
+export interface DeskSession {
   email: string;
   name: string;
   picture?: string;
+  /** Supabase is still answering the initial session check. */
+  loading: boolean;
+  error: string;
+  /** Starts the Google redirect (cloud) — there is nothing to pick in between. */
+  signIn: () => void;
+  signOut: () => Promise<void>;
+  /** Local demo only: adopt a seeded roster member. */
+  pickLocal: (email: string) => void;
 }
 
-interface GisId {
-  initialize: (options: { client_id: string; callback: (r: { credential: string }) => void; auto_select?: boolean }) => void;
-  renderButton: (el: HTMLElement, options: Record<string, string | number | boolean>) => void;
-}
-
-declare global {
-  interface Window { google?: { accounts?: { id?: GisId } } }
-}
-
-/** A local run with no OAuth client configured still needs to be exercised, so the desk
-    offers the seeded roster as a sign-in list. Deployed origins never get this path. */
+/** A local run with no backend still needs to be exercised, so the desk offers the seeded
+    roster as a sign-in list. A configured or deployed build never gets this path. */
 export function isLocalDemoEnabled(): boolean {
-  if (CLIENT_ID) return false;
+  if (CLOUD_ENABLED) return false;
   if (typeof window === "undefined") return false;
   return ["localhost", "127.0.0.1"].includes(window.location.hostname);
-}
-
-function loadGsiScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined") return reject(new Error("no window"));
-    if (window.google?.accounts?.id) return resolve();
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${GSI_SRC}"]`);
-    const script = existing || document.createElement("script");
-    script.addEventListener("load", () => resolve());
-    script.addEventListener("error", () => reject(new Error("Google Sign-In script did not load.")));
-    if (!existing) {
-      script.src = GSI_SRC;
-      script.async = true;
-      document.head.appendChild(script);
-    }
-  });
-}
-
-/** GIS answers with an ID token whose middle segment is the base64url profile payload. */
-export function decodeCredential(credential: string): GoogleProfile | null {
-  const payload = credential.split(".")[1];
-  if (!payload) return null;
-  try {
-    const json = decodeURIComponent(
-      atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
-        .split("")
-        .map((c) => `%${`00${c.charCodeAt(0).toString(16)}`.slice(-2)}`)
-        .join("")
-    );
-    const claims = JSON.parse(json) as { email?: string; name?: string; picture?: string };
-    if (!claims.email) return null;
-    return { email: claims.email, name: claims.name || claims.email, picture: claims.picture };
-  } catch {
-    return null;
-  }
-}
-
-export function useGoogleSignIn(onSignedIn: (profile: GoogleProfile) => void) {
-  const [error, setError] = useState("");
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (!CLIENT_ID) return;
-    let alive = true;
-    loadGsiScript()
-      .then(() => {
-        if (!alive) return;
-        const id = window.google?.accounts?.id;
-        if (!id) { setError("Google Sign-In is unavailable in this browser."); return; }
-        id.initialize({
-          client_id: CLIENT_ID,
-          callback: (res) => {
-            const profile = decodeCredential(res.credential);
-            if (!profile) { setError("Google returned a credential this desk could not read."); return; }
-            onSignedIn(profile);
-          },
-        });
-        setReady(true);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : "Google Sign-In failed to load."));
-    return () => { alive = false; };
-    // The callback is fixed at mount; re-initialising GIS on every render would drop the
-    // prompt mid-flow.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const renderButton = useCallback((el: HTMLElement | null) => {
-    if (!el || !ready) return;
-    const id = window.google?.accounts?.id;
-    if (!id) return;
-    el.replaceChildren();
-    id.renderButton(el, { theme: "filled_black", size: "large", width: 320, text: "signin_with", shape: "pill" });
-  }, [ready]);
-
-  return { error, ready, renderButton };
 }
 
 export function readSession(): string {
@@ -118,12 +42,66 @@ export function readSession(): string {
   return localStorage.getItem(SESSION_KEY) || "";
 }
 
-export function saveSession(email: string) {
+function saveLocal(email: string) {
   localStorage.setItem(SESSION_KEY, email);
 }
 
 export function clearSession() {
   localStorage.removeItem(SESSION_KEY);
+}
+
+export function useDeskSession(): DeskSession {
+  const [email, setEmail] = useState(CLOUD_ENABLED ? "" : readSession());
+  const [name, setName] = useState("");
+  const [picture, setPicture] = useState<string | undefined>(undefined);
+  const [loading, setLoading] = useState(CLOUD_ENABLED);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!CLOUD_ENABLED) return;
+    const sb = supabase();
+    if (!sb) return;
+    let alive = true;
+
+    const apply = (session: { user: { email?: string; user_metadata?: Record<string, unknown> } | null }) => {
+      if (!alive) return;
+      const u = session?.user;
+      setEmail(u?.email || "");
+      setName((u?.user_metadata?.full_name as string) || (u?.user_metadata?.name as string) || u?.email || "");
+      setPicture((u?.user_metadata?.avatar_url as string) || undefined);
+      setLoading(false);
+    };
+
+    sb.auth.getSession().then(({ data }) => apply(data.session)).catch(() => setLoading(false));
+    const { data: sub } = sb.auth.onAuthStateChange((_event, session) => apply(session as never));
+    return () => { alive = false; sub.subscription.unsubscribe(); };
+  }, []);
+
+  const signIn = useCallback(() => {
+    const sb = supabase();
+    if (!sb) { setError("No Supabase project is configured for this build."); return; }
+    sb.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    }).then(({ error: err }) => {
+      if (err) setError(err.message);
+    });
+  }, []);
+
+  const signOut = useCallback(async () => {
+    const sb = supabase();
+    if (sb) await sb.auth.signOut();
+    clearSession();
+    setEmail("");
+    setName("");
+  }, []);
+
+  const pickLocal = useCallback((next: string) => {
+    saveLocal(next);
+    setEmail(next);
+  }, []);
+
+  return { email, name, picture, loading, error, signIn, signOut, pickLocal };
 }
 
 export function accountForEmail(state: NewsState, email: string) {

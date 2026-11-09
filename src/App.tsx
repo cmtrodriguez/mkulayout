@@ -1,7 +1,7 @@
 // MKule News shell. The sidebar, card and chat language is MKuLayout's own so the two
-// section desks read as one product; what differs is the gate — Google Identity Services
-// instead of the layout app's Supabase session — and the fact that nothing here touches
-// the layout database.
+// section desks read as one product; what differs is the gate — Supabase's Google provider
+// instead of the layout app's own project — and the fact that nothing here touches the
+// layout database.
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell, Columns3, CheckCircle2, FileText, Lightbulb, LogOut, Menu, Moon, MessageSquare,
@@ -9,9 +9,10 @@ import {
 } from "lucide-react";
 import mkuleImg from "./mkule.png";
 import { Account, ArtxTask } from "./types";
-import { NewsState, accountByEmail, mutate, useNews } from "./lib/store";
+import { NewsState, accountByEmail, claimFoundingEditor, connectCloud, mutate, push, setActor, useNews, useSync } from "./lib/store";
 import { ActionKey, applyAction, isEditorial } from "./lib/workflow";
-import { clearSession, readSession, saveSession } from "./lib/auth";
+import { useDeskSession } from "./lib/auth";
+import { CLOUD_ENABLED } from "./lib/supabase";
 import Login from "./components/Login";
 import HomeDesk from "./components/HomeDesk";
 import PitchDesk from "./components/PitchDesk";
@@ -39,17 +40,34 @@ const LEADS_ONLY = (v: Account) => isEditorial(v.role);
 
 export default function App() {
   const state = useNews();
-  const [sessionEmail, setSessionEmail] = useState(readSession());
-  const [unknownEmail, setUnknownEmail] = useState("");
+  const sync = useSync();
+  const session = useDeskSession();
+  const [blockedEmail, setBlockedEmail] = useState("");
   const [dark, setDark] = useState(() => localStorage.getItem(DARK_KEY) === "1");
   const [tab, setTab] = useState(localStorage.getItem(TAB_KEY) || "home");
   const [mobileNav, setMobileNav] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
 
   const viewer = useMemo(
-    () => accountByEmail(state, sessionEmail),
-    [state.accounts, sessionEmail]
+    () => accountByEmail(state, session.email),
+    [state.accounts, session.email]
   );
+
+  // The shared board is only readable once a session exists: row-level security answers
+  // differently to an anonymous tab, so connecting early would cache the wrong document.
+  useEffect(() => {
+    if (!CLOUD_ENABLED || !session.email) return;
+    setActor(session.email);
+    void connectCloud();
+  }, [session.email]);
+
+  useEffect(() => {
+    if (!session.email || viewer) { setBlockedEmail(""); return; }
+    // Nothing on the roster is confirmed yet, which can only mean a section that has not
+    // opened this desk once — so the first real Google address claims the editor's seat.
+    if (claimFoundingEditor(session.email, session.name)) return;
+    setBlockedEmail(session.email);
+  }, [session.email, session.name, viewer]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -61,29 +79,15 @@ export default function App() {
     setMobileNav(false);
   }, [tab]);
 
-  const signOut = () => {
-    clearSession();
-    setSessionEmail("");
-    setUnknownEmail("");
-  };
+  const signOut = () => { void session.signOut(); setBlockedEmail(""); };
 
   if (!viewer) {
     return (
       <Login
         accounts={state.accounts}
-        unknownEmail={unknownEmail}
-        onPick={(email) => {
-          const match = accountByEmail(state, email);
-          if (!match) {
-            // Google authenticated them, but the roster decides what they may open.
-            setUnknownEmail(email);
-            setSessionEmail("");
-            return;
-          }
-          saveSession(match.email);
-          setSessionEmail(match.email);
-          setUnknownEmail("");
-        }}
+        blockedEmail={blockedEmail}
+        session={session}
+        onPick={session.pickLocal}
       />
     );
   }
@@ -188,6 +192,25 @@ export default function App() {
     </div>
   );
 
+  const SyncStatus = (
+    <div className="pt-3 shrink-0 text-[10px] font-bold uppercase tracking-wide flex items-center gap-1.5">
+      {!CLOUD_ENABLED ? (
+        <span className="text-amber-400">Saved in this browser only</span>
+      ) : sync.mode === "error" ? (
+        <>
+          <span className="text-rose-400">Not saved — {sync.error}</span>
+          <button onClick={() => void push()} className="text-neutral-300 hover:text-white underline cursor-pointer">Retry</button>
+        </>
+      ) : (
+        <span className={sync.mode === "saved" ? "text-emerald-400" : "text-neutral-400"}>
+          {sync.mode === "loading" && "Loading the shared board…"}
+          {sync.mode === "saving" && "Saving…"}
+          {sync.mode === "saved" && "Shared board up to date"}
+        </span>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#faf9f6] dark:bg-neutral-950 grid-lines-bg flex flex-col md:flex-row">
       {/* --- DESKTOP SIDEBAR --- */}
@@ -200,6 +223,7 @@ export default function App() {
           </div>
         </div>
         {navBody()}
+        {SyncStatus}
         {Identity}
       </aside>
 
@@ -230,6 +254,7 @@ export default function App() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto pt-4">{navBody(() => setMobileNav(false))}</div>
+            {SyncStatus}
             {Identity}
           </div>
         </div>

@@ -3,8 +3,10 @@
 // Editor. Either sheet is visible only to the person who filled it in and the person it is
 // about — the same rule the layout issue assessment follows.
 import { useEffect, useState } from "react";
-import { Account, EDITOR_QUESTIONS, NEWS_EDITOR_NAME, NEWS_QUESTIONS } from "../types";
-import { NewsState, mutate, nameOf, upsertAssessment } from "../lib/store";
+import { Account, Assessment, EDITOR_QUESTIONS, NEWS_EDITOR_NAME, NEWS_QUESTIONS } from "../types";
+import { NewsState, mutate, nameOf, newId } from "../lib/store";
+import { saveAssessment } from "../lib/cloud";
+import { CLOUD_ENABLED } from "../lib/supabase";
 import { Button, Desk, Empty, LABEL, Panel, Pill, Stars, monthPeriod } from "./ui";
 
 export default function AssessmentsDesk({ viewer, state }: { viewer: Account; state: NewsState }) {
@@ -40,11 +42,20 @@ export default function AssessmentsDesk({ viewer, state }: { viewer: Account; st
 
   const select = (email: string) => setSubjectEmail(email);
 
+  const [rejected, setRejected] = useState("");
+
   const save = () => {
-    mutate((draft) => upsertAssessment(draft, {
+    const entry: Assessment = {
+      id: saved?.id || newId("asmt"),
       kind: tab, period, raterEmail: viewer.email, subjectEmail,
-      scores, comments,
-    }));
+      scores, comments, updatedAt: new Date().toISOString(),
+    };
+    mutate((draft) => {
+      draft.assessments = [...draft.assessments.filter((a) => a.id !== entry.id), entry];
+    });
+    // The sheet goes to its own table, never into the shared board document, so
+    // row-level security is what decides who can read it.
+    if (CLOUD_ENABLED) void saveAssessment(entry).then(setRejected);
   };
 
   const readable = state.assessments.filter((a) =>
@@ -90,6 +101,11 @@ export default function AssessmentsDesk({ viewer, state }: { viewer: Account; st
               placeholder="What went well this period, and what to work on next."
             />
           </div>
+          {rejected && (
+            <p role="alert" className="text-[11px] text-rose-700 dark:text-rose-300">
+              Supabase refused this sheet: {rejected}
+            </p>
+          )}
           <div className="flex items-center justify-between gap-2 pt-1">
             <p className="text-[10px] text-gray-400 dark:text-neutral-500">
               {saved ? `Saved ${new Date(saved.updatedAt).toLocaleString()}` : "Not saved yet"} · only you and {tab === "monthly" ? nameOf(state, subjectEmail) : NEWS_EDITOR_NAME} can read this sheet.

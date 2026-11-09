@@ -1,20 +1,18 @@
-// Sign-in screen. Google is the only path in a configured build; the roster list below it
-// appears solely on a local run with no OAuth client, so the desk can be exercised before
-// credentials exist.
-import { useRef } from "react";
+// Sign-in screen. Supabase's Google provider is the only path once a project is
+// configured; the roster list below it appears solely on a local run with no backend, so
+// the desk can be exercised before credentials exist.
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { Account } from "../types";
-import { CLIENT_ID, GoogleProfile, isLocalDemoEnabled, useGoogleSignIn } from "../lib/auth";
+import { DeskSession, isLocalDemoEnabled } from "../lib/auth";
+import { CLOUD_ENABLED } from "../lib/supabase";
 import { Button, Pill } from "./ui";
 
-export default function Login({ accounts, unknownEmail, onPick }: {
+export default function Login({ accounts, blockedEmail, session, onPick }: {
   accounts: Account[];
-  unknownEmail: string;
+  blockedEmail: string;
+  session: DeskSession;
   onPick: (email: string) => void;
 }) {
-  const slot = useRef<HTMLDivElement | null>(null);
-  const { error, ready, renderButton } = useGoogleSignIn((profile: GoogleProfile) => onPick(profile.email));
-
   return (
     <div className="min-h-screen bg-[#faf9f6] dark:bg-neutral-950 grid-lines-bg flex items-center justify-center p-4">
       <div className="glass-card w-full max-w-md rounded-2xl border border-gray-100 dark:border-neutral-800 p-6 sm:p-7 space-y-5">
@@ -29,33 +27,42 @@ export default function Login({ accounts, unknownEmail, onPick }: {
           </p>
         </div>
 
-        {CLIENT_ID ? (
+        {CLOUD_ENABLED ? (
           <div className="space-y-3">
-            <div ref={(el) => { slot.current = el; renderButton(el); }} className="flex justify-center min-h-[44px]" />
-            {!ready && !error && <p className="text-[11px] text-gray-400 dark:text-neutral-500 text-center">Loading Google Sign-In…</p>}
-            {error && (
+            <Button className="w-full justify-center" onClick={session.signIn} disabled={session.loading}>
+              {session.loading ? "Checking your session…" : "Continue with Google"}
+            </Button>
+            <p className="text-[10px] text-gray-400 dark:text-neutral-500 text-center">
+              Supabase issues the session, so the board and your row-level access follow you
+              to any device.
+            </p>
+            {session.error && (
               <p className="flex items-start gap-2 text-[11px] text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl p-2.5">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {error}
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {session.error}
               </p>
             )}
           </div>
         ) : (
           <div className="space-y-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3">
-            <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wide">Google Sign-In is not configured</p>
+            <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wide">No backend connected</p>
             <p className="text-[11px] text-amber-900 dark:text-amber-200">
-              Set <code className="font-mono">VITE_GOOGLE_CLIENT_ID</code> to a Web OAuth client that lists this
-              origin under Authorized JavaScript origins, then rebuild.
+              Set <code className="font-mono">VITE_SUPABASE_URL</code> and{" "}
+              <code className="font-mono">VITE_SUPABASE_PUBLISHABLE_KEY</code>, run{" "}
+              <code className="font-mono">supabase/schema.sql</code> in the dashboard, and rebuild.
+              Until then this board is saved in this browser only, so nothing is shared with
+              the rest of the section.
             </p>
           </div>
         )}
 
-        {unknownEmail && (
+        {blockedEmail && (
           <div className="space-y-1.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-3">
             <p className="text-[11px] font-bold text-rose-800 dark:text-rose-300">Not on the News roster</p>
             <p className="text-[11px] text-rose-900 dark:text-rose-200">
-              <span className="font-mono">{unknownEmail}</span> signed in successfully but is not a mapped News account,
+              <span className="font-mono">{blockedEmail}</span> signed in successfully but is not a mapped News account,
               so the desk stayed closed. A lead can map that address to a member in Settings.
             </p>
+            <Button tone="ghost" onClick={() => void session.signOut()}>Use another account</Button>
           </div>
         )}
 
@@ -73,7 +80,7 @@ export default function Login({ accounts, unknownEmail, onPick }: {
               ))}
             </div>
             <p className="text-[10px] text-gray-400 dark:text-neutral-500">
-              Available only on localhost with no client ID. Deployed builds sign in through Google alone.
+              Available only on localhost with no backend. Deployed builds sign in through Google alone.
             </p>
           </div>
         )}
