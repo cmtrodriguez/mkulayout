@@ -5,6 +5,7 @@
 // finished article becomes a request the Layout Deputy confirms as an online pub task.
 
 export type NewsRole =
+  | "Admin"
   | "News Editor"
   | "Associate Editor"
   | "News Probi"
@@ -15,10 +16,8 @@ export interface Account {
   email: string;
   name: string;
   role: NewsRole;
-  // The Google address is what sign-in is matched on. The seeded values follow the
-  // up.edu.ph pattern but are placeholders until the roster maps each person's real
-  // address; an unmatched Google account is never let in.
-  emailConfirmed: boolean;
+  /** Sign-in is matched on the Google address, so only an address in REGISTERED_EMAILS
+      ever opens the desk. */
   active: boolean;
 }
 
@@ -250,29 +249,40 @@ export function stageLabel(task: Pick<ArtxTask, "stage" | "seRound">): string {
 // Seeded roster
 // ---------------------------------------------------------------------------
 
-export const NEWS_EMAIL_DOMAIN = "up.edu.ph";
-
 export const SEED_ACCOUNTS: Account[] = [
-  { email: `armel.castillo@${NEWS_EMAIL_DOMAIN}`, name: "Armel Castillo", role: "News Editor", emailConfirmed: false, active: true },
-  { email: `rachelle.montes@${NEWS_EMAIL_DOMAIN}`, name: "Rachelle Montes", role: "Associate Editor", emailConfirmed: false, active: true },
-  { email: `anicka.ponce@${NEWS_EMAIL_DOMAIN}`, name: "Anicka Ponce", role: "News Probi", emailConfirmed: false, active: true },
-  { email: `jomig.dave@${NEWS_EMAIL_DOMAIN}`, name: "Jomig Dave", role: "News Staffer", emailConfirmed: false, active: true },
-  { email: `axel.cainglet@${NEWS_EMAIL_DOMAIN}`, name: "Axel Cainglet", role: "Editor-In-Chief", emailConfirmed: false, active: true },
+  { email: "ctrodriguez2@up.edu.ph", name: "Xtian Rodriguez", role: "Admin", active: true },
+  { email: "ascainglet@up.edu.ph", name: "Axel Cainglet", role: "Editor-In-Chief", active: true },
+  { email: "atcastillo2@up.edu.ph", name: "Armel Castillo", role: "News Editor", active: true },
+  { email: "aponce@up.edu.ph", name: "Anicka Ponce", role: "News Probi", active: true },
+  { email: "jbdave@up.edu.ph", name: "Jomig Dave", role: "News Staffer", active: true },
 ];
 
-/** The two leads an article can sit on before the EIC. */
-export const NEWS_EDITOR_NAME = "Armel Castillo";
-export const ASSOCIATE_EDITOR_NAME = "Rachelle Montes";
+/**
+ * The addresses this desk opens for, and nothing else. A Google account outside this list
+ * signs in to Supabase successfully and is still refused here.
+ *
+ * The list is a build constant on purpose: the roster is stored in the shared board, so
+ * letting the board widen access would let anyone with a session let anyone else in. Adding
+ * a member means adding their address here and shipping a new build.
+ */
+export const REGISTERED_EMAILS: readonly string[] = SEED_ACCOUNTS.map((a) => a.email);
+
+export function isRegisteredEmail(email?: string | null): boolean {
+  if (!email) return false;
+  const wanted = email.trim().toLowerCase();
+  return REGISTERED_EMAILS.some((e) => e.toLowerCase() === wanted);
+}
 
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export const TIME_SLOTS = ["6am", "7am", "8am", "9am", "10am", "11am", "12nn", "1pm", "2pm", "3pm", "4pm", "5pm", "6pm", "7pm", "8pm"];
 
 export const ROLE_ORDER: Record<NewsRole, number> = {
-  "News Editor": 0,
-  "Associate Editor": 1,
-  "News Probi": 2,
-  "News Staffer": 3,
-  "Editor-In-Chief": 4,
+  "Admin": 0,
+  "News Editor": 1,
+  "Associate Editor": 2,
+  "News Probi": 3,
+  "News Staffer": 4,
+  "Editor-In-Chief": 5,
 };
 
 export interface QuickLink {

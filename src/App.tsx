@@ -8,8 +8,8 @@ import {
   Settings as SettingsIcon, Sun, Users, X,
 } from "lucide-react";
 import mkuleImg from "./mkule.png";
-import { Account, ArtxTask } from "./types";
-import { NewsState, accountByEmail, claimFoundingEditor, connectCloud, mutate, push, setActor, useNews, useSync } from "./lib/store";
+import { Account, ArtxTask, isRegisteredEmail } from "./types";
+import { NewsState, accountByEmail, connectCloud, mutate, push, setActor, useNews, useSync } from "./lib/store";
 import { ActionKey, applyAction, isEditorial } from "./lib/workflow";
 import { useDeskSession } from "./lib/auth";
 import { CLOUD_ENABLED } from "./lib/supabase";
@@ -48,8 +48,10 @@ export default function App() {
   const [mobileNav, setMobileNav] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
 
+  // The registered list, not the roster, decides who gets in: a Google account outside it
+  // never resolves to a viewer, so the desk stays closed whatever the session says.
   const viewer = useMemo(
-    () => accountByEmail(state, session.email),
+    () => (isRegisteredEmail(session.email) ? accountByEmail(state, session.email) : undefined),
     [state.accounts, session.email]
   );
 
@@ -62,12 +64,8 @@ export default function App() {
   }, [session.email]);
 
   useEffect(() => {
-    if (!session.email || viewer) { setBlockedEmail(""); return; }
-    // Nothing on the roster is confirmed yet, which can only mean a section that has not
-    // opened this desk once — so the first real Google address claims the editor's seat.
-    if (claimFoundingEditor(session.email, session.name)) return;
-    setBlockedEmail(session.email);
-  }, [session.email, session.name, viewer]);
+    setBlockedEmail(session.email && !viewer ? session.email : "");
+  }, [session.email, viewer]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);

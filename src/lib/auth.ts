@@ -9,7 +9,6 @@
 // With no project configured the desk stays where it started: one localStorage board and,
 // on localhost only, a roster list to sign in as.
 import { useCallback, useEffect, useState } from "react";
-import { SEED_ACCOUNTS } from "../types";
 import { NewsState, accountByEmail } from "./store";
 import { CLOUD_ENABLED, supabase } from "./supabase";
 
@@ -106,10 +105,4 @@ export function useDeskSession(): DeskSession {
 
 export function accountForEmail(state: NewsState, email: string) {
   return accountByEmail(state, email);
-}
-
-/** The roster emails the app ships with, shown on the blocked screen so a lead knows
-    which address still needs mapping. */
-export function seededRoster() {
-  return SEED_ACCOUNTS.map((a) => ({ name: a.name, role: a.role, email: a.email, confirmed: a.emailConfirmed }));
 }

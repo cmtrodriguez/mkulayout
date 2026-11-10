@@ -9,7 +9,7 @@ import { useSyncExternalStore } from "react";
 import {
   Account, ArtxTask, Assessment, NewsContacts, NewsNotification, Pitch, QuickLink,
   SEED_ACCOUNTS, SEED_CONTACTS, SEED_QUICK_LINKS, ShortformEntry, StageEvent, TaskComment,
-  TimelineEvent, Todo, WeeklyAvailability, DAYS,
+  TimelineEvent, Todo, WeeklyAvailability, DAYS, isRegisteredEmail,
 } from "../types";
 import { BoardRow, fetchBoard, loadAssessments, pushBoard, subscribeBoard } from "./cloud";
 import { CLOUD_ENABLED } from "./supabase";
@@ -63,13 +63,15 @@ export function seedState(): NewsState {
 
 function hydrate(parsed: Partial<NewsState>): NewsState {
   const base = seedState();
-  // Merging the seed back in keeps newly added accounts and links visible after an
-  // app update, without discarding anything the desk already recorded.
-  const knownEmails = new Set((parsed.accounts || []).map((a) => a.email));
+  // A stored account outside the registered list is a leftover from an older roster: it can
+  // never sign in, so it is dropped rather than left on the roster as a dead row. Merging
+  // the seed back in keeps a newly registered member visible after a build update.
+  const stored = (parsed.accounts || []).filter((a) => isRegisteredEmail(a.email));
+  const knownEmails = new Set(stored.map((a) => a.email.toLowerCase()));
   return {
     ...base,
     ...parsed,
-    accounts: [...(parsed.accounts || []), ...SEED_ACCOUNTS.filter((a) => !knownEmails.has(a.email))],
+    accounts: [...stored, ...SEED_ACCOUNTS.filter((a) => !knownEmails.has(a.email.toLowerCase()))],
     quickLinks: parsed.quickLinks?.length ? parsed.quickLinks : base.quickLinks,
     contacts: { ...SEED_CONTACTS, ...(parsed.contacts || {}) },
     tasks: parsed.tasks || [],
@@ -328,20 +330,6 @@ export function availabilityFor(state: NewsState, email: string): WeeklyAvailabi
 export function setAvailability(draft: NewsState, next: WeeklyAvailability) {
   const rest = draft.availability.filter((a) => a.email !== next.email);
   draft.availability = [...rest, { ...next, lastUpdated: new Date().toISOString() }];
-}
-
-/** The roster ships with placeholder addresses, so the very first real Google account to
-    open the desk takes the Editor-In-Chief seat and can then map everybody else in
-    Settings. Once any address is confirmed this stops happening. */
-export function claimFoundingEditor(email: string, name: string): boolean {
-  if (accountByEmail(state, email)) return false;
-  if (state.accounts.some((a) => a.emailConfirmed)) return false;
-  mutate((draft) => {
-    draft.accounts = draft.accounts.map((a) => (a.role === "Editor-In-Chief"
-      ? { ...a, email, name: name || email, emailConfirmed: true }
-      : a));
-  });
-  return true;
 }
 
 export async function resetDesk(): Promise<void> {

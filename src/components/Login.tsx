@@ -57,10 +57,11 @@ export default function Login({ accounts, blockedEmail, session, onPick }: {
 
         {blockedEmail && (
           <div className="space-y-1.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-3">
-            <p className="text-[11px] font-bold text-rose-800 dark:text-rose-300">Not on the News roster</p>
+            <p className="text-[11px] font-bold text-rose-800 dark:text-rose-300">Not registered for this desk</p>
             <p className="text-[11px] text-rose-900 dark:text-rose-200">
-              <span className="font-mono">{blockedEmail}</span> signed in successfully but is not a mapped News account,
-              so the desk stayed closed. A lead can map that address to a member in Settings.
+              <span className="font-mono">{blockedEmail}</span> signed in to Google, but it is not one of the
+              addresses registered for MKule News, so the desk stayed closed. Registering an address is a build
+              change — ask the section's Admin.
             </p>
             <Button tone="ghost" onClick={() => void session.signOut()}>Use another account</Button>
           </div>

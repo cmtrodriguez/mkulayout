@@ -57,18 +57,22 @@ There is no password path. The desk shows **Continue with Google**, Supabase iss
 session, and every read and write this tab makes afterwards carries its access token — which
 is what the policies in `schema.sql` judge.
 
-A Google address only opens a desk if it matches a roster entry, and the roster lives inside
-the shared board itself. That is a chicken-and-egg problem only once: while no roster address
-is confirmed, the first member to sign in takes the Editor-In-Chief seat and maps everybody
-else under **Settings → Section roster**. The seeded addresses are patterns, not people:
+A Google address only opens a desk if it is on the registered list compiled into the build —
+`REGISTERED_EMAILS` in [`src/types.ts`](src/types.ts). An address outside it signs in to
+Supabase successfully and is still refused here, with the address named on screen. That list
+is deliberately not stored in the board: the board is writable by anyone holding a session, so
+a roster that could widen its own access would not be a gate at all.
 
-| Name | Role | Placeholder email |
+| Name | Role | Registered email |
 | --- | --- | --- |
-| Axel Cainglet | Editor-In-Chief | `axel.cainglet@up.edu.ph` |
-| Armel Castillo | News Editor | `armel.castillo@up.edu.ph` |
-| Rachelle Montes | Associate Editor | `rachelle.montes@up.edu.ph` |
-| Anicka Ponce | News Probi | `anicka.ponce@up.edu.ph` |
-| Jomig Dave | News Staffer | `jomig.dave@up.edu.ph` |
+| Xtian Rodriguez | Admin | `ctrodriguez2@up.edu.ph` |
+| Axel Cainglet | Editor-In-Chief | `ascainglet@up.edu.ph` |
+| Armel Castillo | News Editor | `atcastillo2@up.edu.ph` |
+| Anicka Ponce | News Probi | `aponce@up.edu.ph` |
+| Jomig Dave | News Staffer | `jbdave@up.edu.ph` |
+
+Adding or replacing a member is a change to that list plus a new build. **Settings → Roster**
+edits the name, the role and the active flag only; the addresses are read-only there.
 
 With no Supabase env configured **and** a localhost origin, the login screen falls back to
 that roster list so the desks can still be exercised. A configured or deployed build never
@@ -120,7 +124,11 @@ accepts it — a failed sync leaves it pending rather than claiming success.
 | Assessment — monthly by the Editor, semestral of the Editor | everyone, privately |
 | Settings — roster, Layout contacts, template links | leads |
 
+*Leads* means the News Editor, the Associate Editor, the Editor-In-Chief and the Admin. The
+Admin holds the same desk access for oversight but owns no editing tier, writes no articles and
+files no assessment.
+
 An article moves `outline → drafting → 1stSE…4thSE → 4AE → 4EIC → 4LO → published`. A
-same-day piece gets two editing tiers instead of four. News-feat round 1 goes to Rachelle
-Montes rather than Armel Castillo. Publishing closes the card, records it in Releases and
-settles its pitch out of the bank.
+same-day piece gets two editing tiers instead of four. News-feat round 1 goes to the Associate
+Editor when the section has one; with none on the roster the News Editor holds that tier too.
+Publishing closes the card, records it in Releases and settles its pitch out of the bank.

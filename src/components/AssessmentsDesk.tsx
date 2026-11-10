@@ -3,25 +3,31 @@
 // Editor. Either sheet is visible only to the person who filled it in and the person it is
 // about — the same rule the layout issue assessment follows.
 import { useEffect, useState } from "react";
-import { Account, Assessment, EDITOR_QUESTIONS, NEWS_EDITOR_NAME, NEWS_QUESTIONS } from "../types";
+import { Account, Assessment, EDITOR_QUESTIONS, NEWS_QUESTIONS } from "../types";
 import { NewsState, mutate, nameOf, newId } from "../lib/store";
 import { saveAssessment } from "../lib/cloud";
 import { CLOUD_ENABLED } from "../lib/supabase";
+import { isAdmin } from "../lib/workflow";
 import { Button, Desk, Empty, LABEL, Panel, Pill, Stars, monthPeriod } from "./ui";
+
+const DESK_TITLE = "Section assessment";
+const DESK_NOTE = "Guide questions on a five-point scale, with room for comments at the end.";
 
 export default function AssessmentsDesk({ viewer, state }: { viewer: Account; state: NewsState }) {
   const isNewsEditor = viewer.role === "News Editor";
   // The Editor rates members monthly; members rate the Editor once per semester.
   const tab: "monthly" | "semestral" = isNewsEditor ? "monthly" : "semestral";
   const newsEditor = state.accounts.find((a) => a.role === "News Editor");
+  const newsEditorName = newsEditor?.name || "the News Editor";
 
   const periods = isNewsEditor
     ? [monthPeriod(), monthPeriod(new Date(Date.now() - 30 * 86400000)), monthPeriod(new Date(Date.now() - 60 * 86400000))]
     : ["Sem 1", "Sem 2"];
   const [period, setPeriod] = useState(periods[0]);
 
+  // The Admin oversees the desk and is nobody's rater or ratee.
   const subjects = isNewsEditor
-    ? state.accounts.filter((a) => a.email !== viewer.email)
+    ? state.accounts.filter((a) => a.email !== viewer.email && !isAdmin(a.role))
     : [newsEditor].filter(Boolean) as Account[];
   const [subjectEmail, setSubjectEmail] = useState(subjects[0]?.email || "");
 
@@ -62,8 +68,19 @@ export default function AssessmentsDesk({ viewer, state }: { viewer: Account; st
     a.subjectEmail.toLowerCase() === viewer.email.toLowerCase() || a.raterEmail.toLowerCase() === viewer.email.toLowerCase()
   );
 
+  // Every hook has run by here, so the Admin's shorter desk can return early.
+  if (isAdmin(viewer.role)) {
+    return (
+      <Desk title={DESK_TITLE} note={DESK_NOTE}>
+        <Panel>
+          <Empty text="The Admin oversees the desk and files no sheet. The News Editor rates members monthly; members rate the News Editor each semester." />
+        </Panel>
+      </Desk>
+    );
+  }
+
   return (
-    <Desk title="Section assessment" note="Guide questions on a five-point scale, with room for comments at the end.">
+    <Desk title={DESK_TITLE} note={DESK_NOTE}>
       <div className="flex flex-wrap items-center gap-2">
         <select className="px-3 py-1.5 border border-gray-200 dark:border-neutral-700 rounded-xl text-xs bg-white dark:bg-neutral-800" value={period} onChange={(e) => setPeriod(e.target.value)}>
           {periods.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -73,11 +90,11 @@ export default function AssessmentsDesk({ viewer, state }: { viewer: Account; st
             {subjects.map((a) => <option key={a.email} value={a.email}>{a.name} — {a.role}</option>)}
           </select>
         )}
-        {!isNewsEditor && <Pill tone="maroon">Rating {NEWS_EDITOR_NAME}</Pill>}
+        {!isNewsEditor && <Pill tone="maroon">Rating {newsEditorName}</Pill>}
       </div>
 
       {subjectEmail && (
-        <Panel title={tab === "monthly" ? `${nameOf(state, subjectEmail)} · ${period}` : `${NEWS_EDITOR_NAME} · ${period}`}>
+        <Panel title={tab === "monthly" ? `${nameOf(state, subjectEmail)} · ${period}` : `${newsEditorName} · ${period}`}>
           <ul className="space-y-3.5">
             {questions.map((q) => (
               <li key={q.key} className="space-y-1.5">
@@ -108,7 +125,7 @@ export default function AssessmentsDesk({ viewer, state }: { viewer: Account; st
           )}
           <div className="flex items-center justify-between gap-2 pt-1">
             <p className="text-[10px] text-gray-400 dark:text-neutral-500">
-              {saved ? `Saved ${new Date(saved.updatedAt).toLocaleString()}` : "Not saved yet"} · only you and {tab === "monthly" ? nameOf(state, subjectEmail) : NEWS_EDITOR_NAME} can read this sheet.
+              {saved ? `Saved ${new Date(saved.updatedAt).toLocaleString()}` : "Not saved yet"} · only you and {tab === "monthly" ? nameOf(state, subjectEmail) : newsEditorName} can read this sheet.
             </p>
             <Button onClick={save} disabled={!Object.keys(scores).length}>Save assessment</Button>
           </div>

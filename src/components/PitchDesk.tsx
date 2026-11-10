@@ -4,9 +4,9 @@
 // leave the bank entirely once the article publishes.
 import { useState } from "react";
 import { Ban, Check, ExternalLink, Plus, Users } from "lucide-react";
-import { Account, ASSOCIATE_EDITOR_NAME, NEWS_EDITOR_NAME, Pitch } from "../types";
+import { Account, Pitch } from "../types";
 import { NewsState, mutate, nameOf, newId, pushNotification } from "../lib/store";
-import { createPitch, grabPitch, isEditorial, openArticleFromPitch } from "../lib/workflow";
+import { createPitch, grabPitch, isEditorial, isWriterRole, openArticleFromPitch, seReviewerEmail } from "../lib/workflow";
 import { Button, Desk, Empty, Field, INPUT, Modal, Panel, Pill, todayISO } from "./ui";
 
 export default function PitchDesk({ viewer, state, onOpenTask }: {
@@ -82,7 +82,7 @@ export default function PitchDesk({ viewer, state, onOpenTask }: {
                 <div className="min-w-0 space-y-1">
                   <span className="text-[11px] sm:text-xs font-bold text-gray-900 dark:text-neutral-100">{p.topic}</span>
                   <p className="text-[10px] text-gray-400 dark:text-neutral-500">
-                    {p.taskId ? "In the pipeline as an article." : `Awaiting ${p.angle?.status === "approved" ? "outline approval" : "the angle check"} with the ${p.kind === "news-feat" ? ASSOCIATE_EDITOR_NAME : NEWS_EDITOR_NAME}.`}
+                    {p.taskId ? "In the pipeline as an article." : `Awaiting ${p.angle?.status === "approved" ? "outline approval" : "the angle check"} with ${nameOf(state, seReviewerEmail(state, p.kind, 1))}.`}
                   </p>
                 </div>
                 {p.taskId && <Button tone="ghost" onClick={() => onOpenTask(p.taskId!)}>Open card</Button>}
@@ -191,7 +191,7 @@ function ConvertModal({ pitch, viewer, state, onClose, onOpenTask }: {
         <Field label="Working title"><input className={INPUT} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
         <Field label="Writer">
           <select className={INPUT} value={writerEmail} onChange={(e) => setWriterEmail(e.target.value)}>
-            {state.accounts.filter((a) => a.active && a.role !== "Editor-In-Chief").map((a) => (
+            {state.accounts.filter((a) => a.active && isWriterRole(a.role)).map((a) => (
               <option key={a.email} value={a.email}>{a.name} — {a.role}</option>
             ))}
           </select>

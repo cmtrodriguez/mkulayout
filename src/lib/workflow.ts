@@ -5,11 +5,11 @@
 //   topic pitch -> pitch with angle -> outline -> outline approval -> drafting
 //   -> 1stSE..[N]nthSE (each tier may return to the writer, repeatedly)
 //   -> 4AE -> 4EIC -> 4LO (request to the MKuLayout Layout Deputy) -> published
-// Two deviations are built in: a news-feat's 1stSE sits with the Associate Editor, and a
-// same-day article stops after two SE tiers.
+// Two deviations are built in: a news-feat's 1stSE sits with the Associate Editor when the
+// section has one, and a same-day article stops after two SE tiers.
 
 import {
-  Account, ArtxTask, ASSOCIATE_EDITOR_NAME, Custody, NEWS_EDITOR_NAME, NewsNotification, NewsRole,
+  Account, ArtxTask, Custody, NewsNotification, NewsRole,
   ordinal, OutputKind, Pitch, StageEvent, stageLabel,
 } from "../types";
 import { NewsState, addComment, logStage, mutate, nameOf, newId, pushNotification } from "./store";
@@ -30,22 +30,47 @@ export interface ActionDescriptor {
   needsNote?: boolean;
 }
 
+/** Lead access: the three editing tiers, plus the Admin, who oversees without holding a
+    tier of their own. */
 export function isEditorial(role?: NewsRole): boolean {
-  return role === "News Editor" || role === "Associate Editor" || role === "Editor-In-Chief";
+  return role === "News Editor" || role === "Associate Editor" || role === "Editor-In-Chief" || isAdmin(role);
 }
 
-/** Which lead owns a given SE tier. News-feats open with the Associate Editor. */
+export function isAdmin(role?: NewsRole): boolean {
+  return role === "Admin";
+}
+
+/** Who may be handed an article to write. Neither the EIC nor the Admin writes. */
+export function isWriterRole(role?: NewsRole): boolean {
+  return role !== "Editor-In-Chief" && !isAdmin(role);
+}
+
+function roleEmail(state: NewsState, role: NewsRole): string {
+  return state.accounts.find((a) => a.role === role && a.active)?.email || "";
+}
+
+export function newsEditorEmail(state: NewsState): string {
+  return roleEmail(state, "News Editor");
+}
+
+export function associateEditorEmail(state: NewsState): string {
+  return roleEmail(state, "Associate Editor");
+}
+
+/** Which lead owns a given SE tier. News-feats open with the Associate Editor when the
+    section has one; otherwise the News Editor holds that tier too. */
 export function seReviewerEmail(state: NewsState, kind: OutputKind, round: number): string {
-  const target = kind === "news-feat" && round <= 1 ? ASSOCIATE_EDITOR_NAME : NEWS_EDITOR_NAME;
-  return state.accounts.find((a) => a.name === target)?.email || "";
+  const associate = associateEditorEmail(state);
+  if (kind === "news-feat" && round <= 1 && associate) return associate;
+  return newsEditorEmail(state);
 }
 
 /** The desk a task is on right now. */
 export function custodyEmail(state: NewsState, task: ArtxTask): string {
   switch (task.custody) {
     case "writer": return task.writerEmail;
-    case "associate-editor": return state.accounts.find((a) => a.name === ASSOCIATE_EDITOR_NAME)?.email || "";
-    case "eic": return state.accounts.find((a) => a.role === "Editor-In-Chief")?.email || "";
+    case "associate-editor": return associateEditorEmail(state) || newsEditorEmail(state);
+    case "eic": return roleEmail(state, "Editor-In-Chief");
     case "editor": return seReviewerEmail(state, task.kind, task.seRound);
     case "layout": return state.contacts.layoutDeputyEmail;
     default: return "";
@@ -53,7 +78,7 @@ export function custodyEmail(state: NewsState, task: ArtxTask): string {
 }
 
 export function canViewTask(state: NewsState, viewer: Account, task: ArtxTask): boolean {
-  if (isEditorial(viewer.role) || viewer.role === "Editor-In-Chief") return true;
+  if (isEditorial(viewer.role)) return true;
   return task.writerEmail.toLowerCase() === viewer.email.toLowerCase();
 }
 
@@ -257,17 +282,17 @@ export function applyAction(task: ArtxTask, actor: Account, key: ActionKey, note
       }
 
       case "pass-to-ae": {
-        const ae = draft.accounts.find((a) => a.name === ASSOCIATE_EDITOR_NAME)?.email || "";
+        const ae = associateEditorEmail(draft) || newsEditorEmail(draft);
         t.stage = "ae";
         t.custody = "associate-editor";
         logStage(t, actorEvent(actor, "ae", "passed to 4AE", note));
         chat(draft, t.id, actor, `Editing tiers closed at ${ordinal(t.seRound)}SE. Passed to 4AE.`);
-        targetMail(draft, { title: `4AE — ${t.title}`, message: `${NEWS_EDITOR_NAME === actor.name ? "The News Editor" : actor.name} passed the article to you for 4AE.`, targets: [ae], type: "stage", taskId: t.id });
+        targetMail(draft, { title: `4AE — ${t.title}`, message: `${actor.name} passed the article to you for 4AE.`, targets: [ae], type: "stage", taskId: t.id });
         break;
       }
 
       case "pass-to-eic": {
-        const eic = draft.accounts.find((a) => a.role === "Editor-In-Chief")?.email || "";
+        const eic = roleEmail(draft, "Editor-In-Chief");
         t.stage = "eic";
         t.custody = "eic";
         logStage(t, actorEvent(actor, "eic", "passed to 4EIC", note));
@@ -385,9 +410,7 @@ export function grabPitch(pitch: Pitch, actor: Account) {
     p.grabbedAt = new Date().toISOString();
     p.angle = { text: "", submittedAt: "", status: "pending" };
     p.outlineStatus = "none";
-    const editorEmail = p.kind === "news-feat"
-      ? draft.accounts.find((a) => a.name === ASSOCIATE_EDITOR_NAME)?.email || ""
-      : draft.accounts.find((a) => a.name === NEWS_EDITOR_NAME)?.email || "";
+    const editorEmail = seReviewerEmail(draft, p.kind, 1);
     pushNotification(draft, {
       title: `Pitch grabbed — ${p.topic}`,
       message: `${actor.name} took this pitch. Ask them for the angle before the outline.`,

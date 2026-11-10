@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Account, ArtxTask, stageLabel } from "../types";
 import { NewsState, getState, mutate, nameOf, newId, pushNotification } from "../lib/store";
-import { ActionKey, PIPELINE_COLUMNS, addStandaloneArticle, applyAction, canViewTask, isEditorial, taskAgeLabel } from "../lib/workflow";
+import { ActionKey, PIPELINE_COLUMNS, addStandaloneArticle, applyAction, canViewTask, isEditorial, isWriterRole, taskAgeLabel } from "../lib/workflow";
 import { Button, Desk, Empty, Modal, Panel, Pill } from "./ui";
 import TaskCard from "./TaskCard";
 
@@ -95,7 +95,7 @@ function NewArticleModal({ viewer, state, onClose, onOpen }: {
         <label className="block space-y-1">
           <span className="text-[10px] uppercase font-semibold text-gray-400">Writer</span>
           <select className="w-full px-3 py-2 border border-gray-200 dark:border-neutral-700 rounded-xl text-xs bg-white dark:bg-neutral-800" value={writerEmail} onChange={(e) => setWriterEmail(e.target.value)}>
-            {state.accounts.filter((a) => a.active && a.role !== "Editor-In-Chief").map((a) => <option key={a.email} value={a.email}>{a.name} — {a.role}</option>)}
+            {state.accounts.filter((a) => a.active && isWriterRole(a.role)).map((a) => <option key={a.email} value={a.email}>{a.name} — {a.role}</option>)}
           </select>
         </label>
         <label className="block space-y-1">
