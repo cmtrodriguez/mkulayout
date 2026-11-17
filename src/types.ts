@@ -244,3 +244,73 @@ export const ASSESSMENT_QUESTIONS = [
 ] as const;
 
 export type AssessmentQuestionKey = (typeof ASSESSMENT_QUESTIONS)[number]["key"];
+
+/* ------------------------------------------------------------------------ */
+/* SecMeets — Section Meetings                                               */
+/* ------------------------------------------------------------------------ */
+
+export type SecMeetKind = "synchronous" | "asynchronous";
+export type SecMeetStatus = "Not Started" | "In Progress" | "Completed";
+
+/** The four states the official minutes template records. A checkbox cannot
+    produce "late" or "excused", so attendance is this set plus "unmarked". */
+export type AttendanceStatus = "P" | "L" | "E" | "A";
+
+export const ATTENDANCE_STATES: { value: AttendanceStatus; meaning: string }[] = [
+  { value: "P", meaning: "Present" },
+  { value: "L", meaning: "Late" },
+  { value: "E", meaning: "Excused" },
+  { value: "A", meaning: "Absent" },
+];
+
+export interface SecMeetItem {
+  id: string;
+  kind: "agenda" | "task";
+  /** "dispo" renders the four-category Dispo Check instead of a plain tick. */
+  itemKind: "checklist" | "dispo";
+  position: number;
+  title: string;
+}
+
+export interface SecMeet {
+  id: string;
+  seq: number;
+  title: string;
+  kind: SecMeetKind;
+  status: SecMeetStatus;
+  /** YYYY-MM-DD, empty until the Editor sets it. */
+  meetingDate: string;
+  details: string;
+  agenda: SecMeetItem[];
+  tasks: SecMeetItem[];
+  minutes: string;
+  minutesUpdatedBy: string;
+  /** member email -> attendance state; absent means unmarked. */
+  attendance: Record<string, AttendanceStatus>;
+}
+
+/** The Dispo Check's four categories. `label` is what the desk shows, `column`
+    is the exact header the minutes template prints. */
+export type DispoCategory = "personal" | "pagAaral" | "pagIbig" | "pinansyal";
+
+export const DISPO_CATEGORIES: { key: DispoCategory; label: string; column: string }[] = [
+  { key: "personal", label: "Personal", column: "PERSONAL" },
+  { key: "pagAaral", label: "Pag-aaral", column: "PAG-AARAL" },
+  { key: "pagIbig", label: "Pag-ibig/Pamilya", column: "PAG-IBIG/PAMILYA" },
+  { key: "pinansyal", label: "Pinansyal", column: "PINANSYA" },
+];
+
+export type DispoResponses = Record<DispoCategory, string>;
+
+export function emptyDispo(): DispoResponses {
+  return { personal: "", pagAaral: "", pagIbig: "", pinansyal: "" };
+}
+
+/** A member's row on one async task. Members only ever hold their own. */
+export interface SecMeetProgress {
+  itemId: string;
+  memberEmail: string;
+  done: boolean;
+  dispo: DispoResponses | null;
+  updatedAt: string;
+}

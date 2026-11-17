@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { 
   LayoutGrid, FileSpreadsheet, Kanban, GraduationCap, Calendar, 
   HelpCircle, Bot, Users, Bell, AlertOctagon, Plus, X, Shield, Ban, Trash2,
   Sparkles, ShieldCheck, HeartPulse, CheckSquare, RefreshCw, BookOpen,
-  Menu, LogOut, Link2, Sun, Moon, FileText, CheckCircle2, ExternalLink, Loader2, User, ArrowRight, BarChart3, Monitor, Globe
+  Menu, LogOut, Link2, Sun, Moon, FileText, CheckCircle2, ExternalLink, Loader2, User, ArrowRight, BarChart3, Monitor, Globe, CalendarCheck
 } from "lucide-react";
 
 // Sub Components
@@ -21,6 +21,7 @@ import { LayoutStaffDashboard, EicDashboard } from "./components/RoleDashboards"
 import { CanvaDirectory } from "./components/CanvaDirectory";
 import IssueAssessment from "./components/IssueAssessment";
 import GuidelinesDesk from "./components/GuidelinesDesk";
+import SecMeets from "./components/SecMeets";
 import { OFFICIAL_MEMBERS_MAP, getPreferredFirstName, resolveLayoutAssignee, resolveMemberEmail, getEditorDeputyEmails } from "./lib/memberUtils";
 import { AccentTheme, applyAccentCssVars } from "./lib/accentTheme";
 import { seededUuid } from "./lib/seededUuid";
@@ -30,11 +31,11 @@ import { getCanvaLinkForContent, getPubmatCanvaTemplates, ISSUE_TEMPLATE_LINK, M
 import { GUIDELINE_SECTIONS } from "./lib/indesignGuidelines";
 import { ONLINE_LAYOUT_SECTIONS } from "./lib/onlineLayoutGuidelines";
 import { ISSUE_TASK, ONLINE_TASK, isPrintTask, isOnlineTask, releaseFormatLabel, stripPubmatSuffix, taskKindOf, withPubmatSuffix } from "./lib/taskRelease";
-import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, createPollOption, updatePollMemberOptions, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, fetchIssueAssessments, submitIssueAssessment, saveIssueAssessmentReply, type MemberLoginMap } from "./lib/supabase";
+import { supabase, fetchUserProfileByEmail, fetchTasks, fetchMembers, fetchComments, fetchCalendarEvents, fetchPolls, fetchAnnouncements, fetchNotifications, fetchIssueSheets, upsertTask, deleteTask, upsertMember, createComment, updateComment, retargetComments, upsertCalendarEvent, deleteCalendarEvent, createPoll, createPollOption, updatePollMemberOptions, updatePollOptionVotes, deletePoll, createNotification, markNotificationRead, createAnnouncement, saveIssueSheets, fetchMemberLogins, recordMemberLogin, subscribeToLayoutRealtime, fetchProbiTrackerState, saveProbiTrackerState, fetchIssueAssessments, submitIssueAssessment, saveIssueAssessmentReply, fetchSecMeets, fetchSecMeetProgress, type MemberLoginMap } from "./lib/supabase";
 import mkuleImg from "./mkule.png";
 
 // Domain Models
-import { Task, TeamMember, CalendarEvent, Poll, Notification, TaskComment, UserRole, normalizeEmail, OpinionArticle, ProbiTrackerState, DEFAULT_PROBI_CONGRATS_MESSAGE, IssueAssessmentEntry, IssueAssessments, AssessmentReply } from "./types";
+import { Task, TeamMember, CalendarEvent, Poll, Notification, TaskComment, UserRole, normalizeEmail, OpinionArticle, ProbiTrackerState, DEFAULT_PROBI_CONGRATS_MESSAGE, IssueAssessmentEntry, IssueAssessments, AssessmentReply, SecMeet, SecMeetProgress } from "./types";
 
 // Short two-tone ping played when a new notification lands in the bell feed.
 function playNotificationPing() {
@@ -118,6 +119,10 @@ export default function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [probiTracker, setProbiTracker] = useState<ProbiTrackerState>({ congratsMessage: DEFAULT_PROBI_CONGRATS_MESSAGE, articles: [] });
   const [issueAssessments, setIssueAssessments] = useState<IssueAssessments>({});
+  const [secMeets, setSecMeets] = useState<SecMeet[]>([]);
+  // Only the rows this session may see: a member's own, or every row for the
+  // Editor and Deputy. Row level security decides which, not this component.
+  const [secMeetProgress, setSecMeetProgress] = useState<SecMeetProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const bootTimeRef = useRef<number>(Date.now());
 
@@ -401,6 +406,15 @@ export default function App() {
     ? formArtist
     : "Unassigned";
 
+  // SecMeets are read apart from the boot load: progress can only be fetched
+  // once the meeting ids are in hand, and the whole desk is re-read after every
+  // write so it shows exactly what the row level policies allowed.
+  const reloadSecMeets = useCallback(async () => {
+    const meetings = await fetchSecMeets();
+    setSecMeets(meetings);
+    setSecMeetProgress(await fetchSecMeetProgress(meetings.map((meeting) => meeting.id)));
+  }, []);
+
   // Fetch all app data from Supabase and initialise local state
   const fetchAllState = async () => {
     try {
@@ -496,11 +510,18 @@ export default function App() {
           issueSheetsRef.current = data;
           localStorage.setItem("mkule_issue_publication_sheets", JSON.stringify(data));
         }
-      }
+      },
+      onSecMeetsChange: () => { void reloadSecMeets(); }
     });
 
     return () => { unsubscribe(); };
   }, []);
+
+  // SecMeets rows are only readable by a signed-in session, so the desk is
+  // loaded once authentication is established rather than during boot.
+  useEffect(() => {
+    if (isAuthenticated) void reloadSecMeets();
+  }, [isAuthenticated, reloadSecMeets]);
 
   // Legacy helper — still used by issueSheets, but Supabase-first
   const pushStateToBackend = async (updates: {
@@ -1460,6 +1481,21 @@ export default function App() {
       : [];
   };
 
+  // The sidebar's third group: the section's meeting record, one desk holding a
+  // tab per meeting. Every layout member reads it; the tabs themselves are the
+  // Layout Editor's to create.
+  const getSecMeetTabs = () => {
+    const isLayoutMember = userRole === "Layout Editor"
+      || userRole === "Layout Deputy"
+      || userRole === "Online Layout Head"
+      || userRole === "Layout Staffer"
+      || userRole === "Layout Probi"
+      || userRole === "Layout Staff Member";
+    return isLayoutMember
+      ? [{ id: "sec-meets", label: "Section Meetings", icon: CalendarCheck }]
+      : [];
+  };
+
   const assignableMembers = members.filter((member) => {
     const role = member.role || "";
     if (userRole === "Layout Editor") {
@@ -1472,7 +1508,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    const validTabs = [...getTabsForRole(), ...getSectionMatterTabs()].map(t => t.id);
+    const validTabs = [...getTabsForRole(), ...getSectionMatterTabs(), ...getSecMeetTabs()].map(t => t.id);
     if (!validTabs.includes(activeTab)) {
       setActiveTab("dashboard");
     }
@@ -1592,6 +1628,7 @@ export default function App() {
 
   const roleTabs = getTabsForRole();
   const sectionTabs = getSectionMatterTabs();
+  const secMeetTabs = getSecMeetTabs();
 
   // Both sidebar groups open a panel the same way, so speech and the mobile
   // sheet stay consistent whichever section a member came from.
@@ -1648,6 +1685,23 @@ export default function App() {
                   Section Matters
                 </span>
                 {sectionTabs.map((tab) => (
+                  <DeskTabButton
+                    key={tab.id}
+                    tab={tab}
+                    variant="desktop"
+                    isActive={activeTab === tab.id}
+                    onSelect={() => openTab(tab)}
+                  />
+                ))}
+              </>
+            )}
+
+            {secMeetTabs.length > 0 && (
+              <>
+                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-3 block mb-2 mt-5 font-sans">
+                  SecMeets
+                </span>
+                {secMeetTabs.map((tab) => (
                   <DeskTabButton
                     key={tab.id}
                     tab={tab}
@@ -1759,6 +1813,23 @@ export default function App() {
                       Section Matters
                     </span>
                     {sectionTabs.map((tab) => (
+                      <DeskTabButton
+                        key={tab.id}
+                        tab={tab}
+                        variant="mobile"
+                        isActive={activeTab === tab.id}
+                        onSelect={() => openTab(tab)}
+                      />
+                    ))}
+                  </>
+                )}
+
+                {secMeetTabs.length > 0 && (
+                  <>
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-1 block mb-1 mt-4 font-sans">
+                      SecMeets
+                    </span>
+                    {secMeetTabs.map((tab) => (
                       <DeskTabButton
                         key={tab.id}
                         tab={tab}
@@ -2404,6 +2475,18 @@ export default function App() {
                 icon={Globe}
                 sections={ONLINE_LAYOUT_SECTIONS}
                 showPictures={false}
+              />
+            )}
+
+            {activeTab === "sec-meets" && (
+              <SecMeets
+                meetings={secMeets}
+                progress={secMeetProgress}
+                members={members}
+                currentUserEmail={userEmail}
+                currentUserName={userName}
+                currentUserRole={userRole}
+                onChanged={() => { void reloadSecMeets(); }}
               />
             )}
 

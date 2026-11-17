@@ -17,7 +17,16 @@ import {
   IssueAssessmentEntry,
   IssueAssessments,
   AssessmentReply,
-  DEFAULT_PROBI_CONGRATS_MESSAGE
+  DEFAULT_PROBI_CONGRATS_MESSAGE,
+  SecMeet,
+  SecMeetItem,
+  SecMeetKind,
+  SecMeetStatus,
+  SecMeetProgress,
+  AttendanceStatus,
+  DispoResponses,
+  DISPO_CATEGORIES,
+  emptyDispo
 } from "../types";
 import { getOfficialDisplayName, resolveMemberEmail } from "./memberUtils";
 import { MEDIUM_CANVA_LINK } from "./canvaTemplates";
@@ -953,6 +962,10 @@ export interface RealtimeHandlers {
   onIssueSheetsChange?: (data: any) => void;
   onIssueAssessmentsChange?: (data: any) => void;
   onMemberLoginsChange?: (data: MemberLoginMap) => void;
+  /** Meetings, items, attendance and minutes. Progress is deliberately not on
+      the channel — a broadcast would carry one member's Dispo Check answers to
+      everyone subscribed, which the policies forbid. */
+  onSecMeetsChange?: () => void;
 }
 
 export function subscribeToLayoutRealtime(handlers: RealtimeHandlers): () => void {
@@ -999,6 +1012,18 @@ export function subscribeToLayoutRealtime(handlers: RealtimeHandlers): () => voi
       } else if (rec.id === "issue_assessments") {
         handlers.onIssueAssessmentsChange?.(rec.data);
       }
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "sec_meets" }, () => {
+      handlers.onSecMeetsChange?.();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "sec_meet_items" }, () => {
+      handlers.onSecMeetsChange?.();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "sec_meet_attendance" }, () => {
+      handlers.onSecMeetsChange?.();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "sec_meet_minutes" }, () => {
+      handlers.onSecMeetsChange?.();
     });
 
   channel.subscribe((status) => {
@@ -1181,4 +1206,328 @@ export async function saveIssueAssessmentReply(input: {
     return null;
   }
   return merged;
+}
+
+// ============================================================================
+// SECMEETS (SECTION MEETINGS)
+//
+// These are real tables, not an app_state blob, because async progress has to
+// be private per member: row level security can only restrict what a session
+// reads if each member's answers sit in their own row. The policies in
+// supabase/migrations/20261117000000_sec_meets.sql are what actually enforce
+// the permission matrix, so every helper here writes only what the caller is
+// allowed to write and treats a refused write as a refusal.
+// ============================================================================
+
+function secMeetItemFromDb(row: any): SecMeetItem & { meetingId: string } {
+  return {
+    id: String(row.id),
+    meetingId: String(row.meeting_id),
+    kind: row.kind === "task" ? "task" : "agenda",
+    itemKind: row.item_kind === "dispo" ? "dispo" : "checklist",
+    position: Number(row.position) || 0,
+    title: String(row.title ?? "")
+  };
+}
+
+function dispoFromDb(raw: unknown): DispoResponses | null {
+  if (!raw || typeof raw !== "object") return null;
+  const source = raw as Record<string, unknown>;
+  const next = emptyDispo();
+  let filled = false;
+  DISPO_CATEGORIES.forEach(({ key }) => {
+    const value = typeof source[key] === "string" ? (source[key] as string) : "";
+    next[key] = value;
+    if (value.trim()) filled = true;
+  });
+  return filled ? next : null;
+}
+
+function secMeetStatusFromDb(raw: unknown): SecMeetStatus {
+  return raw === "Completed" || raw === "In Progress" ? raw : "Not Started";
+}
+
+/**
+ * Every meeting with its agenda, tasks, attendance and minutes in one pass.
+ * Progress is fetched separately because a member only ever receives their own
+ * rows there, and the caller needs to know whose rows it is holding.
+ */
+export async function fetchSecMeets(): Promise<SecMeet[]> {
+  if (!supabase) return [];
+  const [meetsRes, itemsRes, attendanceRes, minutesRes] = await Promise.all([
+    supabase.from("sec_meets").select("*").order("seq", { ascending: true }),
+    supabase.from("sec_meet_items").select("*"),
+    supabase.from("sec_meet_attendance").select("*"),
+    supabase.from("sec_meet_minutes").select("*")
+  ]);
+
+  if (meetsRes.error) {
+    console.warn("SecMeets fetch failed:", meetsRes.error.message);
+    return [];
+  }
+
+  const items = (itemsRes.data || []).map(secMeetItemFromDb);
+  const minutesById = new Map(
+    (minutesRes.data || []).map((row: any) => [String(row.meeting_id), row])
+  );
+  const attendanceByMeeting = new Map<string, Record<string, AttendanceStatus>>();
+  (attendanceRes.data || []).forEach((row: any) => {
+    const meetingId = String(row.meeting_id);
+    const current = attendanceByMeeting.get(meetingId) || {};
+    current[normalizeEmail(row.member_email).toLowerCase()] = row.status as AttendanceStatus;
+    attendanceByMeeting.set(meetingId, current);
+  });
+
+  return (meetsRes.data || []).map((row: any) => {
+    const meetingId = String(row.id);
+    const mine = items.filter((item) => item.meetingId === meetingId);
+    const minutesRow = minutesById.get(meetingId);
+    return {
+      id: meetingId,
+      seq: Number(row.seq) || 0,
+      title: String(row.title ?? ""),
+      kind: row.kind === "asynchronous" ? "asynchronous" : "synchronous",
+      status: secMeetStatusFromDb(row.status),
+      meetingDate: String(row.meeting_date ?? ""),
+      details: String(row.details ?? ""),
+      agenda: mine.filter((item) => item.kind === "agenda").sort((a, b) => a.position - b.position),
+      tasks: mine.filter((item) => item.kind === "task").sort((a, b) => a.position - b.position),
+      minutes: String(minutesRow?.minutes ?? ""),
+      minutesUpdatedBy: String(minutesRow?.updated_by ?? ""),
+      attendance: attendanceByMeeting.get(meetingId) || {}
+    } as SecMeet;
+  });
+}
+
+/**
+ * Whatever progress the session is allowed to see: a member gets their own
+ * rows, the Editor and Deputy get everybody's. The filter is the database's,
+ * not this function's.
+ */
+export async function fetchSecMeetProgress(meetingIds: string[]): Promise<SecMeetProgress[]> {
+  if (!supabase || meetingIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("sec_meet_progress")
+    .select("item_id, meeting_id, member_email, done, dispo, updated_at")
+    .in("meeting_id", meetingIds);
+  if (error) {
+    console.warn("SecMeets progress fetch failed:", error.message);
+    return [];
+  }
+  return (data || []).map((row: any) => ({
+    itemId: String(row.item_id),
+    memberEmail: normalizeEmail(row.member_email).toLowerCase(),
+    done: Boolean(row.done),
+    dispo: dispoFromDb(row.dispo),
+    updatedAt: String(row.updated_at ?? new Date().toISOString())
+  }));
+}
+
+export async function createSecMeet(input: {
+  title: string;
+  kind: SecMeetKind;
+  meetingDate?: string;
+  details?: string;
+  status?: SecMeetStatus;
+  createdBy?: string;
+}): Promise<SecMeet | null> {
+  if (!supabase) return null;
+  // seq is the "Xth Layout SecMeet" number in the exported minutes, so it is
+  // simply one past the last meeting the Editor already made.
+  const { data: existing } = await supabase
+    .from("sec_meets").select("seq").order("seq", { ascending: false }).limit(1);
+  const nextSeq = (existing && existing.length > 0 ? Number(existing[0].seq) : 0) + 1;
+
+  const { data, error } = await supabase.from("sec_meets").insert({
+    seq: nextSeq,
+    title: input.title.trim(),
+    kind: input.kind,
+    status: input.status || "Not Started",
+    meeting_date: input.meetingDate || null,
+    details: input.details || null,
+    // created_by points at profiles, so an id that is not a real uuid is left
+    // null rather than invented — ensureUuid would generate one and break the FK.
+    created_by: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.createdBy || "")
+      ? input.createdBy
+      : null,
+    updated_at: new Date().toISOString()
+  }).select().single();
+
+  if (error) {
+    console.error("Error creating section meeting:", error.message);
+    return null;
+  }
+  const meets = await fetchSecMeets();
+  return meets.find((meet) => meet.id === String(data.id)) || null;
+}
+
+export async function updateSecMeet(
+  meetingId: string,
+  patch: Partial<Pick<SecMeet, "title" | "status" | "meetingDate" | "details">>
+): Promise<boolean> {
+  if (!supabase) return false;
+  const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.title !== undefined) row.title = patch.title.trim();
+  if (patch.status !== undefined) row.status = patch.status;
+  if (patch.meetingDate !== undefined) row.meeting_date = patch.meetingDate || null;
+  if (patch.details !== undefined) row.details = patch.details || null;
+
+  const { error } = await supabase.from("sec_meets").update(row).eq("id", meetingId);
+  if (error) {
+    console.error("Error updating section meeting:", error.message);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteSecMeet(meetingId: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.from("sec_meets").delete().eq("id", meetingId);
+  if (error) {
+    console.error("Error deleting section meeting:", error.message);
+    return false;
+  }
+  return true;
+}
+
+export async function addSecMeetItem(input: {
+  meetingId: string;
+  kind: "agenda" | "task";
+  title: string;
+  itemKind?: "checklist" | "dispo";
+}): Promise<boolean> {
+  if (!supabase || !input.title.trim()) return false;
+  const { data: siblings } = await supabase
+    .from("sec_meet_items").select("position")
+    .eq("meeting_id", input.meetingId).eq("kind", input.kind)
+    .order("position", { ascending: false }).limit(1);
+  const nextPosition = (siblings && siblings.length > 0 ? Number(siblings[0].position) : 0) + 1;
+
+  const { error } = await supabase.from("sec_meet_items").insert({
+    meeting_id: input.meetingId,
+    kind: input.kind,
+    item_kind: input.itemKind || "checklist",
+    position: nextPosition,
+    title: input.title.trim(),
+    updated_at: new Date().toISOString()
+  });
+  if (error) {
+    console.error("Error adding meeting item:", error.message);
+    return false;
+  }
+  return true;
+}
+
+export async function updateSecMeetItem(itemId: string, title: string): Promise<boolean> {
+  if (!supabase || !title.trim()) return false;
+  const { error } = await supabase.from("sec_meet_items")
+    .update({ title: title.trim(), updated_at: new Date().toISOString() })
+    .eq("id", itemId);
+  if (error) {
+    console.error("Error renaming meeting item:", error.message);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Deleting a task also drops every member's progress row on it, which the
+ * cascade in the schema does; the caller still has to re-read afterwards so no
+ * stale row survives in state.
+ */
+export async function deleteSecMeetItem(itemId: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.from("sec_meet_items").delete().eq("id", itemId);
+  if (error) {
+    console.error("Error deleting meeting item:", error.message);
+    return false;
+  }
+  return true;
+}
+
+/** Rearranges one meeting's agenda or task list into the order given. */
+export async function reorderSecMeetItems(orderedIds: string[]): Promise<boolean> {
+  if (!supabase || orderedIds.length === 0) return false;
+  const rows = orderedIds.map((id, index) => ({
+    id,
+    position: index + 1,
+    updated_at: new Date().toISOString()
+  }));
+  const { error } = await supabase.from("sec_meet_items").upsert(rows, { onConflict: "id" });
+  if (error) {
+    console.error("Error reordering meeting items:", error.message);
+    return false;
+  }
+  return true;
+}
+
+/** Passing null clears the mark again, which deletes the row. */
+export async function setSecMeetAttendance(
+  meetingId: string,
+  memberEmail: string,
+  status: AttendanceStatus | null
+): Promise<boolean> {
+  if (!supabase) return false;
+  const email = normalizeEmail(memberEmail).toLowerCase();
+  const { error } = status
+    ? await supabase.from("sec_meet_attendance").upsert({
+        meeting_id: meetingId,
+        member_email: email,
+        status,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "meeting_id,member_email" })
+    : await supabase.from("sec_meet_attendance").delete()
+        .eq("meeting_id", meetingId).eq("member_email", email);
+  if (error) {
+    console.error("Error saving attendance:", error.message);
+    return false;
+  }
+  return true;
+}
+
+export async function saveSecMeetMinutes(
+  meetingId: string,
+  minutes: string,
+  updatedBy: string
+): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.from("sec_meet_minutes").upsert({
+    meeting_id: meetingId,
+    minutes,
+    updated_by: updatedBy,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "meeting_id" });
+  if (error) {
+    console.error("Error saving minutes:", error.message);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Writes the caller's own progress row on one async task. The insert and update
+ * policies both require member_email to match the signed-in address, so this
+ * cannot be pointed at somebody else even if the caller tries.
+ */
+export async function saveSecMeetProgress(input: {
+  itemId: string;
+  meetingId: string;
+  memberEmail: string;
+  done: boolean;
+  dispo?: DispoResponses | null;
+}): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.from("sec_meet_progress").upsert({
+    item_id: input.itemId,
+    meeting_id: input.meetingId,
+    member_email: normalizeEmail(input.memberEmail).toLowerCase(),
+    done: input.done,
+    dispo: input.dispo ?? null,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "item_id,member_email" });
+  if (error) {
+    console.error("Error saving task progress:", error.message);
+    return false;
+  }
+  return true;
 }

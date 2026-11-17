@@ -285,3 +285,56 @@ export function getEditorDeputyEmails(): string[] {
     .filter(m => m.role === "Layout Editor" || m.role === "Layout Deputy")
     .map(m => m.email);
 }
+
+export interface SecMeetRosterEntry {
+  email: string;
+  /** "RODRIGUEZ, Christian Matthew T." — surname capitalised, as the minutes print it. */
+  officialName: string;
+  /** The surname alone, uppercased, for the Dispo Check table's NAME column. */
+  surname: string;
+  displayName: string;
+  role: string;
+}
+
+const isSecMeetMember = (member: { role?: string | null; type?: string | null }): boolean => {
+  const role = (member.role || "").toLowerCase();
+  const type = (member.type || "").toLowerCase();
+  return type === "layout"
+    || role.includes("layout")
+    || role.includes("deputy")
+    || role.includes("staffer")
+    || role.includes("probi")
+    || role.includes("editor");
+};
+
+/**
+ * The layout members a SecMeet attendance list, monitoring view and Dispo Check
+ * table are built from. The live directory wins where both know the member, and
+ * the list is alphabetical by surname because that is the order the official
+ * minutes template uses.
+ */
+export function getSecMeetRoster(
+  members: Array<{ name?: string | null; displayName?: string | null; email?: string | null; role?: string | null; type?: string | null }>
+): SecMeetRosterEntry[] {
+  const byEmail = new Map<string, SecMeetRosterEntry>();
+
+  const add = (source: { name?: string | null; displayName?: string | null; email?: string | null; role?: string | null }, overwrite: boolean) => {
+    if (!isSecMeetMember(source)) return;
+    const email = (source.email || "").trim().toLowerCase();
+    if (!email || (!overwrite && byEmail.has(email))) return;
+    const officialName = getOfficialFullName(source.name, email);
+    const [surname, ...rest] = officialName.split(",");
+    byEmail.set(email, {
+      email,
+      officialName: `${surname.toUpperCase()}${rest.length ? `,${rest.join(",")}` : ""}`,
+      surname: surname.trim().toUpperCase(),
+      displayName: source.displayName || getPreferredFirstName(source.name, email),
+      role: source.role || ""
+    });
+  };
+
+  Object.values(OFFICIAL_MEMBERS_MAP).forEach((info) => add(info, false));
+  members.forEach((member) => add(member, true));
+
+  return Array.from(byEmail.values()).sort((a, b) => a.surname.localeCompare(b.surname) || a.officialName.localeCompare(b.officialName));
+}
