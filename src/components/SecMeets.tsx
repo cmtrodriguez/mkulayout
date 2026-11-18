@@ -1,16 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import DOMPurify from "dompurify";
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   ArrowDown,
   ArrowUp,
+  Bold,
   CalendarCheck,
   Check,
   ClipboardList,
   Download,
   FileText,
+  Italic,
+  List,
   ListChecks,
+  ListOrdered,
   Pencil,
   Plus,
   Trash2,
+  Underline,
   Users,
   X,
 } from "lucide-react";
@@ -28,7 +37,7 @@ import {
   normalizeEmail,
 } from "../types";
 import { getSecMeetRoster, SecMeetRosterEntry } from "../lib/memberUtils";
-import { formatSecMeetDate, ordinalOf } from "../lib/secMeetFormat";
+import { formatSecMeetDate, formatSecMeetTabDate, ordinalOf, todayIso } from "../lib/secMeetFormat";
 import {
   addSecMeetItem,
   createSecMeet,
@@ -88,6 +97,36 @@ function statusTone(status: SecMeetStatus): string {
   if (status === "In Progress") return tonePartial;
   return toneIdle;
 }
+
+/** Minutes are stored as a small slice of HTML so the formatting a lead applies
+    survives the save and the PDF export. Everything else a paste could carry is
+    stripped on the way in. */
+const MINUTES_TAGS = ["p", "br", "b", "strong", "i", "em", "u", "ul", "ol", "li", "div"];
+
+function sanitizeMinutes(html: string): string {
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS: MINUTES_TAGS, ALLOWED_ATTR: ["style"] });
+}
+
+/** Minutes written before the editor existed are plain text; keep their line
+    breaks by turning them into breaks instead of letting HTML collapse them. */
+function toEditorHtml(minutes: string): string {
+  if (/<[a-z]/i.test(minutes)) return sanitizeMinutes(minutes);
+  const escaped = minutes.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return escaped.split(/\r?\n/).map((line) => (line ? line : "<br>")).join("");
+}
+
+const MINUTES_PROSE = "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5";
+
+const MINUTES_TOOLS: { command: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { command: "bold", label: "Bold", icon: Bold },
+  { command: "italic", label: "Italic", icon: Italic },
+  { command: "underline", label: "Underline", icon: Underline },
+  { command: "insertUnorderedList", label: "Bulleted list", icon: List },
+  { command: "insertOrderedList", label: "Numbered list", icon: ListOrdered },
+  { command: "justifyLeft", label: "Align left", icon: AlignLeft },
+  { command: "justifyCenter", label: "Align centre", icon: AlignCenter },
+  { command: "justifyRight", label: "Align right", icon: AlignRight },
+];
 
 function Pill({ children, className = "", title }: { children: React.ReactNode; className?: string; title?: string }) {
   return (
@@ -172,9 +211,6 @@ export default function SecMeets({
           </div>
           <div className="min-w-0">
             <h2 className="font-sans font-black text-sm sm:text-base text-stone-900 dark:text-neutral-100 tracking-tight">SecMeets</h2>
-            <p className="text-[10px] sm:text-[11px] text-stone-500 dark:text-neutral-400 font-medium">
-              Section meetings: attendance, agenda and minutes for a synchronous meeting; tasks and Dispo Check for an asynchronous one.
-            </p>
           </div>
         </div>
       </div>
@@ -192,6 +228,9 @@ export default function SecMeets({
               }`}
             >
               <span className="block text-[11px] font-black text-neutral-900 dark:text-neutral-100 truncate">{entry.title}</span>
+              {entry.meetingDate && (
+                <span className="block mt-0.5 text-[10px] font-semibold text-neutral-500 dark:text-neutral-400">{formatSecMeetTabDate(entry.meetingDate)}</span>
+              )}
               <span className="mt-1 flex items-center gap-1.5">
                 <Pill className={entry.kind === "synchronous" ? toneSync : toneAsync}>
                   {entry.kind === "synchronous" ? "Sync" : "Async"}
@@ -255,27 +294,46 @@ function NewMeetingButton({ meetings, onCreated, onError }: { meetings: SecMeet[
   const nextSeq = (meetings.reduce((highest, entry) => Math.max(highest, entry.seq), 0) || 0) + 1;
 
   return (
-    <div className="shrink-0 relative">
-      <button onClick={() => setOpen((value) => !value)} className={ghostButton} title="Create a meeting tab">
+    <>
+      <button onClick={() => setOpen(true)} className={ghostButton} title="Create a meeting tab">
         <Plus className="w-3.5 h-3.5" /> New meeting
       </button>
       {open && (
-        <div className="absolute z-20 right-0 mt-2 w-[280px] rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg p-3">
-          <NewMeetingForm
-            nextSeq={nextSeq}
-            onError={onError}
-            onCreated={() => { setOpen(false); onCreated(); }}
-          />
+        // Fixed rather than anchored to the button: the tab strip scrolls
+        // sideways, and an anchored popover gets clipped by it.
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-[1px]"
+          onClick={() => setOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="New meeting"
+        >
+          <div
+            className="w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-xl p-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-black text-neutral-900 dark:text-neutral-100">New meeting</h3>
+              <button onClick={() => setOpen(false)} className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer" aria-label="Close">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <NewMeetingForm
+              nextSeq={nextSeq}
+              onError={onError}
+              onCreated={() => { setOpen(false); onCreated(); }}
+            />
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
 function NewMeetingForm({ nextSeq, onCreated, onError }: { nextSeq: number; onCreated: () => void; onError: (message: string) => void }) {
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<"synchronous" | "asynchronous">("synchronous");
-  const [meetingDate, setMeetingDate] = useState("");
+  const [meetingDate, setMeetingDate] = useState(todayIso());
   const [details, setDetails] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -289,7 +347,7 @@ function NewMeetingForm({ nextSeq, onCreated, onError }: { nextSeq: number; onCr
       return;
     }
     setTitle("");
-    setMeetingDate("");
+    setMeetingDate(todayIso());
     setDetails("");
     onCreated();
   };
@@ -327,7 +385,7 @@ function NewMeetingForm({ nextSeq, onCreated, onError }: { nextSeq: number; onCr
         <textarea rows={2} className={inputClass} value={details} onChange={(event) => setDetails(event.target.value)} placeholder="Where it was held, what it covered" />
       </label>
       <div className="flex justify-end">
-        <button onClick={submit} disabled={saving} className={primaryButton}>
+        <button onClick={submit} disabled={saving || !meetingDate} className={primaryButton}>
           <Check className="w-3.5 h-3.5" /> {saving ? "Creating…" : "Create"}
         </button>
       </div>
@@ -530,10 +588,7 @@ function AttendanceCard({
           const current = meeting.attendance[entry.email];
           return (
             <li key={entry.email} className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200/70 dark:border-neutral-800 px-2.5 py-1.5">
-              <span className="min-w-0">
-                <span className="block text-[11px] font-bold text-neutral-900 dark:text-neutral-100 truncate">{entry.displayName}</span>
-                <span className="block text-[10px] text-neutral-500 dark:text-neutral-400 truncate">{entry.officialName}</span>
-              </span>
+              <span className="min-w-0 text-[11px] font-bold text-neutral-900 dark:text-neutral-100 truncate">{entry.officialName}</span>
               <span className="flex items-center gap-0.5 shrink-0">
                 {ATTENDANCE_STATES.map((state) => {
                   const selected = current === state.value;
@@ -704,11 +759,16 @@ function MinutesCard({
   const [draft, setDraft] = useState(meeting.minutes);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const editorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => { setEditing(false); }, [meeting.id]);
   // A realtime reload must not throw away what the lead is typing: the stored
   // minutes only overwrite the draft while it is untouched.
-  useEffect(() => { if (editing) return; setDraft(meeting.minutes); }, [meeting.minutes, editing]);
+  useEffect(() => {
+    if (editing) return;
+    setDraft(meeting.minutes);
+    if (editorRef.current) editorRef.current.innerHTML = toEditorHtml(meeting.minutes);
+  }, [meeting.minutes, editing]);
   useEffect(() => {
     if (!saved) return;
     const timer = window.setTimeout(() => setSaved(false), 2500);
@@ -716,6 +776,13 @@ function MinutesCard({
   }, [saved]);
 
   const changed = draft !== meeting.minutes;
+
+  const format = (command: string) => {
+    editorRef.current?.focus();
+    document.execCommand(command);
+    setDraft(editorRef.current?.innerHTML ?? "");
+    setEditing(true);
+  };
 
   return (
     <Card
@@ -729,7 +796,7 @@ function MinutesCard({
             <button
               disabled={busy || !changed}
               onClick={write(async () => {
-                const ok = await saveSecMeetMinutes(meeting.id, draft, myName);
+                const ok = await saveSecMeetMinutes(meeting.id, sanitizeMinutes(draft), myName);
                 if (ok) { setEditing(false); setSaved(true); }
                 return ok;
               })}
@@ -742,16 +809,36 @@ function MinutesCard({
       }
     >
       {isLead ? (
-        <textarea
-          rows={12}
-          className={`${inputClass} leading-relaxed resize-y`}
-          value={draft}
-          disabled={busy}
-          placeholder="One point per line. Line breaks are kept exactly as typed, and each line is numbered in the exported minutes."
-          onChange={(event) => setDraft(event.target.value)}
-        />
+        <>
+          <div className="flex flex-wrap items-center gap-0.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-1 py-1">
+            {MINUTES_TOOLS.map((tool) => (
+              <button
+                key={tool.command}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => format(tool.command)}
+                disabled={busy}
+                className="p-1.5 rounded-md text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 cursor-pointer disabled:opacity-50"
+                title={tool.label}
+                aria-label={tool.label}
+              >
+                <tool.icon className="w-3.5 h-3.5" />
+              </button>
+            ))}
+          </div>
+          <div
+            ref={editorRef}
+            contentEditable={!busy}
+            suppressContentEditableWarning
+            onInput={(event) => { setEditing(true); setDraft(event.currentTarget.innerHTML); }}
+            className={`${inputClass} min-h-[180px] leading-relaxed text-left ${MINUTES_PROSE} empty:before:content-[attr(data-placeholder)] empty:before:text-neutral-400`}
+            data-placeholder="Write the minutes. Select text and use the bar above for bold, italics, bullets and alignment."
+          />
+        </>
       ) : meeting.minutes ? (
-        <p className="text-[11px] sm:text-xs text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap leading-relaxed">{meeting.minutes}</p>
+        <div
+          className={`text-[11px] sm:text-xs text-neutral-800 dark:text-neutral-200 leading-relaxed ${MINUTES_PROSE}`}
+          dangerouslySetInnerHTML={{ __html: sanitizeMinutes(meeting.minutes) }}
+        />
       ) : (
         <p className="text-[11px] text-neutral-500 dark:text-neutral-400">No minutes have been written yet.</p>
       )}

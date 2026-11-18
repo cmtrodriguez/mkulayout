@@ -1481,9 +1481,9 @@ export default function App() {
       : [];
   };
 
-  // The sidebar's third group: the section's meeting record, one desk holding a
-  // tab per meeting. Every layout member reads it; the tabs themselves are the
-  // Layout Editor's to create.
+  // The section's meeting record: one desk holding a tab per meeting, listed at
+  // the end of the Section Matters group. Every layout member reads it; the
+  // tabs themselves are the Layout Editor's to create.
   const getSecMeetTabs = () => {
     const isLayoutMember = userRole === "Layout Editor"
       || userRole === "Layout Deputy"
@@ -1627,8 +1627,8 @@ export default function App() {
   }
 
   const roleTabs = getTabsForRole();
-  const sectionTabs = getSectionMatterTabs();
-  const secMeetTabs = getSecMeetTabs();
+  // The meeting record sits inside Section Matters, after the other desks.
+  const sectionTabs = [...getSectionMatterTabs(), ...getSecMeetTabs()];
 
   // Both sidebar groups open a panel the same way, so speech and the mobile
   // sheet stay consistent whichever section a member came from.
@@ -1685,23 +1685,6 @@ export default function App() {
                   Section Matters
                 </span>
                 {sectionTabs.map((tab) => (
-                  <DeskTabButton
-                    key={tab.id}
-                    tab={tab}
-                    variant="desktop"
-                    isActive={activeTab === tab.id}
-                    onSelect={() => openTab(tab)}
-                  />
-                ))}
-              </>
-            )}
-
-            {secMeetTabs.length > 0 && (
-              <>
-                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-3 block mb-2 mt-5 font-sans">
-                  SecMeets
-                </span>
-                {secMeetTabs.map((tab) => (
                   <DeskTabButton
                     key={tab.id}
                     tab={tab}
@@ -1813,23 +1796,6 @@ export default function App() {
                       Section Matters
                     </span>
                     {sectionTabs.map((tab) => (
-                      <DeskTabButton
-                        key={tab.id}
-                        tab={tab}
-                        variant="mobile"
-                        isActive={activeTab === tab.id}
-                        onSelect={() => openTab(tab)}
-                      />
-                    ))}
-                  </>
-                )}
-
-                {secMeetTabs.length > 0 && (
-                  <>
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-1 block mb-1 mt-4 font-sans">
-                      SecMeets
-                    </span>
-                    {secMeetTabs.map((tab) => (
                       <DeskTabButton
                         key={tab.id}
                         tab={tab}
